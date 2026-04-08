@@ -1,0 +1,75 @@
+# =========================
+# PHPStorm / JetBrains
+# =========================
+.idea/
+*.iml
+
+# =========================
+# System files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Environment files
+# =========================
+.env
+.env.local
+.env.*.local
+
+# =========================
+# Composer
+# =========================
+/vendor/
+composer.lock
+
+# (opcjonalnie — usuń jeśli robisz aplikację, a nie bibliotekę)
+# composer.lock
+
+# =========================
+# Node (jeśli używasz frontu)
+# =========================
+/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =========================
+# Build / cache
+# =========================
+/build/
+/dist/
+/cache/
+/tmp/
+
+# =========================
+# PHPUnit
+# =========================
+/.phpunit.result.cache
+
+# =========================
+# Coverage
+# =========================
+/coverage/
+
+# =========================
+# IDE inne
+# =========================
+.vscode/
+
+# =========================
+# Uploads / user files
+# =========================
+/uploads/
+/public/uploads/
+
+# =========================
+# OS / misc
+# =========================
+*.swp
+*.swo
