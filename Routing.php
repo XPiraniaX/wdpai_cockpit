@@ -19,10 +19,10 @@ class Routing {
         if (!array_key_exists($normalizedPath, self::$routes)) {
             http_response_code(404);
             $title = '404 - Not Found';
-            include 'public/views/partials/head.html';
-            include 'public/views/partials/navi.html';
+            ob_start();
             include 'public/views/404.html';
-            echo '</body></html>';
+            $content = ob_get_clean();
+            include 'public/views/partials/layout.php';
             return;
         }
 

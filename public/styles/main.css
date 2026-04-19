@@ -1,0 +1,44 @@
+body {
+    margin: 0;
+    font-family: Arial;
+    background: #0b1220;
+    color: white;
+}
+
+.app {
+    display: flex;
+}
+
+/* SIDEBAR */
+.sidebar {
+    width: 240px;
+    height: 100vh;
+    background: #0a0f1c;
+    padding: 20px;
+}
+
+.menu-item {
+    display: block;
+    padding: 10px;
+    color: #aaa;
+    text-decoration: none;
+}
+
+.menu-item.active {
+    color: #4cc9f0;
+}
+
+/* MAIN */
+.main {
+    flex: 1;
+}
+
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px;
+}
+
+.content {
+    padding: 20px;
+}

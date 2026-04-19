@@ -15,31 +15,27 @@ class AppController
     protected function render(string $template, array $variables = []): void
     {
         $templatePath = 'public/views/' . $template . '.html';
-
-        extract($variables);
-        $showNavigation = true;
         $viewPath = file_exists($templatePath) ? $templatePath : 'public/views/404.html';
 
-        ob_start();
-        include 'public/views/partials/head.html';
-        include 'public/views/partials/navi.html';
-        include $viewPath;
-        echo '</body></html>';
-        $output = ob_get_clean();
+        extract($variables);
 
-        echo $output;
+        ob_start();
+        include $viewPath;
+        $content = ob_get_clean();
+
+        include 'public/views/partials/layout.php';
     }
 
     protected function renderAuth(string $view, array $variables = []): void
     {
+        $templatePath = 'public/views/' . $view . '.html';
+
         extract($variables);
 
         ob_start();
-        include 'public/views/partials/head.html';
-        require "public/views/$view.html";
-        echo '</body></html>';
-        $output = ob_get_clean();
+        include $templatePath;
+        $content = ob_get_clean();
 
-        echo $output;
+        include 'public/views/partials/auth_layout.php';
     }
 }
