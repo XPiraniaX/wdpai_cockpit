@@ -1,0 +1,107 @@
+.navi {
+    width: 320px;
+    min-height: 100vh;
+    background: #020617;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-sizing: border-box;
+    border-right: 1px solid rgba(12, 74, 110, 0.2);
+}
+
+.navi-top {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    min-height: 116px;
+    padding: 32px 48px 32px 32px;
+    box-sizing: border-box;
+    color: inherit;
+    text-decoration: none;
+}
+
+.brand-logo {
+    width: 224px;
+    height: auto;
+    display: block;
+}
+
+.menu {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.bottom {
+    border-top: 1px solid rgba(12, 74, 110, 0.12);
+}
+
+.menu-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    width: 100%;
+    min-height: 60px;
+    padding: 0 16px 0 32px;
+    box-sizing: border-box;
+    color: rgba(203, 213, 225, 0.56);
+    text-decoration: none;
+    text-transform: uppercase;
+    font-size: 16px;
+    letter-spacing: 0.16em;
+    font-weight: 700;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.menu-item:hover {
+    background: rgba(8, 47, 73, 0.16);
+    color: #e8f6ff;
+}
+
+.menu-item.active {
+    min-height: 62px;
+    background: linear-gradient(90deg, rgba(8, 47, 73, 0.3) 0%, rgba(8, 47, 73, 0.08) 100%);
+    color: #38bdf8;
+}
+
+.menu-item.active::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 2px;
+    height: 100%;
+    background: #38bdf8;
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.45);
+}
+
+.bottom .menu-item {
+    min-height: 80px;
+    padding-right: 24px;
+}
+
+.menu-icon {
+    width: 20px;
+    height: 20px;
+    flex: 0 0 20px;
+    display: block;
+    background-color: currentColor;
+    -webkit-mask-image: var(--icon-url);
+    -webkit-mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    -webkit-mask-size: contain;
+    mask-image: var(--icon-url);
+    mask-repeat: no-repeat;
+    mask-position: center;
+    mask-size: contain;
+}
+
+.menu-label {
+    white-space: nowrap;
+}

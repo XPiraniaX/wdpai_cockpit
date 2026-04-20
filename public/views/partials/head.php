@@ -3,4 +3,7 @@
 
 <title><?= $title ?? "Cockpit" ?></title>
 
-<link rel="stylesheet" href="/public/styles/main.css">
+<link rel="stylesheet" href="/public/styles/base.css">
+<link rel="stylesheet" href="/public/styles/layout.css">
+<link rel="stylesheet" href="/public/styles/navi.css">
+<link rel="stylesheet" href="/public/styles/header.css">

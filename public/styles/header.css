@@ -1,0 +1,94 @@
+.topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 88px;
+    padding: 0 32px;
+    box-sizing: border-box;
+    background: rgba(255, 255, 255, 0.002);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+}
+
+.breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.breadcrumbs-current {
+    color: #38bdf8;
+    font-size: 19px;
+    font-weight: 700;
+}
+
+.breadcrumbs-separator,
+.breadcrumbs-parent {
+    color: rgba(203, 213, 225, 0.45);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+.topbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+
+.icon-button {
+    width: 23px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.bell-icon {
+    width: 23px;
+    height: 26px;
+    display: block;
+}
+
+.user-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.user-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
+}
+
+.user-name {
+    color: #f4f8ff;
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.user-role {
+    color: rgba(203, 213, 225, 0.4);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    font-weight: 700;
+}
+
+.avatar {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ffd7b8, #8de1d5);
+    box-shadow: 0 0 0 2px rgba(31, 46, 73, 0.9);
+}
+
+.avatar-ring {
+    position: absolute;
+    inset: 6px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(33, 78, 121, 0.4);
+}
