@@ -4,7 +4,7 @@ $menuItems = [
     ['href' => '/dashboard', 'path' => 'dashboard', 'label' => 'Dashboard', 'icon' => '/public/assets/icons/dashboard.svg'],
     ['href' => '/my-cars', 'path' => 'my-cars', 'label' => 'Moje samochody', 'icon' => '/public/assets/icons/my_cars.svg'],
     ['href' => '/marketplace', 'path' => 'marketplace', 'label' => 'Marketplace', 'icon' => '/public/assets/icons/marketplace.svg'],
-    ['href' => '/community', 'path' => 'community', 'label' => 'Spolecznosc', 'icon' => '/public/assets/icons/community.svg'],
+    ['href' => '/community', 'path' => 'community', 'label' => 'Społeczność', 'icon' => '/public/assets/icons/community.svg'],
 ];
 ?>
 <aside class="navi">

@@ -7,3 +7,4 @@
 <link rel="stylesheet" href="/public/styles/layout.css">
 <link rel="stylesheet" href="/public/styles/navi.css">
 <link rel="stylesheet" href="/public/styles/header.css">
+<link rel="stylesheet" href="/public/styles/dashboard.css">
