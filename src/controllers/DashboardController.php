@@ -4,17 +4,16 @@ require_once 'AppController.php';
 
 class DashboardController extends AppController {
     public function index() {
-        $title = "1 - Dashboard";
-
         $stats = [
-            'nextInspectionDate' => '--.--.----',
-            'nextInspectionCar' => '-',
-            'nextInsuranceDate' => '--.--.----',
-            'nextInsuranceCar' => '-',
-            'lastFuelAmount' => '-',
-            'lastFuelMeta' => '-',
-            'carCount' => '-',
-            'carCountMeta' => '-',
+            'nextInspectionDate' => '00.00.0000',
+            'nextInspectionCar' => 'Przykladowy Samochod',
+            'nextInsuranceDate' => '00.00.0000',
+            'nextInsuranceCar' => 'Przykladowy Samochod',
+            'lastFuelAmount' => '0 PLN',
+            'lastFuelCount' => '0 L',
+            'lastFuelMeta' => 'Przykladowy Samochod',
+            'carCount' => '0',
+            'carCountMeta' => 'Przykladowe Samochody',
         ];
 
         $cars = [
@@ -45,7 +44,6 @@ class DashboardController extends AppController {
         ];
 
         return $this->render("dashboard", [
-            "title" => $title,
             "stats" => $stats,
             "cars" => $cars,
         ]);

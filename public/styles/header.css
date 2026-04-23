@@ -5,7 +5,7 @@
     min-height: 88px;
     padding: 0 32px;
     box-sizing: border-box;
-    background: rgba(255, 255, 255, 0.002);
+    background: #020617;
     border-bottom: 1px solid rgba(148, 163, 184, 0.08);
     flex-shrink: 0;
 }
