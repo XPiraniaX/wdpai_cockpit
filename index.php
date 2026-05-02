@@ -1,7 +1,20 @@
 <?php
 
 spl_autoload_register(function ($class) {
-    require_once "src/controllers/$class.php";
+    $directories = [
+        'src/config',
+        'src/controllers',
+        'src/repositories',
+    ];
+
+    foreach ($directories as $directory) {
+        $path = $directory . '/' . $class . '.php';
+
+        if (file_exists($path)) {
+            require_once $path;
+            return;
+        }
+    }
 });
 
 require_once 'Routing.php';

@@ -2,6 +2,12 @@
 
 class AppController
 {
+    protected function getCurrentUserId(): int
+    {
+        // Temporary dashboard/auth context before real session handling is added.
+        return 1;
+    }
+
     protected function isGet(): bool
     {
         return $_SERVER['REQUEST_METHOD'] === 'GET';
