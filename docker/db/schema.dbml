@@ -1,0 +1,207 @@
+Project COCKPIT {
+  database_type: "PostgreSQL"
+  Note: "MVP schema aligned with current PROJECT_VISION"
+}
+
+Table users {
+  id serial [pk]
+  username varchar(50) [not null, unique]
+  email varchar(255) [not null, unique]
+  password text [not null]
+  first_name varchar(100) [not null]
+  last_name varchar(100) [not null]
+  membership_tier varchar(20) [not null, default: 'free', note: 'free | pro | business']
+  avatar_path text
+  timezone varchar(64) [not null, default: 'Europe/Warsaw']
+  locale varchar(10) [not null, default: 'pl_PL']
+  last_login_at timestamptz
+  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  is_active boolean [not null, default: true]
+}
+
+Table user_settings {
+  id serial [pk]
+  user_id int [not null, unique]
+  email_notifications boolean [not null, default: true]
+  push_notifications boolean [not null, default: false]
+  maintenance_reminders boolean [not null, default: true]
+  inspection_reminders boolean [not null, default: true]
+  insurance_reminders boolean [not null, default: true]
+  privacy_profile_visibility varchar(20) [not null, default: 'private', note: 'private | friends | public']
+  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table car_brands {
+  id serial [pk]
+  name varchar(100) [not null, unique]
+  country_code char(2)
+  is_active boolean [not null, default: true]
+}
+
+Table car_models {
+  id serial [pk]
+  brand_id int [not null]
+  name varchar(100) [not null]
+  generation varchar(100)
+  production_start_year smallint
+  production_end_year smallint
+  is_active boolean [not null, default: true]
+
+  indexes {
+    brand_id [name: 'idx_car_models_brand_id']
+    (brand_id, name, generation) [unique]
+  }
+}
+
+Table vehicles {
+  id serial [pk]
+  user_id int [not null]
+  brand_id int [not null]
+  model_id int
+  custom_make varchar(100)
+  custom_model varchar(100)
+  nickname varchar(150)
+  display_name varchar(150) [not null]
+  trim_name varchar(150)
+  production_year smallint [not null]
+  vin char(17) [unique]
+  license_plate varchar(20)
+  body_type varchar(50)
+  drivetrain varchar(50)
+  fuel_type varchar(30) [not null, note: 'petrol | diesel | hybrid | plug_in_hybrid | electric | lpg | cng | other']
+  transmission varchar(30) [note: 'manual | automatic | semi_automatic']
+  engine_capacity_cc int
+  power_hp int
+  current_mileage_km int [not null, default: 0]
+  exterior_color varchar(50)
+  status varchar(20) [not null, default: 'active', note: 'active | sold | archived']
+  display_order int [not null, default: 0]
+  is_primary boolean [not null, default: false, note: 'Partial unique per user in SQL when status = active']
+  acquired_on date
+  notes text
+  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    user_id [name: 'idx_vehicles_user_id']
+    status [name: 'idx_vehicles_status']
+    (user_id, display_order) [name: 'idx_vehicles_user_display_order']
+  }
+}
+
+Table vehicle_images {
+  id serial [pk]
+  vehicle_id int [not null]
+  image_path text [not null]
+  alt_text varchar(255)
+  sort_order int [not null, default: 0]
+  is_primary boolean [not null, default: false, note: 'Partial unique per vehicle in SQL']
+  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table technical_inspections {
+  id serial [pk]
+  vehicle_id int [not null]
+  inspection_date date [not null]
+  valid_until date [not null]
+  mileage_km int
+  station_name varchar(255)
+  result varchar(20) [not null, default: 'passed', note: 'passed | failed | conditional']
+  notes text
+  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (vehicle_id, valid_until) [name: 'idx_technical_inspections_vehicle_valid_until']
+  }
+}
+
+Table insurance_policies {
+  id serial [pk]
+  vehicle_id int [not null]
+  insurer_name varchar(255) [not null]
+  policy_number varchar(100)
+  policy_type varchar(20) [not null, default: 'oc', note: 'oc | ac | oc_ac | other']
+  valid_from date [not null]
+  valid_until date [not null]
+  premium_amount numeric(10,2)
+  currency char(3) [not null, default: 'PLN']
+  is_active boolean [not null, default: true, note: 'Partial unique per vehicle in SQL']
+  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (vehicle_id, valid_until) [name: 'idx_insurance_policies_vehicle_valid_until']
+  }
+}
+
+Table fuel_logs {
+  id serial [pk]
+  vehicle_id int [not null]
+  fueled_at timestamptz [not null]
+  mileage_km int [not null]
+  liters numeric(8,2) [not null]
+  total_cost numeric(10,2) [not null]
+  currency char(3) [not null, default: 'PLN']
+  fuel_price_per_liter numeric(8,3) [note: 'Generated in SQL']
+  fuel_type varchar(30) [not null, note: 'petrol | diesel | premium_petrol | premium_diesel | lpg | cng | electric | other']
+  station_name varchar(255)
+  city varchar(100)
+  full_tank boolean [not null, default: false]
+  notes text
+  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (vehicle_id, fueled_at) [name: 'idx_fuel_logs_vehicle_fueled_at']
+  }
+}
+
+Table service_records {
+  id serial [pk]
+  vehicle_id int [not null]
+  service_type varchar(50) [not null, note: 'oil_change | inspection | tires | brakes | diagnostics | repair | detailing | other']
+  title varchar(255) [not null]
+  service_date date [not null]
+  mileage_km int
+  cost_amount numeric(10,2)
+  currency char(3) [not null, default: 'PLN']
+  workshop_name varchar(255)
+  description text
+  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (vehicle_id, service_date) [name: 'idx_service_records_vehicle_service_date']
+  }
+}
+
+Table maintenance_tasks {
+  id serial [pk]
+  vehicle_id int [not null]
+  title varchar(255) [not null]
+  description text
+  priority varchar(20) [not null, default: 'medium', note: 'low | medium | high | critical']
+  status varchar(20) [not null, default: 'open', note: 'open | in_progress | done | dismissed']
+  estimated_cost_amount numeric(10,2)
+  currency char(3) [not null, default: 'PLN']
+  target_date date
+  completed_at timestamptz
+  sort_order int [not null, default: 0]
+  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (vehicle_id, status) [name: 'idx_maintenance_tasks_vehicle_status']
+  }
+}
+
+Ref: user_settings.user_id > users.id
+Ref: car_models.brand_id > car_brands.id
+Ref: vehicles.user_id > users.id
+Ref: vehicles.brand_id > car_brands.id
+Ref: vehicles.model_id > car_models.id
+Ref: vehicle_images.vehicle_id > vehicles.id
+Ref: technical_inspections.vehicle_id > vehicles.id
+Ref: insurance_policies.vehicle_id > vehicles.id
+Ref: fuel_logs.vehicle_id > vehicles.id
+Ref: service_records.vehicle_id > vehicles.id
+Ref: maintenance_tasks.vehicle_id > vehicles.id

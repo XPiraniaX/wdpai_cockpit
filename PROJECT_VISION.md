@@ -379,4 +379,3 @@ Jesli pojawia sie watpliwosc, co robic dalej, trzeba sprawdzic:
 - czy nie jest tylko kolejnym szkieletem bez logiki.
 
 
-dobra to teraz poracujmy nad bazą, zaktualizuj baze pod moje aktualne oczekiwania wychodzące z opisu, mozesz podesłać mi diagram bazy do dbdiagram i potem powiem ci czy coś powinniśmy zmieniać czy jest git 
