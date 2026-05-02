@@ -309,9 +309,9 @@ INSERT INTO vehicle_images (
     sort_order,
     is_primary
 ) VALUES
-    (1, '/uploads/vehicles/porsche-911-main.jpg', 'Porsche 911 Carrera S front view', 1, TRUE),
-    (2, '/uploads/vehicles/bmw-m3-main.jpg', 'BMW M3 Competition side view', 1, TRUE),
-    (3, '/uploads/vehicles/audi-rs6-main.jpg', 'Audi RS6 Avant front quarter view', 1, TRUE);
+    (1, '/public/uploads/vehicles/porsche-911-main.jpg', 'Porsche 911 Carrera S front view', 1, TRUE),
+    (2, '/public/uploads/vehicles/bmw-m3-main.jpg', 'BMW M3 Competition side view', 1, TRUE),
+    (3, '/public/uploads/vehicles/audi-rs6-main.jpg', 'Audi RS6 Avant front quarter view', 1, TRUE);
 
 INSERT INTO technical_inspections (
     vehicle_id,

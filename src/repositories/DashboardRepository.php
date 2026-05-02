@@ -100,6 +100,8 @@ class DashboardRepository
                 v.display_name,
                 v.trim_name,
                 v.production_year,
+                v.current_mileage_km,
+                v.is_primary,
                 vi.image_path,
                 next_inspection.valid_until AS next_inspection_date,
                 next_insurance.valid_until AS next_insurance_date
@@ -133,5 +135,39 @@ class DashboardRepository
         $statement->execute();
 
         return $statement->fetchAll();
+    }
+
+    public function setPrimaryVehicle(int $userId, int $vehicleId): void
+    {
+        $this->connection->beginTransaction();
+
+        try {
+            $resetStatement = $this->connection->prepare(
+                'UPDATE vehicles
+                SET is_primary = FALSE
+                WHERE user_id = :user_id'
+            );
+            $resetStatement->execute([
+                'user_id' => $userId,
+            ]);
+
+            $activateStatement = $this->connection->prepare(
+                'UPDATE vehicles
+                SET is_primary = TRUE
+                WHERE id = :vehicle_id
+                    AND user_id = :user_id
+                    AND status = :status'
+            );
+            $activateStatement->execute([
+                'vehicle_id' => $vehicleId,
+                'user_id' => $userId,
+                'status' => 'active',
+            ]);
+
+            $this->connection->commit();
+        } catch (Throwable $exception) {
+            $this->connection->rollBack();
+            throw $exception;
+        }
     }
 }

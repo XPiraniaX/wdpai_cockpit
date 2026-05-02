@@ -3,8 +3,17 @@
 
 <title><?= $title ?? "Cockpit" ?></title>
 
-<link rel="stylesheet" href="/public/styles/base.css">
-<link rel="stylesheet" href="/public/styles/layout.css">
-<link rel="stylesheet" href="/public/styles/navi.css">
-<link rel="stylesheet" href="/public/styles/header.css">
-<link rel="stylesheet" href="/public/styles/dashboard.css">
+<?php
+$styleFiles = [
+    'base.css',
+    'layout.css',
+    'navi.css',
+    'header.css',
+    'dashboard.css',
+];
+?>
+
+<?php foreach ($styleFiles as $styleFile): ?>
+    <?php $stylePath = 'public/styles/' . $styleFile; ?>
+    <link rel="stylesheet" href="/<?= htmlspecialchars($stylePath, ENT_QUOTES, 'UTF-8'); ?>?v=<?= htmlspecialchars((string) filemtime($stylePath), ENT_QUOTES, 'UTF-8'); ?>">
+<?php endforeach; ?>

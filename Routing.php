@@ -7,6 +7,7 @@ class Routing {
         "login" => ["controller" => "SecurityController", "action" => "login"],
         "register" => ["controller" => "SecurityController", "action" => "register"],
         "dashboard" => ["controller" => "DashboardController", "action" => "index"],
+        "dashboard/set-primary-vehicle" => ["controller" => "DashboardController", "action" => "setPrimaryVehicle"],
         "my-cars" => ["controller" => "CarsController", "action" => "index"],
         "marketplace" => ["controller" => "MarketplaceController", "action" => "index"],
         "community" => ["controller" => "CommunityController", "action" => "index"],

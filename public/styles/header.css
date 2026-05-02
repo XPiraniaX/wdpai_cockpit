@@ -20,6 +20,7 @@
     color: #38bdf8;
     font-size: 19px;
     font-weight: 700;
+    font-family: var(--font-sans);
 }
 
 .breadcrumbs-separator,
@@ -27,6 +28,7 @@
     color: rgba(203, 213, 225, 0.45);
     font-size: 15px;
     font-weight: 600;
+    font-family: var(--font-sans);
 }
 
 .topbar-actions {
@@ -69,6 +71,7 @@
     color: #f4f8ff;
     font-size: 15px;
     font-weight: 700;
+    font-family: var(--font-sans);
 }
 
 .user-role {
@@ -76,6 +79,7 @@
     font-size: 10px;
     letter-spacing: 0.14em;
     font-weight: 700;
+    font-family: var(--font-sans);
 }
 
 .avatar {

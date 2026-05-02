@@ -1,6 +1,12 @@
+html {
+    --font-sans: "Inter", "Segoe UI", Arial, sans-serif;
+    --font-serif: "Liberation Serif", Georgia, "Times New Roman", serif;
+}
+
 body {
     margin: 0;
-    font-family: Arial, sans-serif;
+    font-family: var(--font-sans);
     background: #071226;
     color: #f4f8ff;
+    font-optical-sizing: auto;
 }

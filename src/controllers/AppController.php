@@ -8,6 +8,12 @@ class AppController
         return 1;
     }
 
+    protected function redirect(string $path): void
+    {
+        header('Location: ' . $path);
+        exit;
+    }
+
     protected function isGet(): bool
     {
         return $_SERVER['REQUEST_METHOD'] === 'GET';
