@@ -8,6 +8,8 @@ $pageMap = [
     'settings' => ['title' => 'Settings', 'subtitle' => 'Preferencje'],
 ];
 $pageMeta = $pageMap[$currentPath] ?? ['title' => 'Cockpit', 'subtitle' => 'Panel'];
+$headerUserName = $currentUser['full_name'] ?? 'Uzytkownik testowy';
+$headerUserRole = strtoupper((string) ($currentUser['membership_tier'] ?? 'free')) . ' MEMBER';
 ?>
 <header class="topbar">
     <div class="breadcrumbs">
@@ -23,8 +25,8 @@ $pageMeta = $pageMap[$currentPath] ?? ['title' => 'Cockpit', 'subtitle' => 'Pane
 
         <div class="user-card">
             <div class="user-meta">
-                <span class="user-name">Alex Rivera</span>
-                <span class="user-role">PRO MEMBER</span>
+                <span class="user-name"><?= htmlspecialchars($headerUserName, ENT_QUOTES, 'UTF-8'); ?></span>
+                <span class="user-role"><?= htmlspecialchars($headerUserRole, ENT_QUOTES, 'UTF-8'); ?></span>
             </div>
             <div class="avatar">
                 <span class="avatar-ring"></span>

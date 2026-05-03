@@ -1,5 +1,5 @@
 .navi {
-    width: 320px;
+    width: clamp(250px, 19vw, 320px);
     min-height: 100vh;
     background: #020617;
     display: flex;
@@ -12,21 +12,21 @@
 .navi-top {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: clamp(6px, 0.7vw, 10px);
 }
 
 .brand {
     display: flex;
     align-items: center;
-    min-height: 116px;
-    padding: 32px 48px 32px 32px;
+    min-height: clamp(88px, 7vw, 116px);
+    padding: clamp(20px, 2vw, 32px) clamp(24px, 3vw, 48px) clamp(20px, 2vw, 32px) clamp(20px, 2vw, 32px);
     box-sizing: border-box;
     color: inherit;
     text-decoration: none;
 }
 
 .brand-logo {
-    width: 224px;
+    width: clamp(168px, 13.5vw, 224px);
     height: auto;
     display: block;
 }
@@ -45,16 +45,16 @@
     position: relative;
     display: flex;
     align-items: center;
-    gap: 18px;
+    gap: clamp(12px, 1.1vw, 18px);
     width: 100%;
-    min-height: 60px;
-    padding: 0 16px 0 32px;
+    min-height: clamp(50px, 4vw, 60px);
+    padding: 0 clamp(12px, 1vw, 16px) 0 clamp(20px, 2vw, 32px);
     box-sizing: border-box;
     color: rgba(203, 213, 225, 0.56);
     text-decoration: none;
     text-transform: uppercase;
-    font-size: 16px;
-    letter-spacing: 0.16em;
+    font-size: clamp(13px, 0.95vw, 16px);
+    letter-spacing: clamp(0.1em, 0.12vw, 0.16em);
     font-weight: 700;
     font-family: var(--font-serif);
     transition: background 0.2s ease, color 0.2s ease;
@@ -66,7 +66,7 @@
 }
 
 .menu-item.active {
-    min-height: 62px;
+    min-height: clamp(52px, 4.1vw, 62px);
     background: linear-gradient(90deg, rgba(8, 47, 73, 0.3) 0%, rgba(8, 47, 73, 0.08) 100%);
     color: #38bdf8;
 }
@@ -83,14 +83,14 @@
 }
 
 .bottom .menu-item {
-    min-height: 80px;
-    padding-right: 24px;
+    min-height: clamp(64px, 5vw, 80px);
+    padding-right: clamp(18px, 1.5vw, 24px);
 }
 
 .menu-icon {
-    width: 20px;
-    height: 20px;
-    flex: 0 0 20px;
+    width: clamp(16px, 1.2vw, 20px);
+    height: clamp(16px, 1.2vw, 20px);
+    flex: 0 0 clamp(16px, 1.2vw, 20px);
     display: block;
     background-color: currentColor;
     -webkit-mask-image: var(--icon-url);
@@ -105,4 +105,46 @@
 
 .menu-label {
     white-space: nowrap;
+}
+
+@media (min-width: 1600px) {
+    .navi {
+        width: 320px;
+    }
+
+    .navi-top {
+        gap: 10px;
+    }
+
+    .brand {
+        min-height: 116px;
+        padding: 32px 48px 32px 32px;
+    }
+
+    .brand-logo {
+        width: 224px;
+    }
+
+    .menu-item {
+        gap: 18px;
+        min-height: 60px;
+        padding: 0 16px 0 32px;
+        font-size: 16px;
+        letter-spacing: 0.16em;
+    }
+
+    .menu-item.active {
+        min-height: 62px;
+    }
+
+    .bottom .menu-item {
+        min-height: 80px;
+        padding-right: 24px;
+    }
+
+    .menu-icon {
+        width: 20px;
+        height: 20px;
+        flex-basis: 20px;
+    }
 }

@@ -13,7 +13,7 @@ class DashboardController extends AppController
         $nextInspection = $repository->getNextInspection($userId);
         $nextInsurance = $repository->getNextInsurance($userId);
         $lastFuelLog = $repository->getLastFuelLog($userId);
-        $garageCars = $repository->getGarageCars($userId);
+        $garageCars = $repository->getGarageCars($userId, 12);
 
         $stats = [
             'nextInspectionDate' => $this->formatDate($nextInspection['valid_until'] ?? null),
@@ -43,9 +43,13 @@ class DashboardController extends AppController
             ];
         }, $garageCars);
 
+        $placeholderCount = $this->calculateGaragePlaceholderCount(count($cars));
+
         $this->render('dashboard', [
             'stats' => $stats,
             'cars' => $cars,
+            'garagePlaceholderCount' => $placeholderCount,
+            'currentUserId' => $userId,
         ]);
     }
 
@@ -114,5 +118,14 @@ class DashboardController extends AppController
         }
 
         return 'Aktywnych pojazdow';
+    }
+
+    private function calculateGaragePlaceholderCount(int $carCount): int
+    {
+        if ($carCount === 0) {
+            return 1;
+        }
+
+        return $carCount % 3 === 0 ? 0 : 1;
     }
 }

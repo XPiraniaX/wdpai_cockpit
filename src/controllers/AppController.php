@@ -4,13 +4,25 @@ class AppController
 {
     protected function getCurrentUserId(): int
     {
-        // Temporary dashboard/auth context before real session handling is added.
-        return 1;
+        $requestedUserId = $_GET['user'] ?? $_POST['user'] ?? 1;
+
+        if (filter_var($requestedUserId, FILTER_VALIDATE_INT) === false) {
+            return 1;
+        }
+
+        return max(1, (int) $requestedUserId);
     }
 
     protected function redirect(string $path): void
     {
-        header('Location: ' . $path);
+        $location = $path;
+
+        if (!str_contains($path, 'user=')) {
+            $separator = str_contains($path, '?') ? '&' : '?';
+            $location .= $separator . 'user=' . $this->getCurrentUserId();
+        }
+
+        header('Location: ' . $location);
         exit;
     }
 
@@ -28,6 +40,8 @@ class AppController
     {
         $templatePath = 'public/views/' . $template . '.html';
         $viewPath = file_exists($templatePath) ? $templatePath : 'public/views/404.html';
+        $currentUserId = $this->getCurrentUserId();
+        $currentUser = $this->resolveCurrentUser($currentUserId);
 
         extract($variables);
 
@@ -49,5 +63,23 @@ class AppController
         $content = ob_get_clean();
 
         include 'public/views/partials/auth_layout.php';
+    }
+
+    private function resolveCurrentUser(int $userId): array
+    {
+        $fallbackUser = [
+            'id' => $userId,
+            'full_name' => 'Uzytkownik testowy',
+            'membership_tier' => 'free',
+        ];
+
+        try {
+            $repository = new UserRepository(Database::getConnection());
+            $user = $repository->getById($userId);
+
+            return $user ?: $fallbackUser;
+        } catch (Throwable) {
+            return $fallbackUser;
+        }
     }
 }

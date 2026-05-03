@@ -216,18 +216,79 @@ INSERT INTO users (
     timezone,
     locale,
     last_login_at
-) VALUES (
-    'alexrivera',
-    'alex.rivera@example.com',
-    '$2y$10$examplehashedpasswordvalueforseedonly1234567890',
-    'Alex',
-    'Rivera',
-    'pro',
-    NULL,
-    'Europe/Warsaw',
-    'pl_PL',
-    '2026-05-01 18:25:00+02'
-);
+) VALUES
+    (
+        'alexrivera',
+        'alex.rivera@example.com',
+        '$2y$10$examplehashedpasswordvalueforseedonly1234567890',
+        'Alex',
+        'Rivera',
+        'pro',
+        NULL,
+        'Europe/Warsaw',
+        'pl_PL',
+        '2026-05-01 18:25:00+02'
+    ),
+    (
+        'martazero',
+        'marta.zero@example.com',
+        '$2y$10$examplehashedpasswordvalueforseedonly1234567890',
+        'Marta',
+        'Nowak',
+        'free',
+        NULL,
+        'Europe/Warsaw',
+        'pl_PL',
+        '2026-05-02 09:10:00+02'
+    ),
+    (
+        'kacperone',
+        'kacper.one@example.com',
+        '$2y$10$examplehashedpasswordvalueforseedonly1234567890',
+        'Kacper',
+        'Wojcik',
+        'pro',
+        NULL,
+        'Europe/Warsaw',
+        'pl_PL',
+        '2026-05-02 11:35:00+02'
+    ),
+    (
+        'lenatwo',
+        'lena.two@example.com',
+        '$2y$10$examplehashedpasswordvalueforseedonly1234567890',
+        'Lena',
+        'Krawczyk',
+        'business',
+        NULL,
+        'Europe/Warsaw',
+        'pl_PL',
+        '2026-05-02 13:20:00+02'
+    ),
+    (
+        'oskarfour',
+        'oskar.four@example.com',
+        '$2y$10$examplehashedpasswordvalueforseedonly1234567890',
+        'Oskar',
+        'Mazur',
+        'pro',
+        NULL,
+        'Europe/Warsaw',
+        'pl_PL',
+        '2026-05-02 19:40:00+02'
+    ),
+    (
+        'ninafive',
+        'nina.five@example.com',
+        '$2y$10$examplehashedpasswordvalueforseedonly1234567890',
+        'Nina',
+        'Zielinska',
+        'business',
+        NULL,
+        'Europe/Warsaw',
+        'pl_PL',
+        '2026-05-03 08:05:00+02'
+    );
 
 INSERT INTO user_settings (
     user_id,
@@ -237,15 +298,13 @@ INSERT INTO user_settings (
     inspection_reminders,
     insurance_reminders,
     privacy_profile_visibility
-) VALUES (
-    1,
-    TRUE,
-    FALSE,
-    TRUE,
-    TRUE,
-    TRUE,
-    'private'
-);
+) VALUES
+    (1, TRUE, FALSE, TRUE, TRUE, TRUE, 'private'),
+    (2, TRUE, FALSE, TRUE, TRUE, TRUE, 'private'),
+    (3, TRUE, TRUE, TRUE, TRUE, TRUE, 'friends'),
+    (4, TRUE, TRUE, TRUE, TRUE, TRUE, 'public'),
+    (5, TRUE, FALSE, TRUE, TRUE, TRUE, 'friends'),
+    (6, TRUE, TRUE, TRUE, TRUE, TRUE, 'public');
 
 INSERT INTO car_brands (name, country_code) VALUES
     ('Porsche', 'DE'),
@@ -300,6 +359,78 @@ INSERT INTO vehicles (
         2022, 'WAUZZZF20NN000003', 'WA9012P', 'wagon', 'awd', 'petrol',
         'automatic', 3996, 600, 31850, 'Nardo Grey', 'active',
         3, FALSE, '2022-04-05', 'Auto rodzinne z duzym bagaznikiem i mocnym silnikiem.'
+    ),
+    (
+        3, 1, 1, NULL, NULL, 'Weekend Hero', 'Porsche 911 Carrera S', 'Touring Spec',
+        2021, 'WP0ZZZ99ZMS000004', 'KR1001K', 'coupe', 'rwd', 'petrol',
+        'automatic', 2981, 450, 19250, 'Guards Red', 'active',
+        1, TRUE, '2023-03-18', 'Jeden samochod do testu dashboardu z pojedyncza karta.'
+    ),
+    (
+        4, 2, 2, NULL, NULL, 'Daily Storm', 'BMW M3 Competition', 'G80 Competition',
+        2022, 'WBSZZZ90ZNM000005', 'GD2202L', 'sedan', 'awd', 'petrol',
+        'automatic', 2993, 510, 22880, 'Brooklyn Grey', 'active',
+        1, TRUE, '2022-08-27', 'Pierwszy samochod uzytkownika z dwoma autami.'
+    ),
+    (
+        4, 3, 3, NULL, NULL, 'Travel Boost', 'Audi RS6 Avant', 'Performance Pack',
+        2023, 'WAUZZZF20PN000006', 'GD2203L', 'wagon', 'awd', 'petrol',
+        'automatic', 3996, 630, 14540, 'Mythos Black', 'active',
+        2, FALSE, '2023-11-09', 'Drugi samochod do sprawdzenia dwoch kart.'
+    ),
+    (
+        5, 1, 1, NULL, NULL, 'City Pulse', 'Porsche 911 Carrera S', 'Urban Edition',
+        2020, 'WP0ZZZ99ZLS000007', 'PO3301O', 'coupe', 'rwd', 'petrol',
+        'automatic', 2981, 450, 38440, 'Jet Black', 'active',
+        1, TRUE, '2021-01-15', 'Auto glowne dla ukladu czterech kart.'
+    ),
+    (
+        5, 2, 2, NULL, NULL, 'Track Echo', 'BMW M3 Competition', 'Track Package',
+        2021, 'WBSZZZ90ZMM000008', 'PO3302O', 'sedan', 'awd', 'petrol',
+        'automatic', 2993, 510, 41200, 'Isle of Man Green', 'active',
+        2, FALSE, '2021-09-02', 'Drugie auto uzytkownika z czterema pojazdami.'
+    ),
+    (
+        5, 3, 3, NULL, NULL, 'Family Glide', 'Audi RS6 Avant', 'Comfort Spec',
+        2022, 'WAUZZZF20NN000009', 'PO3303O', 'wagon', 'awd', 'petrol',
+        'automatic', 3996, 600, 26710, 'Daytona Grey', 'active',
+        3, FALSE, '2022-06-21', 'Trzecie auto do testu zawijania siatki.'
+    ),
+    (
+        5, 2, 2, NULL, NULL, 'Night Runner', 'BMW M3 Competition', 'Shadow Line',
+        2024, 'WBSZZZ90ZRM000010', 'PO3304O', 'sedan', 'awd', 'petrol',
+        'automatic', 2993, 510, 8960, 'Frozen Black', 'active',
+        4, FALSE, '2024-02-12', 'Czwarte auto do sprawdzenia wypelnienia rzedu.'
+    ),
+    (
+        6, 1, 1, NULL, NULL, 'Classic Fire', 'Porsche 911 Carrera S', 'Heritage Spec',
+        2019, 'WP0ZZZ99ZKS000011', 'WR4401N', 'coupe', 'rwd', 'petrol',
+        'automatic', 2981, 450, 52110, 'Carmine Red', 'active',
+        1, TRUE, '2020-04-04', 'Pierwszy z pieciu samochodow testowych.'
+    ),
+    (
+        6, 2, 2, NULL, NULL, 'Power Line', 'BMW M3 Competition', 'Carbon Pack',
+        2020, 'WBSZZZ90ZLM000012', 'WR4402N', 'sedan', 'awd', 'petrol',
+        'automatic', 2993, 510, 44760, 'Sao Paulo Yellow', 'active',
+        2, FALSE, '2020-10-16', 'Drugie auto do dashboardu z piecioma kartami.'
+    ),
+    (
+        6, 3, 3, NULL, NULL, 'Long Tour', 'Audi RS6 Avant', 'Touring Edition',
+        2021, 'WAUZZZF20MN000013', 'WR4403N', 'wagon', 'awd', 'petrol',
+        'automatic', 3996, 600, 33420, 'Sebring Black', 'active',
+        3, FALSE, '2021-07-07', 'Trzecie auto testowe.'
+    ),
+    (
+        6, 1, 1, NULL, NULL, 'Sunset Drive', 'Porsche 911 Carrera S', 'Coastal Package',
+        2023, 'WP0ZZZ99ZPS000014', 'WR4404N', 'coupe', 'rwd', 'petrol',
+        'automatic', 2981, 450, 12780, 'Racing Yellow', 'active',
+        4, FALSE, '2023-05-11', 'Czwarte auto testowe.'
+    ),
+    (
+        6, 3, 3, NULL, NULL, 'Grand Sprint', 'Audi RS6 Avant', 'Ultimate Pack',
+        2024, 'WAUZZZF20RN000015', 'WR4405N', 'wagon', 'awd', 'petrol',
+        'automatic', 3996, 630, 6930, 'Ascari Blue', 'active',
+        5, FALSE, '2024-08-19', 'Piate auto do testu wiekszej liczby kart.'
     );
 
 INSERT INTO vehicle_images (
@@ -311,7 +442,19 @@ INSERT INTO vehicle_images (
 ) VALUES
     (1, '/public/uploads/vehicles/porsche-911-main.jpg', 'Porsche 911 Carrera S front view', 1, TRUE),
     (2, '/public/uploads/vehicles/bmw-m3-main.jpg', 'BMW M3 Competition side view', 1, TRUE),
-    (3, '/public/uploads/vehicles/audi-rs6-main.jpg', 'Audi RS6 Avant front quarter view', 1, TRUE);
+    (3, '/public/uploads/vehicles/audi-rs6-main.jpg', 'Audi RS6 Avant front quarter view', 1, TRUE),
+    (4, '/public/uploads/vehicles/porsche-911-main.jpg', 'Porsche 911 Carrera S front view', 1, TRUE),
+    (5, '/public/uploads/vehicles/bmw-m3-main.jpg', 'BMW M3 Competition side view', 1, TRUE),
+    (6, '/public/uploads/vehicles/audi-rs6-main.jpg', 'Audi RS6 Avant front quarter view', 1, TRUE),
+    (7, '/public/uploads/vehicles/porsche-911-main.jpg', 'Porsche 911 Carrera S front view', 1, TRUE),
+    (8, '/public/uploads/vehicles/bmw-m3-main.jpg', 'BMW M3 Competition side view', 1, TRUE),
+    (9, '/public/uploads/vehicles/audi-rs6-main.jpg', 'Audi RS6 Avant front quarter view', 1, TRUE),
+    (10, '/public/uploads/vehicles/bmw-m3-main.jpg', 'BMW M3 Competition side view', 1, TRUE),
+    (11, '/public/uploads/vehicles/porsche-911-main.jpg', 'Porsche 911 Carrera S front view', 1, TRUE),
+    (12, '/public/uploads/vehicles/bmw-m3-main.jpg', 'BMW M3 Competition side view', 1, TRUE),
+    (13, '/public/uploads/vehicles/audi-rs6-main.jpg', 'Audi RS6 Avant front quarter view', 1, TRUE),
+    (14, '/public/uploads/vehicles/porsche-911-main.jpg', 'Porsche 911 Carrera S front view', 1, TRUE),
+    (15, '/public/uploads/vehicles/audi-rs6-main.jpg', 'Audi RS6 Avant front quarter view', 1, TRUE);
 
 INSERT INTO technical_inspections (
     vehicle_id,
@@ -324,7 +467,19 @@ INSERT INTO technical_inspections (
 ) VALUES
     (1, '2025-11-05', '2026-11-05', 26100, 'Porsche Centrum Warszawa', 'passed', NULL),
     (2, '2025-06-15', '2026-06-15', 44120, 'BMW Service Krakow', 'passed', NULL),
-    (3, '2025-08-12', '2026-08-12', 29600, 'Audi Sport Service', 'passed', NULL);
+    (3, '2025-08-12', '2026-08-12', 29600, 'Audi Sport Service', 'passed', NULL),
+    (4, '2025-09-18', '2026-09-18', 18100, 'Porsche Centrum Krakow', 'passed', NULL),
+    (5, '2025-07-10', '2026-07-10', 21140, 'BMW Service Gdansk', 'passed', NULL),
+    (6, '2025-10-22', '2026-10-22', 13210, 'Audi Centrum Gdynia', 'passed', NULL),
+    (7, '2025-05-28', '2026-05-28', 37240, 'Porsche Centrum Poznan', 'passed', NULL),
+    (8, '2025-08-30', '2026-08-30', 40150, 'BMW Service Poznan', 'passed', NULL),
+    (9, '2025-09-14', '2026-09-14', 25510, 'Audi Sport Service', 'passed', NULL),
+    (10, '2025-12-02', '2026-12-02', 8120, 'BMW Service Warszawa', 'passed', NULL),
+    (11, '2025-05-19', '2026-05-19', 50300, 'Porsche Centrum Radom', 'passed', NULL),
+    (12, '2025-06-07', '2026-06-07', 43980, 'BMW Service Lublin', 'passed', NULL),
+    (13, '2025-08-01', '2026-08-01', 32150, 'Audi Service Katowice', 'passed', NULL),
+    (14, '2025-11-21', '2026-11-21', 11880, 'Porsche Centrum Warszawa', 'passed', NULL),
+    (15, '2025-12-12', '2026-12-12', 6440, 'Audi Service Wroclaw', 'passed', NULL);
 
 INSERT INTO insurance_policies (
     vehicle_id,
@@ -339,7 +494,19 @@ INSERT INTO insurance_policies (
 ) VALUES
     (1, 'PZU', 'PZU-911-2025-01', 'oc_ac', '2025-12-15', '2026-12-15', 4320.00, 'PLN', TRUE),
     (2, 'Allianz', 'ALL-M3-2025-02', 'oc_ac', '2025-08-15', '2026-08-15', 5580.00, 'PLN', TRUE),
-    (3, 'Warta', 'WAR-RS6-2025-03', 'oc_ac', '2025-09-20', '2026-09-20', 6210.00, 'PLN', TRUE);
+    (3, 'Warta', 'WAR-RS6-2025-03', 'oc_ac', '2025-09-20', '2026-09-20', 6210.00, 'PLN', TRUE),
+    (4, 'PZU', 'PZU-911-2025-04', 'oc_ac', '2025-10-11', '2026-10-11', 3980.00, 'PLN', TRUE),
+    (5, 'Allianz', 'ALL-M3-2025-05', 'oc_ac', '2025-06-20', '2026-06-20', 5070.00, 'PLN', TRUE),
+    (6, 'Warta', 'WAR-RS6-2025-06', 'oc_ac', '2025-11-02', '2026-11-02', 6440.00, 'PLN', TRUE),
+    (7, 'PZU', 'PZU-911-2025-07', 'oc_ac', '2025-07-01', '2026-07-01', 4150.00, 'PLN', TRUE),
+    (8, 'Allianz', 'ALL-M3-2025-08', 'oc_ac', '2025-08-08', '2026-08-08', 5480.00, 'PLN', TRUE),
+    (9, 'Warta', 'WAR-RS6-2025-09', 'oc_ac', '2025-10-03', '2026-10-03', 5990.00, 'PLN', TRUE),
+    (10, 'Ergo Hestia', 'ERG-M3-2025-10', 'oc_ac', '2025-12-18', '2026-12-18', 5210.00, 'PLN', TRUE),
+    (11, 'PZU', 'PZU-911-2025-11', 'oc_ac', '2025-05-26', '2026-05-26', 3890.00, 'PLN', TRUE),
+    (12, 'Allianz', 'ALL-M3-2025-12', 'oc_ac', '2025-06-14', '2026-06-14', 5360.00, 'PLN', TRUE),
+    (13, 'Warta', 'WAR-RS6-2025-13', 'oc_ac', '2025-08-25', '2026-08-25', 6180.00, 'PLN', TRUE),
+    (14, 'PZU', 'PZU-911-2025-14', 'oc_ac', '2025-11-28', '2026-11-28', 4010.00, 'PLN', TRUE),
+    (15, 'Ergo Hestia', 'ERG-RS6-2025-15', 'oc_ac', '2025-12-30', '2026-12-30', 6620.00, 'PLN', TRUE);
 
 INSERT INTO fuel_logs (
     vehicle_id,
@@ -356,7 +523,19 @@ INSERT INTO fuel_logs (
 ) VALUES
     (1, '2026-04-28 08:15:00+02', 28340, 49.20, 368.10, 'PLN', 'premium_petrol', 'Shell', 'Warszawa', TRUE, NULL),
     (2, '2026-04-26 17:45:00+02', 46380, 54.20, 428.20, 'PLN', 'premium_petrol', 'Shell', 'Krakow', TRUE, NULL),
-    (3, '2026-04-24 09:30:00+02', 31620, 62.70, 507.95, 'PLN', 'premium_petrol', 'Orlen', 'Gdansk', TRUE, NULL);
+    (3, '2026-04-24 09:30:00+02', 31620, 62.70, 507.95, 'PLN', 'premium_petrol', 'Orlen', 'Gdansk', TRUE, NULL),
+    (4, '2026-04-27 18:20:00+02', 19190, 47.60, 352.25, 'PLN', 'premium_petrol', 'BP', 'Krakow', TRUE, NULL),
+    (5, '2026-04-29 07:50:00+02', 22780, 51.30, 398.60, 'PLN', 'premium_petrol', 'Shell', 'Gdansk', TRUE, NULL),
+    (6, '2026-04-23 16:05:00+02', 14310, 60.10, 481.40, 'PLN', 'premium_petrol', 'Orlen', 'Gdynia', TRUE, NULL),
+    (7, '2026-04-30 12:40:00+02', 38360, 48.90, 364.00, 'PLN', 'premium_petrol', 'Circle K', 'Poznan', TRUE, NULL),
+    (8, '2026-04-25 18:15:00+02', 41020, 53.80, 423.10, 'PLN', 'premium_petrol', 'Shell', 'Poznan', TRUE, NULL),
+    (9, '2026-04-22 10:25:00+02', 26440, 61.20, 492.70, 'PLN', 'premium_petrol', 'Orlen', 'Warszawa', TRUE, NULL),
+    (10, '2026-05-01 08:05:00+02', 8910, 45.70, 356.80, 'PLN', 'premium_petrol', 'BP', 'Warszawa', TRUE, NULL),
+    (11, '2026-04-21 15:35:00+02', 51980, 50.40, 374.20, 'PLN', 'premium_petrol', 'Shell', 'Radom', TRUE, NULL),
+    (12, '2026-04-20 19:10:00+02', 44520, 54.90, 431.60, 'PLN', 'premium_petrol', 'Circle K', 'Lublin', TRUE, NULL),
+    (13, '2026-04-19 11:45:00+02', 33280, 63.50, 512.30, 'PLN', 'premium_petrol', 'Orlen', 'Katowice', TRUE, NULL),
+    (14, '2026-05-02 09:15:00+02', 12610, 46.80, 365.90, 'PLN', 'premium_petrol', 'Shell', 'Warszawa', TRUE, NULL),
+    (15, '2026-05-02 20:30:00+02', 6880, 59.10, 479.50, 'PLN', 'premium_petrol', 'BP', 'Wroclaw', TRUE, NULL);
 
 INSERT INTO service_records (
     vehicle_id,
