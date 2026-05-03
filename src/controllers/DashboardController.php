@@ -6,6 +6,8 @@ class DashboardController extends AppController
 {
     public function index()
     {
+        $this->requireAuthentication();
+
         $repository = new DashboardRepository(Database::getConnection());
         $userId = $this->getCurrentUserId();
 
@@ -55,6 +57,8 @@ class DashboardController extends AppController
 
     public function setPrimaryVehicle(): void
     {
+        $this->requireAuthentication();
+
         if (!$this->isPost()) {
             $this->redirect('/dashboard');
         }

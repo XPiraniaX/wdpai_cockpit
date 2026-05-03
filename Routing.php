@@ -5,6 +5,7 @@ class Routing {
     public static $routes = [
         "" => ["controller" => "SecurityController", "action" => "login"],
         "login" => ["controller" => "SecurityController", "action" => "login"],
+        "logout" => ["controller" => "SecurityController", "action" => "logout"],
         "register" => ["controller" => "SecurityController", "action" => "register"],
         "dashboard" => ["controller" => "DashboardController", "action" => "index"],
         "dashboard/set-primary-vehicle" => ["controller" => "DashboardController", "action" => "setPrimaryVehicle"],

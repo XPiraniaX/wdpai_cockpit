@@ -220,7 +220,7 @@ INSERT INTO users (
     (
         'alexrivera',
         'alex.rivera@example.com',
-        '$2y$10$examplehashedpasswordvalueforseedonly1234567890',
+        '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
         'Alex',
         'Rivera',
         'pro',
@@ -232,7 +232,7 @@ INSERT INTO users (
     (
         'martazero',
         'marta.zero@example.com',
-        '$2y$10$examplehashedpasswordvalueforseedonly1234567890',
+        '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
         'Marta',
         'Nowak',
         'free',
@@ -244,7 +244,7 @@ INSERT INTO users (
     (
         'kacperone',
         'kacper.one@example.com',
-        '$2y$10$examplehashedpasswordvalueforseedonly1234567890',
+        '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
         'Kacper',
         'Wojcik',
         'pro',
@@ -256,7 +256,7 @@ INSERT INTO users (
     (
         'lenatwo',
         'lena.two@example.com',
-        '$2y$10$examplehashedpasswordvalueforseedonly1234567890',
+        '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
         'Lena',
         'Krawczyk',
         'business',
@@ -268,7 +268,7 @@ INSERT INTO users (
     (
         'oskarfour',
         'oskar.four@example.com',
-        '$2y$10$examplehashedpasswordvalueforseedonly1234567890',
+        '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
         'Oskar',
         'Mazur',
         'pro',
@@ -280,7 +280,7 @@ INSERT INTO users (
     (
         'ninafive',
         'nina.five@example.com',
-        '$2y$10$examplehashedpasswordvalueforseedonly1234567890',
+        '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
         'Nina',
         'Zielinska',
         'business',

@@ -4,7 +4,7 @@
 <title><?= $title ?? "Cockpit" ?></title>
 
 <?php
-$styleFiles = [
+$styleFiles = $styleFiles ?? [
     'base.css',
     'layout.css',
     'navi.css',

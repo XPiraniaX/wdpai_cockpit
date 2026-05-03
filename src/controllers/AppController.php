@@ -4,6 +4,12 @@ class AppController
 {
     protected function getCurrentUserId(): int
     {
+        $sessionUserId = $_SESSION['auth_user_id'] ?? null;
+
+        if (filter_var($sessionUserId, FILTER_VALIDATE_INT) !== false && (int) $sessionUserId > 0) {
+            return (int) $sessionUserId;
+        }
+
         $requestedUserId = $_GET['user'] ?? $_POST['user'] ?? 1;
 
         if (filter_var($requestedUserId, FILTER_VALIDATE_INT) === false) {
@@ -15,14 +21,7 @@ class AppController
 
     protected function redirect(string $path): void
     {
-        $location = $path;
-
-        if (!str_contains($path, 'user=')) {
-            $separator = str_contains($path, '?') ? '&' : '?';
-            $location .= $separator . 'user=' . $this->getCurrentUserId();
-        }
-
-        header('Location: ' . $location);
+        header('Location: ' . $path);
         exit;
     }
 
@@ -42,6 +41,13 @@ class AppController
         $viewPath = file_exists($templatePath) ? $templatePath : 'public/views/404.html';
         $currentUserId = $this->getCurrentUserId();
         $currentUser = $this->resolveCurrentUser($currentUserId);
+        $styleFiles = [
+            'base.css',
+            'layout.css',
+            'navi.css',
+            'header.css',
+            'dashboard.css',
+        ];
 
         extract($variables);
 
@@ -55,6 +61,11 @@ class AppController
     protected function renderAuth(string $view, array $variables = []): void
     {
         $templatePath = 'public/views/' . $view . '.html';
+        $styleFiles = [
+            'base.css',
+            'auth.css',
+        ];
+        $flash = $this->consumeFlash();
 
         extract($variables);
 
@@ -63,6 +74,57 @@ class AppController
         $content = ob_get_clean();
 
         include 'public/views/partials/auth_layout.php';
+    }
+
+    protected function isAuthenticated(): bool
+    {
+        return filter_var($_SESSION['auth_user_id'] ?? null, FILTER_VALIDATE_INT) !== false
+            && (int) $_SESSION['auth_user_id'] > 0;
+    }
+
+    protected function requireAuthentication(): void
+    {
+        if ($this->isAuthenticated()) {
+            return;
+        }
+
+        $this->setFlash('error', 'Zaloguj sie, aby przejsc dalej.');
+        $this->redirect('/login');
+    }
+
+    protected function redirectIfAuthenticated(string $path = '/dashboard'): void
+    {
+        if ($this->isAuthenticated()) {
+            $this->redirect($path);
+        }
+    }
+
+    protected function loginUser(int $userId): void
+    {
+        session_regenerate_id(true);
+        $_SESSION['auth_user_id'] = $userId;
+    }
+
+    protected function logoutUser(): void
+    {
+        unset($_SESSION['auth_user_id']);
+        session_regenerate_id(true);
+    }
+
+    protected function setFlash(string $type, string $message): void
+    {
+        $_SESSION['flash'] = [
+            'type' => $type,
+            'message' => $message,
+        ];
+    }
+
+    protected function consumeFlash(): ?array
+    {
+        $flash = $_SESSION['flash'] ?? null;
+        unset($_SESSION['flash']);
+
+        return $flash;
     }
 
     private function resolveCurrentUser(int $userId): array
