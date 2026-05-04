@@ -11,8 +11,13 @@ class UserRepository
         $statement = $this->connection->prepare(
             "SELECT
                 id,
+                username,
+                email,
+                first_name,
+                last_name,
                 CONCAT(first_name, ' ', last_name) AS full_name,
-                membership_tier
+                membership_tier,
+                created_at
             FROM users
             WHERE id = :user_id
                 AND is_active = TRUE

@@ -10,6 +10,7 @@ $styleFiles = $styleFiles ?? [
     'navi.css',
     'header.css',
     'dashboard.css',
+    'settings.css',
 ];
 ?>
 
