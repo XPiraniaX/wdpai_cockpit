@@ -19,9 +19,8 @@ class CarsController extends AppController
             'subtitle' => $primaryVehicle['trim_name'] ?: 'Brak wersji',
             'year' => (string) $primaryVehicle['production_year'],
             'imagePath' => $primaryVehicle['image_path'] ?? null,
-            'mileage' => $this->formatMileage($primaryVehicle['current_mileage_km'] ?? null),
-            'insuranceDate' => $this->formatDate($primaryVehicle['next_insurance_date'] ?? null),
             'bodyType' => $this->formatBodyType($primaryVehicle['body_type'] ?? null),
+            'detailsPath' => '/my-cars/details?id=' . (int) $primaryVehicle['id'],
         ] : null;
 
         $stats = [
@@ -73,6 +72,45 @@ class CarsController extends AppController
             'serviceHistory' => $this->mapServiceHistory($serviceHistory),
             'cars' => $cars,
             'garagePlaceholderCount' => $placeholderCount,
+        ]);
+    }
+
+    public function details()
+    {
+        $this->requireAuthentication();
+
+        $vehicleId = (int) ($_GET['id'] ?? 0);
+
+        if ($vehicleId <= 0) {
+            $this->redirect('/my-cars');
+        }
+
+        $repository = new CarsRepository(Database::getConnection());
+        $vehicle = $repository->getVehicleById($this->getCurrentUserId(), $vehicleId);
+
+        if (!$vehicle) {
+            http_response_code(404);
+            $title = 'Nie znaleziono pojazdu';
+
+            return $this->render('404', ['title' => $title]);
+        }
+
+        return $this->render('vehicle_details', [
+            'title' => $vehicle['display_name'],
+            'vehicle' => [
+                'title' => $vehicle['display_name'],
+                'subtitle' => $vehicle['trim_name'] ?: 'Brak wersji',
+                'year' => (string) $vehicle['production_year'],
+                'imagePath' => $vehicle['image_path'] ?? null,
+                'bodyType' => $this->formatBodyType($vehicle['body_type'] ?? null),
+                'mileage' => $this->formatMileage($vehicle['current_mileage_km'] ?? null),
+                'inspectionDate' => $this->formatDate($vehicle['next_inspection_date'] ?? null),
+                'insuranceDate' => $this->formatDate($vehicle['next_insurance_date'] ?? null),
+                'power' => $vehicle['power_hp'] ? ((int) $vehicle['power_hp'] . ' HP') : 'Brak danych',
+                'engine' => $vehicle['engine_capacity_cc'] ? number_format(((int) $vehicle['engine_capacity_cc']) / 1000, 1, ',', '') . ' L' : 'Brak danych',
+                'plate' => $vehicle['license_plate'] ?: 'Brak danych',
+                'notes' => $vehicle['notes'] ?: 'Brak dodatkowych notatek.',
+            ],
         ]);
     }
 

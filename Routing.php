@@ -10,6 +10,7 @@ class Routing {
         "dashboard" => ["controller" => "DashboardController", "action" => "index"],
         "dashboard/set-primary-vehicle" => ["controller" => "DashboardController", "action" => "setPrimaryVehicle"],
         "my-cars" => ["controller" => "CarsController", "action" => "index"],
+        "my-cars/details" => ["controller" => "CarsController", "action" => "details"],
         "marketplace" => ["controller" => "MarketplaceController", "action" => "index"],
         "community" => ["controller" => "CommunityController", "action" => "index"],
         "settings" => ["controller" => "SettingsController", "action" => "index"],

@@ -27,7 +27,7 @@
 
 .cars-hero-visual {
     position: relative;
-    min-height: clamp(320px, 32vw, 420px);
+    min-height: clamp(380px, 38vw, 480px);
     background:
         radial-gradient(circle at 50% 18%, rgba(196, 214, 225, 0.18), transparent 38%),
         linear-gradient(180deg, #111611 0%, #0b0e16 68%, #0d1424 100%);
@@ -40,6 +40,10 @@
     height: 100%;
     object-fit: cover;
     object-position: center;
+}
+
+.cars-hero-badge {
+    z-index: 2;
 }
 
 .cars-hero-body {
@@ -90,6 +94,15 @@
     font-size: clamp(14px, 1vw, 16px);
     line-height: 1.4;
     font-family: var(--font-sans);
+}
+
+.cars-hero-arrow {
+    width: clamp(28px, 2.1vw, 32px);
+    height: clamp(28px, 2.1vw, 32px);
+    margin-top: 4px;
+    align-self: flex-end;
+    background: url('/public/assets/icons/arrow_button.svg') center/contain no-repeat;
+    text-decoration: none;
 }
 
 .cars-hero-meta {
