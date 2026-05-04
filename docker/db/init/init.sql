@@ -549,8 +549,28 @@ INSERT INTO service_records (
     description
 ) VALUES
     (1, 'inspection', 'Przeglad okresowy', '2025-11-05', 26100, 1490.00, 'PLN', 'Porsche Centrum Warszawa', 'Kontrola okresowa i wymiana filtrow kabinowych.'),
+    (1, 'brakes', 'Wymiana klockow hamulcowych', '2025-07-18', 24780, 1840.00, 'PLN', 'Porsche Centrum Warszawa', 'Komplet przednich klockow i kontrola tarcz.'),
+    (1, 'detailing', 'Korekta lakieru i powloka', '2025-04-09', 23210, 2200.00, 'PLN', 'Detail Studio Warsaw', 'Jednoetapowa korekta lakieru i zabezpieczenie ceramiczne.'),
     (2, 'oil_change', 'Wymiana oleju i filtrow', '2026-03-12', 45820, 1180.00, 'PLN', 'BMW Service Krakow', 'Wymiana oleju, filtra oleju i filtra powietrza.'),
-    (3, 'tires', 'Nowy komplet opon', '2025-10-01', 30110, 4600.00, 'PLN', 'Audi Sport Service', 'Montaż nowego kompletu opon letnich.');
+    (2, 'tires', 'Nowy komplet opon Pirelli P-Zero', '2025-11-26', 43960, 3850.00, 'PLN', 'TyreSpecialists', 'Zakup i montaz nowego kompletu opon letnich.'),
+    (2, 'inspection', 'Przeglad przedsezonowy', '2025-03-19', 41240, 760.00, 'PLN', 'BMW Service Krakow', 'Kontrola zawieszenia, ukladu hamulcowego i plynow eksploatacyjnych.'),
+    (3, 'tires', 'Nowy komplet opon', '2025-10-01', 30110, 4600.00, 'PLN', 'Audi Sport Service', 'Montaż nowego kompletu opon letnich.'),
+    (4, 'inspection', 'Przeglad okresowy', '2026-02-14', 18820, 1290.00, 'PLN', 'Porsche Centrum Krakow', 'Kontrola stanu ukladu kierowniczego i wymiana filtrow.'),
+    (4, 'detailing', 'Zabezpieczenie lakieru', '2025-09-09', 17110, 1650.00, 'PLN', 'Auto Spa Krakow', 'Polerka i aplikacja powloki ochronnej.'),
+    (5, 'oil_change', 'Wymiana oleju i filtrow', '2026-01-22', 22140, 1320.00, 'PLN', 'BMW Service Gdansk', 'Wymiana oleju silnikowego i kompletu filtrow.'),
+    (5, 'brakes', 'Serwis ukladu hamulcowego', '2025-08-18', 20510, 2140.00, 'PLN', 'BMW Service Gdansk', 'Czyszczenie zaciskow i wymiana przednich klockow.'),
+    (6, 'inspection', 'Przeglad po sezonie', '2026-03-05', 13980, 980.00, 'PLN', 'Audi Centrum Gdynia', 'Kontrola zawieszenia i geometrii po zimie.'),
+    (7, 'inspection', 'Przeglad roczny', '2026-02-28', 37920, 1410.00, 'PLN', 'Porsche Centrum Poznan', 'Kontrola okresowa i diagnostyka komputerowa.'),
+    (7, 'repair', 'Wymiana akumulatora', '2025-10-16', 35100, 1190.00, 'PLN', 'Porsche Centrum Poznan', 'Wymiana akumulatora AGM i adaptacja systemu.'),
+    (8, 'tires', 'Nowe opony letnie', '2026-01-11', 40620, 3720.00, 'PLN', 'TyreSpecialists', 'Zakup i montaz kompletu Michelin Pilot Sport.'),
+    (9, 'inspection', 'Przeglad przed wyjazdem', '2025-11-04', 25980, 840.00, 'PLN', 'Audi Sport Service', 'Kontrola plynow i ukladu hamulcowego przed trasa.'),
+    (10, 'detailing', 'Korekta lakieru', '2026-03-27', 8650, 1750.00, 'PLN', 'Detail Studio Poznan', 'Jednoetapowa korekta i zabezpieczenie lakieru.'),
+    (11, 'inspection', 'Przeglad okresowy', '2026-01-19', 51320, 1360.00, 'PLN', 'Porsche Centrum Radom', 'Kompleksowa kontrola mechaniczna i test drogowy.'),
+    (11, 'tires', 'Wymiana opon zimowych', '2025-10-07', 49840, 3480.00, 'PLN', 'TyreSpecialists', 'Nowy komplet opon zimowych i wywazenie.'),
+    (12, 'oil_change', 'Wymiana oleju', '2026-02-09', 44110, 1210.00, 'PLN', 'BMW Service Lublin', 'Wymiana oleju silnikowego wraz z filtrem.'),
+    (13, 'inspection', 'Przeglad po trasie', '2026-03-14', 32920, 910.00, 'PLN', 'Audi Service Katowice', 'Kontrola zawieszenia po dlugim wyjezdzie autostradowym.'),
+    (14, 'detailing', 'Powłoka ochronna', '2026-04-02', 12240, 1890.00, 'PLN', 'Detail Studio Warsaw', 'Aplikacja powloki ochronnej i przygotowanie lakieru.'),
+    (15, 'inspection', 'Pierwszy przeglad roczny', '2026-04-18', 6610, 990.00, 'PLN', 'Audi Service Wroclaw', 'Kontrola po pierwszym roku eksploatacji.');
 
 INSERT INTO maintenance_tasks (
     vehicle_id,

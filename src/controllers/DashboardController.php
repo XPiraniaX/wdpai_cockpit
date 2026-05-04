@@ -64,6 +64,7 @@ class DashboardController extends AppController
         }
 
         $vehicleId = (int) ($_POST['vehicle_id'] ?? 0);
+        $redirectTo = (string) ($_POST['redirect_to'] ?? '/dashboard');
 
         if ($vehicleId <= 0) {
             $this->redirect('/dashboard');
@@ -72,7 +73,7 @@ class DashboardController extends AppController
         $repository = new DashboardRepository(Database::getConnection());
         $repository->setPrimaryVehicle($this->getCurrentUserId(), $vehicleId);
 
-        $this->redirect('/dashboard');
+        $this->redirect($this->sanitizeRedirectPath($redirectTo));
     }
 
     private function formatDate(?string $date): string
@@ -131,5 +132,14 @@ class DashboardController extends AppController
         }
 
         return $carCount % 3 === 0 ? 0 : 1;
+    }
+
+    private function sanitizeRedirectPath(string $redirectTo): string
+    {
+        if ($redirectTo === '' || $redirectTo[0] !== '/') {
+            return '/dashboard';
+        }
+
+        return $redirectTo;
     }
 }

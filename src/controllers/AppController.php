@@ -47,6 +47,7 @@ class AppController
             'navi.css',
             'header.css',
             'dashboard.css',
+            'my_cars.css',
             'settings.css',
         ];
 
