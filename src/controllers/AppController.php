@@ -49,6 +49,7 @@ class AppController
             'dashboard.css',
             'my_cars.css',
             'settings.css',
+            'vehicle_details.css',
         ];
 
         extract($variables);

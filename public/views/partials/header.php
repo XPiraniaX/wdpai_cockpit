@@ -3,6 +3,7 @@ $currentPath = trim(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/'
 $pageMap = [
     'dashboard' => ['title' => 'Dashboard', 'subtitle' => 'Przeglad'],
     'my-cars' => ['title' => 'Moje samochody', 'subtitle' => 'Garaz'],
+    'my-cars/details' => ['title' => 'Moje samochody', 'subtitle' => $vehicle['title'] ?? ($title ?? 'Szczegoly pojazdu')],
     'marketplace' => ['title' => 'Marketplace', 'subtitle' => 'Oferty'],
     'community' => ['title' => 'Spolecznosc', 'subtitle' => 'Aktywnosc'],
     'settings' => ['title' => 'Settings', 'subtitle' => 'Preferencje'],

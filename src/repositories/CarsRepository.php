@@ -88,7 +88,7 @@ class CarsRepository
         return $statement->fetchAll();
     }
 
-    public function getServiceHistory(int $vehicleId, int $limit = 2): array
+    public function getServiceHistory(int $vehicleId, int $limit = 3): array
     {
         $statement = $this->connection->prepare(
             'SELECT
@@ -109,29 +109,88 @@ class CarsRepository
         return $statement->fetchAll();
     }
 
+    public function getRecentFuelLogs(int $vehicleId, int $limit = 3): array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT
+                fueled_at,
+                liters,
+                fuel_type,
+                total_cost,
+                currency,
+                mileage_km
+            FROM fuel_logs
+            WHERE vehicle_id = :vehicle_id
+            ORDER BY fueled_at DESC, id DESC
+            LIMIT :limit'
+        );
+        $statement->bindValue(':vehicle_id', $vehicleId, PDO::PARAM_INT);
+        $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll();
+    }
+
+    public function getMaintenanceTasks(int $vehicleId, int $limit = 3): array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT
+                title,
+                description,
+                priority,
+                status,
+                estimated_cost_amount,
+                currency,
+                target_date
+            FROM maintenance_tasks
+            WHERE vehicle_id = :vehicle_id
+                AND status IN (\'open\', \'in_progress\')
+            ORDER BY
+                sort_order ASC,
+                target_date ASC NULLS LAST,
+                id ASC
+            LIMIT :limit'
+        );
+        $statement->bindValue(':vehicle_id', $vehicleId, PDO::PARAM_INT);
+        $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll();
+    }
+
     private function buildVehicleBaseQuery(): string
     {
         return 'SELECT
                 v.id,
+                cb.name AS brand_name,
+                COALESCE(cm.name, v.custom_model) AS model_name,
                 v.display_name,
                 v.trim_name,
                 v.production_year,
                 v.current_mileage_km,
                 v.fuel_type,
+                v.transmission,
                 v.body_type,
                 v.drivetrain,
                 v.notes,
                 v.power_hp,
                 v.engine_capacity_cc,
                 v.license_plate,
+                v.created_at,
                 vi.image_path,
                 next_inspection.valid_until AS next_inspection_date,
                 next_insurance.valid_until AS next_insurance_date,
+                next_insurance.insurer_name AS insurer_name,
+                next_insurance.policy_number AS policy_number,
                 last_fuel.fueled_at AS last_fuel_at,
                 last_fuel.total_cost AS last_fuel_cost,
                 last_fuel.currency AS last_fuel_currency,
                 avg_consumption.average_consumption_l_100km
             FROM vehicles v
+            INNER JOIN car_brands cb
+                ON cb.id = v.brand_id
+            LEFT JOIN car_models cm
+                ON cm.id = v.model_id
             LEFT JOIN vehicle_images vi
                 ON vi.vehicle_id = v.id
                 AND vi.is_primary = TRUE
@@ -143,7 +202,7 @@ class CarsRepository
                 LIMIT 1
             ) AS next_inspection ON TRUE
             LEFT JOIN LATERAL (
-                SELECT ip.valid_until
+                SELECT ip.valid_until, ip.insurer_name, ip.policy_number
                 FROM insurance_policies ip
                 WHERE ip.vehicle_id = v.id
                     AND ip.is_active = TRUE

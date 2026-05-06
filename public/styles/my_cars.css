@@ -18,7 +18,7 @@
 .cars-hero-card {
     min-height: clamp(500px, 48vw, 620px);
     border-radius: clamp(30px, 2.4vw, 40px);
-    background: linear-gradient(180deg, #0d152a 0%, #081122 100%);
+    background: #0F1930;
     overflow: hidden;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
     display: flex;
@@ -96,11 +96,17 @@
     font-family: var(--font-sans);
 }
 
+.cars-hero-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
 .cars-hero-arrow {
     width: clamp(28px, 2.1vw, 32px);
     height: clamp(28px, 2.1vw, 32px);
-    margin-top: 4px;
-    align-self: flex-end;
+    flex: 0 0 clamp(28px, 2.1vw, 32px);
     background: url('/public/assets/icons/arrow_button.svg') center/contain no-repeat;
     text-decoration: none;
 }
@@ -122,7 +128,7 @@
 .cars-side-panel {
     padding: clamp(22px, 2vw, 28px);
     border-radius: clamp(28px, 2vw, 34px);
-    background: #10192f;
+    background: #0F1930;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
     display: flex;
     flex-direction: column;
@@ -130,11 +136,11 @@
 }
 
 .cars-side-panel:first-child {
-    flex: 1.1;
+    flex: 0.86;
 }
 
 .cars-side-panel:last-child {
-    flex: 0.9;
+    flex: 1.14;
 }
 
 .cars-side-kicker {
@@ -148,10 +154,10 @@
 }
 
 .cars-stats-list {
-    margin-top: 18px;
+    margin-top: 16px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 12px;
 }
 
 .cars-stat-row {
@@ -199,7 +205,7 @@
     justify-content: center;
     width: fit-content;
     min-height: 40px;
-    margin-top: 22px;
+    margin-top: 18px;
     margin-left: auto;
     margin-right: auto;
     padding: 0 18px;
@@ -222,10 +228,10 @@
 }
 
 .cars-history-list {
-    margin-top: 18px;
+    margin-top: 16px;
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 16px;
 }
 
 .cars-history-item {
@@ -252,7 +258,7 @@
 
 .cars-history-line-icon {
     width: 2px;
-    height: 42px;
+    height: 48px;
     margin-top: 4px;
     display: block;
 }

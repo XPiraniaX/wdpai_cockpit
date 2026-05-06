@@ -12,6 +12,7 @@ $styleFiles = $styleFiles ?? [
     'dashboard.css',
     'my_cars.css',
     'settings.css',
+    'vehicle_details.css',
 ];
 ?>
 

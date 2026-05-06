@@ -40,7 +40,7 @@
     aspect-ratio: 1 / 0.9;
     padding: clamp(22px, 3vw, 50px);
     border-radius: clamp(32px, 3vw, 50px);
-    background: #0f1930;
+    background: #0F1930;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
@@ -163,7 +163,7 @@
     min-height: clamp(300px, 24vw, 350px);
     aspect-ratio: 1 / 0.78;
     border-radius: clamp(26px, 2vw, 34px);
-    background: #131f3b;
+    background: #0F1930;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -399,7 +399,9 @@
     width: clamp(24px, 1.8vw, 28px);
     height: clamp(24px, 1.8vw, 28px);
     flex: 0 0 clamp(24px, 1.8vw, 28px);
+    display: block;
     background: url('/public/assets/icons/arrow_button.svg') center/contain no-repeat;
+    text-decoration: none;
 }
 
 .car-card-arrow-muted {
@@ -442,7 +444,7 @@
     aspect-ratio: 464 / 280;
     padding: 32px 32px 60px;
     border-radius: 48px;
-    background: #0f1930;
+    background: #0F1930;
     position: relative;
     box-sizing: border-box;
     overflow: hidden;

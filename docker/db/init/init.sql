@@ -535,7 +535,15 @@ INSERT INTO fuel_logs (
     (12, '2026-04-20 19:10:00+02', 44520, 54.90, 431.60, 'PLN', 'premium_petrol', 'Circle K', 'Lublin', TRUE, NULL),
     (13, '2026-04-19 11:45:00+02', 33280, 63.50, 512.30, 'PLN', 'premium_petrol', 'Orlen', 'Katowice', TRUE, NULL),
     (14, '2026-05-02 09:15:00+02', 12610, 46.80, 365.90, 'PLN', 'premium_petrol', 'Shell', 'Warszawa', TRUE, NULL),
-    (15, '2026-05-02 20:30:00+02', 6880, 59.10, 479.50, 'PLN', 'premium_petrol', 'BP', 'Wroclaw', TRUE, NULL);
+    (15, '2026-05-02 20:30:00+02', 6880, 59.10, 479.50, 'PLN', 'premium_petrol', 'BP', 'Wroclaw', TRUE, NULL),
+    (5, '2026-04-14 18:35:00+02', 21920, 42.60, 298.60, 'PLN', 'petrol', 'Orlen', 'Gdansk', FALSE, NULL),
+    (5, '2026-03-29 09:05:00+02', 21160, 48.80, 360.15, 'PLN', 'premium_petrol', 'Circle K', 'Sopot', TRUE, NULL),
+    (5, '2026-03-10 19:20:00+02', 20310, 41.90, 291.20, 'PLN', 'petrol', 'BP', 'Gdynia', FALSE, NULL),
+    (5, '2026-02-18 08:10:00+02', 19640, 50.40, 376.80, 'PLN', 'premium_petrol', 'Shell', 'Gdansk', TRUE, NULL),
+    (6, '2026-04-08 17:40:00+02', 13680, 45.10, 332.40, 'PLN', 'petrol', 'BP', 'Gdynia', FALSE, NULL),
+    (6, '2026-03-15 07:55:00+02', 12980, 52.60, 401.25, 'PLN', 'premium_petrol', 'Shell', 'Sopot', TRUE, NULL),
+    (6, '2026-02-21 20:15:00+02', 12140, 43.80, 321.90, 'PLN', 'petrol', 'Orlen', 'Gdansk', FALSE, NULL),
+    (6, '2026-01-27 11:05:00+02', 11420, 54.30, 418.70, 'PLN', 'premium_petrol', 'Circle K', 'Gdynia', TRUE, NULL);
 
 INSERT INTO service_records (
     vehicle_id,
@@ -557,9 +565,19 @@ INSERT INTO service_records (
     (3, 'tires', 'Nowy komplet opon', '2025-10-01', 30110, 4600.00, 'PLN', 'Audi Sport Service', 'Montaż nowego kompletu opon letnich.'),
     (4, 'inspection', 'Przeglad okresowy', '2026-02-14', 18820, 1290.00, 'PLN', 'Porsche Centrum Krakow', 'Kontrola stanu ukladu kierowniczego i wymiana filtrow.'),
     (4, 'detailing', 'Zabezpieczenie lakieru', '2025-09-09', 17110, 1650.00, 'PLN', 'Auto Spa Krakow', 'Polerka i aplikacja powloki ochronnej.'),
+    (4, 'oil_change', 'Wymiana oleju i filtrow', '2025-06-11', 16240, 1180.00, 'PLN', 'Porsche Centrum Krakow', 'Wymiana oleju silnikowego oraz filtrow eksploatacyjnych.'),
+    (4, 'tires', 'Nowe opony letnie', '2025-03-22', 14980, 3420.00, 'PLN', 'TyreSpecialists Krakow', 'Zakup i montaz nowego kompletu opon letnich Michelin.'),
+    (4, 'repair', 'Serwis ukladu hamulcowego', '2024-11-18', 13840, 1960.00, 'PLN', 'Porsche Centrum Krakow', 'Czyszczenie zaciskow i wymiana przednich klockow hamulcowych.'),
     (5, 'oil_change', 'Wymiana oleju i filtrow', '2026-01-22', 22140, 1320.00, 'PLN', 'BMW Service Gdansk', 'Wymiana oleju silnikowego i kompletu filtrow.'),
-    (5, 'brakes', 'Serwis ukladu hamulcowego', '2025-08-18', 20510, 2140.00, 'PLN', 'BMW Service Gdansk', 'Czyszczenie zaciskow i wymiana przednich klockow.'),
+    (5, 'brakes', 'Serwis ukladu hamulcowego', '2025-08-20', 20510, 6150.00, 'PLN', 'BMW Service Gdansk', 'Czyszczenie zaciskow i wymiana przednich klockow.'),
+    (5, 'tires', 'Nowy komplet opon zimowych', '2025-05-09', 19420, 3680.00, 'PLN', 'TyreSpecialists Gdansk', 'Zakup i montaz kompletu opon zimowych Pirelli Sottozero.'),
+    (5, 'inspection', 'Przeglad przed sezonem', '2025-02-27', 18660, 790.00, 'PLN', 'BMW Service Gdansk', 'Kontrola geometrii, plynow eksploatacyjnych i stanu zawieszenia.'),
+    (5, 'detailing', 'Korekta lakieru i zabezpieczenie', '2024-10-15', 17540, 1740.00, 'PLN', 'Detail Studio Gdansk', 'Jednoetapowa korekta lakieru i aplikacja powloki ochronnej.'),
     (6, 'inspection', 'Przeglad po sezonie', '2026-03-05', 13980, 980.00, 'PLN', 'Audi Centrum Gdynia', 'Kontrola zawieszenia i geometrii po zimie.'),
+    (6, 'oil_change', 'Wymiana oleju i filtrow', '2025-11-14', 12910, 1260.00, 'PLN', 'Audi Centrum Gdynia', 'Wymiana oleju silnikowego i filtrow powietrza oraz kabinowego.'),
+    (6, 'tires', 'Nowe opony zimowe', '2025-09-30', 12080, 3560.00, 'PLN', 'TyreSpecialists Gdynia', 'Zakup i montaz kompletu opon zimowych wraz z wywazeniem kol.'),
+    (6, 'repair', 'Wymiana klockow tylnej osi', '2025-06-18', 10940, 1640.00, 'PLN', 'Audi Centrum Gdynia', 'Wymiana tylnych klockow hamulcowych i kontrola stanu tarcz.'),
+    (6, 'detailing', 'Powłoka ceramiczna', '2025-04-08', 10120, 2080.00, 'PLN', 'Auto Spa Gdynia', 'Przygotowanie lakieru i aplikacja powloki ceramicznej.'),
     (7, 'inspection', 'Przeglad roczny', '2026-02-28', 37920, 1410.00, 'PLN', 'Porsche Centrum Poznan', 'Kontrola okresowa i diagnostyka komputerowa.'),
     (7, 'repair', 'Wymiana akumulatora', '2025-10-16', 35100, 1190.00, 'PLN', 'Porsche Centrum Poznan', 'Wymiana akumulatora AGM i adaptacja systemu.'),
     (8, 'tires', 'Nowe opony letnie', '2026-01-11', 40620, 3720.00, 'PLN', 'TyreSpecialists', 'Zakup i montaz kompletu Michelin Pilot Sport.'),
@@ -586,4 +604,10 @@ INSERT INTO maintenance_tasks (
 ) VALUES
     (1, 'Wymiana przednich klockow hamulcowych', 'Do sprawdzenia grubosc i ewentualna wymiana przy najblizszej wizycie.', 'high', 'open', 1400.00, 'PLN', '2026-05-20', NULL, 1),
     (2, 'Detailing lakieru', 'Polerka i zabezpieczenie lakieru po sezonie zimowym.', 'medium', 'in_progress', 1800.00, 'PLN', '2026-05-30', NULL, 2),
-    (3, 'Kontrola akumulatora', 'Sprawdzic stan akumulatora przed dluzszym wyjazdem.', 'low', 'open', 300.00, 'PLN', '2026-05-15', NULL, 1);
+    (3, 'Kontrola akumulatora', 'Sprawdzic stan akumulatora przed dluzszym wyjazdem.', 'low', 'open', 300.00, 'PLN', '2026-05-15', NULL, 1),
+    (5, 'Geometria zawieszenia', 'Kontrola i ustawienie geometrii po wymianie opon oraz twardszej eksploatacji.', 'medium', 'open', 450.00, 'PLN', '2026-05-18', NULL, 1),
+    (5, 'Korekta lakieru maski', 'Usuniecie drobnych rys i odswiezenie frontu auta przed sezonem letnim.', 'low', 'open', 900.00, 'PLN', '2026-05-28', NULL, 2),
+    (5, 'Wymiana oleju dyferencjalu', 'Profilaktyczna wymiana oleju w dyferencjale przy najblizszym serwisie.', 'medium', 'in_progress', 780.00, 'PLN', '2026-06-04', NULL, 3),
+    (6, 'Nowe klocki tylnej osi', 'Przygotowac wymiane tylnych klockow wraz z przegladem stanu tarcz.', 'high', 'open', 1250.00, 'PLN', '2026-05-16', NULL, 1),
+    (6, 'Czyszczenie dolotu', 'Profilaktyczne czyszczenie ukladu dolotowego i sprawdzenie przeplywomierza.', 'medium', 'open', 650.00, 'PLN', '2026-05-29', NULL, 2),
+    (6, 'Detailing wnetrza', 'Pelne odswiezenie wnetrza i impregnacja tapicerki po zimie.', 'low', 'open', 520.00, 'PLN', '2026-06-11', NULL, 3);

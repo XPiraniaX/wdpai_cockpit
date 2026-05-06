@@ -32,6 +32,7 @@ class DashboardController extends AppController
         $cars = array_map(function (array $car): array {
             return [
                 'id' => (int) $car['id'],
+                'detailsPath' => '/my-cars/details?id=' . (int) $car['id'],
                 'year' => (string) $car['production_year'],
                 'title' => $car['display_name'],
                 'subtitle' => $car['trim_name'] ?: 'Brak wersji',
