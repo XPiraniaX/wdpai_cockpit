@@ -52,7 +52,6 @@ class DashboardRepository
             INNER JOIN vehicles v ON v.id = ip.vehicle_id
             WHERE v.user_id = :user_id
                 AND v.status = :status
-                AND ip.is_active = TRUE
             ORDER BY ip.valid_until ASC
             LIMIT 1'
         );
@@ -71,7 +70,6 @@ class DashboardRepository
         $statement = $this->connection->prepare(
             'SELECT
                 fl.total_cost,
-                fl.currency,
                 fl.liters,
                 fl.fueled_at,
                 v.display_name
@@ -120,7 +118,6 @@ class DashboardRepository
                 SELECT ip.valid_until
                 FROM insurance_policies ip
                 WHERE ip.vehicle_id = v.id
-                    AND ip.is_active = TRUE
                 ORDER BY ip.valid_until ASC
                 LIMIT 1
             ) AS next_insurance ON TRUE

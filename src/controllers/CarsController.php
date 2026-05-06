@@ -118,12 +118,12 @@ class CarsController extends AppController
                 'policyNumber' => $vehicle['policy_number'] ?: 'Brak danych',
                 'power' => $this->formatPower($vehicle['power_hp'] ?? null),
                 'engine' => $vehicle['engine_capacity_cc'] ? number_format(((int) $vehicle['engine_capacity_cc']) / 1000, 1, ',', '') . ' L' : 'Brak danych',
+                'vin' => $vehicle['vin'] ?: 'Brak danych',
                 'plate' => $vehicle['license_plate'] ?: 'Brak danych',
                 'notes' => $vehicle['notes'] ?: 'Brak dodatkowych notatek.',
                 'averageConsumption' => $this->formatConsumption($vehicle['average_consumption_l_100km'] ?? null),
                 'drivetrain' => $vehicle['drivetrain'] ? strtoupper((string) $vehicle['drivetrain']) : 'Brak danych',
                 'fuelType' => $this->formatVehicleFuelType($vehicle['fuel_type'] ?? null),
-                'addedDate' => $this->formatDateTime($vehicle['created_at'] ?? null),
                 'technicalSpec' => $this->buildTechnicalSpec($vehicle),
             ],
             'serviceHistory' => $this->mapServiceHistory($serviceHistory),
@@ -186,7 +186,7 @@ class CarsController extends AppController
                 'monthYear' => $date->format('M Y'),
                 'title' => $entry['title'],
                 'description' => $entry['description'] ?: '',
-                'cost' => $this->formatMoney($entry['cost_amount'] ?? null, $entry['currency'] ?? 'PLN'),
+                'cost' => $this->formatMoney($entry['cost_amount'] ?? null, 'PLN'),
             ];
         }, $serviceHistory);
     }
@@ -200,7 +200,7 @@ class CarsController extends AppController
                 'date' => $date->format('d.m.Y'),
                 'liters' => number_format((float) $entry['liters'], 2, ',', ' '),
                 'fuelType' => $this->formatFuelLogType($entry['fuel_type'] ?? null),
-                'cost' => $this->formatMoney($entry['total_cost'] ?? null, $entry['currency'] ?? 'PLN'),
+                'cost' => $this->formatMoney($entry['total_cost'] ?? null, 'PLN'),
                 'mileage' => $this->formatMileage($entry['mileage_km'] ?? null),
             ];
         }, $fuelLogs);
@@ -218,7 +218,7 @@ class CarsController extends AppController
     private function mapMaintenanceTasks(array $tasks): array
     {
         return array_map(function (array $task): array {
-            $cost = $this->formatMoney($task['estimated_cost_amount'] ?? null, $task['currency'] ?? 'PLN');
+            $cost = $this->formatMoney($task['estimated_cost_amount'] ?? null, 'PLN');
 
             return [
                 'title' => $task['title'],
@@ -243,15 +243,6 @@ class CarsController extends AppController
         }
 
         return $days . ' dni';
-    }
-
-    private function formatDateTime(?string $date): string
-    {
-        if (!$date) {
-            return 'Brak danych';
-        }
-
-        return (new DateTimeImmutable($date))->format('d.m.Y');
     }
 
     private function formatPower(int|string|null $horsePower): string
@@ -296,8 +287,6 @@ class CarsController extends AppController
 
     private function buildTechnicalSpec(array $vehicle): array
     {
-        $overrides = $this->getTechnicalSpecOverrides((int) $vehicle['id']);
-
         return [
             'Ogolne' => [
                 ['label' => 'Marka', 'value' => $vehicle['brand_name'] ?: 'Brak danych'],
@@ -305,80 +294,77 @@ class CarsController extends AppController
                 ['label' => 'Wersja', 'value' => $vehicle['trim_name'] ?: 'Brak danych'],
                 ['label' => 'Rocznik', 'value' => (string) $vehicle['production_year']],
                 ['label' => 'Tablice', 'value' => $vehicle['license_plate'] ?: 'Brak danych'],
-                ['label' => 'Data dodania', 'value' => $this->formatDateTime($vehicle['created_at'] ?? null)],
+                ['label' => 'VIN', 'value' => $vehicle['vin'] ?: 'Brak danych'],
+                ['label' => 'Kolor', 'value' => $vehicle['exterior_color'] ?: 'Brak danych'],
+                ['label' => 'Rodzaj napedu', 'value' => $vehicle['drivetrain'] ? strtoupper((string) $vehicle['drivetrain']) : 'Brak danych'],
+                ['label' => 'Skrzynia biegow', 'value' => $this->formatTransmission($vehicle['transmission'] ?? null)],
             ],
             'Silnik' => [
                 ['label' => 'Silnik', 'value' => $vehicle['engine_capacity_cc'] ? number_format(((int) $vehicle['engine_capacity_cc']) / 1000, 1, ',', '') . ' L' : 'Brak danych'],
-                ['label' => 'Moc kW / KM / Nm', 'value' => $overrides['power_with_torque'] ?? $this->formatPower($vehicle['power_hp'] ?? null)],
+                ['label' => 'Moc kW / KM / Nm', 'value' => $this->formatPowerWithTorque($vehicle['power_hp'] ?? null, $vehicle['power_nm'] ?? null)],
                 ['label' => 'Rodzaj paliwa', 'value' => $this->formatVehicleFuelType($vehicle['fuel_type'] ?? null)],
-                ['label' => 'Moc fabryczna', 'value' => $overrides['factory_power'] ?? 'Brak danych'],
-                ['label' => 'Montaz silnika', 'value' => $overrides['engine_layout'] ?? 'Brak danych'],
-                ['label' => 'Doladowanie', 'value' => $overrides['aspiration'] ?? 'Brak danych'],
-                ['label' => 'Liczba cylindrow', 'value' => $overrides['cylinder_count'] ?? 'Brak danych'],
-                ['label' => 'Uklad cylindrow', 'value' => $overrides['cylinder_layout'] ?? 'Brak danych'],
+                ['label' => 'Moc fabryczna', 'value' => $this->formatBooleanLabel($vehicle['is_factory_power'] ?? null)],
+                ['label' => 'Montaz silnika', 'value' => $vehicle['engine_mount'] ?: 'Brak danych'],
+                ['label' => 'Doladowanie', 'value' => $vehicle['aspiration'] ?: 'Brak danych'],
+                ['label' => 'Liczba cylindrow', 'value' => $vehicle['cylinder_count'] ? (string) $vehicle['cylinder_count'] : 'Brak danych'],
+                ['label' => 'Uklad cylindrow', 'value' => $vehicle['cylinder_layout'] ?: 'Brak danych'],
             ],
             'Nadwozie' => [
                 ['label' => 'Rodzaj nadwozia', 'value' => $this->formatBodyType($vehicle['body_type'] ?? null)],
-                ['label' => 'Liczba miejsc', 'value' => $overrides['seat_count'] ?? 'Brak danych'],
-                ['label' => 'Dlugosc', 'value' => $overrides['length'] ?? 'Brak danych'],
-                ['label' => 'Szerokosc', 'value' => $overrides['width'] ?? 'Brak danych'],
-                ['label' => 'Wysokosc', 'value' => $overrides['height'] ?? 'Brak danych'],
+                ['label' => 'Liczba miejsc', 'value' => $vehicle['seat_count'] ? (string) $vehicle['seat_count'] : 'Brak danych'],
+                ['label' => 'Dlugosc', 'value' => $this->formatMillimeters($vehicle['length_mm'] ?? null)],
+                ['label' => 'Szerokosc', 'value' => $this->formatMillimeters($vehicle['width_mm'] ?? null)],
+                ['label' => 'Wysokosc', 'value' => $this->formatMillimeters($vehicle['height_mm'] ?? null)],
             ],
             'Kola' => [
-                ['label' => 'Rozmiar felg', 'value' => $overrides['wheel_size'] ?? 'Brak danych'],
-                ['label' => 'Rozmiar opon', 'value' => $overrides['tire_size'] ?? 'Brak danych'],
+                ['label' => 'Rozmiar felg', 'value' => $vehicle['wheel_size_label'] ?: 'Brak danych'],
+                ['label' => 'Rozmiar opon', 'value' => $vehicle['tire_size_label'] ?: 'Brak danych'],
             ],
             'Hamulce' => [
-                ['label' => 'Rodzaj hamulcow przod', 'value' => $overrides['front_brakes'] ?? 'Brak danych'],
-                ['label' => 'Rodzaj hamulcow tyl', 'value' => $overrides['rear_brakes'] ?? 'Brak danych'],
-            ],
-            'Zawieszenie' => [
-                ['label' => 'Zawieszenie przod', 'value' => $overrides['front_suspension'] ?? 'Brak danych'],
-                ['label' => 'Zawieszenie tyl', 'value' => $overrides['rear_suspension'] ?? 'Brak danych'],
+                ['label' => 'Rodzaj hamulcow przod', 'value' => $vehicle['front_brake_type'] ?: 'Brak danych'],
+                ['label' => 'Rodzaj hamulcow tyl', 'value' => $vehicle['rear_brake_type'] ?: 'Brak danych'],
             ],
         ];
     }
 
-    private function getTechnicalSpecOverrides(int $vehicleId): array
+    private function formatTransmission(?string $transmission): string
     {
-        return match ($vehicleId) {
-            5 => [
-                'power_with_torque' => '375 kW / 510 KM / 650 Nm',
-                'factory_power' => 'Tak',
-                'engine_layout' => 'Z przodu, wzdluznie',
-                'aspiration' => 'TwinPower Turbo',
-                'cylinder_count' => '6',
-                'cylinder_layout' => 'Rzedowy',
-                'seat_count' => '5',
-                'length' => '4794 mm',
-                'width' => '1903 mm',
-                'height' => '1437 mm',
-                'wheel_size' => '19\" / 10J',
-                'tire_size' => '275 / 35 R19',
-                'front_brakes' => 'Wentylowane tarczowe',
-                'rear_brakes' => 'Wentylowane tarczowe',
-                'front_suspension' => 'Kolumny McPherson',
-                'rear_suspension' => 'Wielowahacz',
-            ],
-            6 => [
-                'power_with_torque' => '463 kW / 630 KM / 850 Nm',
-                'factory_power' => 'Tak',
-                'engine_layout' => 'Z przodu, wzdluznie',
-                'aspiration' => 'BiTurbo',
-                'cylinder_count' => '8',
-                'cylinder_layout' => 'V',
-                'seat_count' => '5',
-                'length' => '4995 mm',
-                'width' => '1951 mm',
-                'height' => '1487 mm',
-                'wheel_size' => '22\" / 10.5J',
-                'tire_size' => '285 / 30 R22',
-                'front_brakes' => 'Wentylowane tarczowe ceramiczne',
-                'rear_brakes' => 'Wentylowane tarczowe',
-                'front_suspension' => 'Wielowahacz',
-                'rear_suspension' => 'Wielowahacz',
-            ],
-            default => [],
+        return match ($transmission) {
+            'manual' => 'Manualna',
+            'automatic' => 'Automatyczna',
+            'semi_automatic' => 'Polautomatyczna',
+            default => 'Brak danych',
         };
+    }
+
+    private function formatPowerWithTorque(int|string|null $horsePower, int|string|null $torque): string
+    {
+        if ($horsePower === null || $horsePower === '') {
+            return 'Brak danych';
+        }
+
+        $hp = (int) $horsePower;
+        $kw = (int) round($hp * 0.7355);
+        $torqueLabel = ($torque === null || $torque === '') ? 'Brak danych' : ((int) $torque . ' Nm');
+
+        return $kw . ' kW / ' . $hp . ' KM / ' . $torqueLabel;
+    }
+
+    private function formatBooleanLabel(bool|int|string|null $value): string
+    {
+        if ($value === null || $value === '') {
+            return 'Brak danych';
+        }
+
+        return (bool) $value ? 'Tak' : 'Nie';
+    }
+
+    private function formatMillimeters(int|string|null $value): string
+    {
+        if ($value === null || $value === '') {
+            return 'Brak danych';
+        }
+
+        return (int) $value . ' mm';
     }
 }

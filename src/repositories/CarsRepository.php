@@ -71,7 +71,6 @@ class CarsRepository
                 SELECT ip.valid_until
                 FROM insurance_policies ip
                 WHERE ip.vehicle_id = v.id
-                    AND ip.is_active = TRUE
                 ORDER BY ip.valid_until ASC
                 LIMIT 1
             ) AS next_insurance ON TRUE
@@ -95,8 +94,7 @@ class CarsRepository
                 service_date,
                 title,
                 description,
-                cost_amount,
-                currency
+                cost_amount
             FROM service_records
             WHERE vehicle_id = :vehicle_id
             ORDER BY service_date DESC, id DESC
@@ -117,7 +115,6 @@ class CarsRepository
                 liters,
                 fuel_type,
                 total_cost,
-                currency,
                 mileage_km
             FROM fuel_logs
             WHERE vehicle_id = :vehicle_id
@@ -137,17 +134,14 @@ class CarsRepository
             'SELECT
                 title,
                 description,
-                priority,
                 status,
                 estimated_cost_amount,
-                currency,
-                target_date
+                sort_order
             FROM maintenance_tasks
             WHERE vehicle_id = :vehicle_id
-                AND status IN (\'open\', \'in_progress\')
+                AND status = \'open\'
             ORDER BY
                 sort_order ASC,
-                target_date ASC NULLS LAST,
                 id ASC
             LIMIT :limit'
         );
@@ -163,7 +157,7 @@ class CarsRepository
         return 'SELECT
                 v.id,
                 cb.name AS brand_name,
-                COALESCE(cm.name, v.custom_model) AS model_name,
+                cm.name AS model_name,
                 v.display_name,
                 v.trim_name,
                 v.production_year,
@@ -172,11 +166,26 @@ class CarsRepository
                 v.transmission,
                 v.body_type,
                 v.drivetrain,
+                v.exterior_color,
                 v.notes,
                 v.power_hp,
                 v.engine_capacity_cc,
+                v.power_nm,
+                v.is_factory_power,
+                v.engine_mount,
+                v.aspiration,
+                v.cylinder_count,
+                v.cylinder_layout,
+                v.seat_count,
+                v.length_mm,
+                v.width_mm,
+                v.height_mm,
+                v.wheel_size_label,
+                v.tire_size_label,
+                v.front_brake_type,
+                v.rear_brake_type,
+                v.vin,
                 v.license_plate,
-                v.created_at,
                 vi.image_path,
                 next_inspection.valid_until AS next_inspection_date,
                 next_insurance.valid_until AS next_insurance_date,
@@ -184,7 +193,6 @@ class CarsRepository
                 next_insurance.policy_number AS policy_number,
                 last_fuel.fueled_at AS last_fuel_at,
                 last_fuel.total_cost AS last_fuel_cost,
-                last_fuel.currency AS last_fuel_currency,
                 avg_consumption.average_consumption_l_100km
             FROM vehicles v
             INNER JOIN car_brands cb
@@ -205,12 +213,11 @@ class CarsRepository
                 SELECT ip.valid_until, ip.insurer_name, ip.policy_number
                 FROM insurance_policies ip
                 WHERE ip.vehicle_id = v.id
-                    AND ip.is_active = TRUE
                 ORDER BY ip.valid_until ASC
                 LIMIT 1
             ) AS next_insurance ON TRUE
             LEFT JOIN LATERAL (
-                SELECT fl.fueled_at, fl.total_cost, fl.currency
+                SELECT fl.fueled_at, fl.total_cost
                 FROM fuel_logs fl
                 WHERE fl.vehicle_id = v.id
                 ORDER BY fl.fueled_at DESC
