@@ -131,7 +131,7 @@ class CarsRepository
         return $statement->fetchAll();
     }
 
-    public function getMaintenanceTasks(int $vehicleId, int $limit = 3): array
+    public function getMaintenanceTasks(int $vehicleId, int $limit = 4): array
     {
         $statement = $this->connection->prepare(
             'SELECT

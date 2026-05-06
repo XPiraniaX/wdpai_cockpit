@@ -608,6 +608,8 @@ INSERT INTO maintenance_tasks (
     (5, 'Geometria zawieszenia', 'Kontrola i ustawienie geometrii po wymianie opon oraz twardszej eksploatacji.', 'medium', 'open', 450.00, 'PLN', '2026-05-18', NULL, 1),
     (5, 'Korekta lakieru maski', 'Usuniecie drobnych rys i odswiezenie frontu auta przed sezonem letnim.', 'low', 'open', 900.00, 'PLN', '2026-05-28', NULL, 2),
     (5, 'Wymiana oleju dyferencjalu', 'Profilaktyczna wymiana oleju w dyferencjale przy najblizszym serwisie.', 'medium', 'in_progress', 780.00, 'PLN', '2026-06-04', NULL, 3),
+    (5, 'Sprawdzenie tulei wahaczy', 'Kontrola przedniego zawieszenia i ewentualna wycena wymiany zuzytych tulei.', 'medium', 'open', 980.00, 'PLN', '2026-06-18', NULL, 4),
     (6, 'Nowe klocki tylnej osi', 'Przygotowac wymiane tylnych klockow wraz z przegladem stanu tarcz.', 'high', 'open', 1250.00, 'PLN', '2026-05-16', NULL, 1),
     (6, 'Czyszczenie dolotu', 'Profilaktyczne czyszczenie ukladu dolotowego i sprawdzenie przeplywomierza.', 'medium', 'open', 650.00, 'PLN', '2026-05-29', NULL, 2),
-    (6, 'Detailing wnetrza', 'Pelne odswiezenie wnetrza i impregnacja tapicerki po zimie.', 'low', 'open', 520.00, 'PLN', '2026-06-11', NULL, 3);
+    (6, 'Detailing wnetrza', 'Pelne odswiezenie wnetrza i impregnacja tapicerki po zimie.', 'low', 'open', 520.00, 'PLN', '2026-06-11', NULL, 3),
+    (6, 'Serwis klimatyzacji', 'Odgrzybianie ukladu, uzupelnienie czynnika i kontrola szczelnosci przed latem.', 'medium', 'open', 430.00, 'PLN', '2026-06-21', NULL, 4);

@@ -90,7 +90,7 @@ class CarsController extends AppController
         $vehicle = $repository->getVehicleById($this->getCurrentUserId(), $vehicleId);
         $recentFuelLogs = $vehicle ? $repository->getRecentFuelLogs($vehicleId, 3) : [];
         $serviceHistory = $vehicle ? $repository->getServiceHistory($vehicleId, 3) : [];
-        $maintenanceTasks = $vehicle ? $repository->getMaintenanceTasks($vehicleId, 3) : [];
+        $maintenanceTasks = $vehicle ? $repository->getMaintenanceTasks($vehicleId, 4) : [];
 
         if (!$vehicle) {
             http_response_code(404);
@@ -324,6 +324,18 @@ class CarsController extends AppController
                 ['label' => 'Szerokosc', 'value' => $overrides['width'] ?? 'Brak danych'],
                 ['label' => 'Wysokosc', 'value' => $overrides['height'] ?? 'Brak danych'],
             ],
+            'Kola' => [
+                ['label' => 'Rozmiar felg', 'value' => $overrides['wheel_size'] ?? 'Brak danych'],
+                ['label' => 'Rozmiar opon', 'value' => $overrides['tire_size'] ?? 'Brak danych'],
+            ],
+            'Hamulce' => [
+                ['label' => 'Rodzaj hamulcow przod', 'value' => $overrides['front_brakes'] ?? 'Brak danych'],
+                ['label' => 'Rodzaj hamulcow tyl', 'value' => $overrides['rear_brakes'] ?? 'Brak danych'],
+            ],
+            'Zawieszenie' => [
+                ['label' => 'Zawieszenie przod', 'value' => $overrides['front_suspension'] ?? 'Brak danych'],
+                ['label' => 'Zawieszenie tyl', 'value' => $overrides['rear_suspension'] ?? 'Brak danych'],
+            ],
         ];
     }
 
@@ -341,6 +353,12 @@ class CarsController extends AppController
                 'length' => '4794 mm',
                 'width' => '1903 mm',
                 'height' => '1437 mm',
+                'wheel_size' => '19\" / 10J',
+                'tire_size' => '275 / 35 R19',
+                'front_brakes' => 'Wentylowane tarczowe',
+                'rear_brakes' => 'Wentylowane tarczowe',
+                'front_suspension' => 'Kolumny McPherson',
+                'rear_suspension' => 'Wielowahacz',
             ],
             6 => [
                 'power_with_torque' => '463 kW / 630 KM / 850 Nm',
@@ -353,6 +371,12 @@ class CarsController extends AppController
                 'length' => '4995 mm',
                 'width' => '1951 mm',
                 'height' => '1487 mm',
+                'wheel_size' => '22\" / 10.5J',
+                'tire_size' => '285 / 30 R22',
+                'front_brakes' => 'Wentylowane tarczowe ceramiczne',
+                'rear_brakes' => 'Wentylowane tarczowe',
+                'front_suspension' => 'Wielowahacz',
+                'rear_suspension' => 'Wielowahacz',
             ],
             default => [],
         };
