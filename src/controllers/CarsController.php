@@ -87,10 +87,16 @@ class CarsController extends AppController
         }
 
         $repository = new CarsRepository(Database::getConnection());
-        $vehicle = $repository->getVehicleById($this->getCurrentUserId(), $vehicleId);
-        $recentFuelLogs = $vehicle ? $repository->getRecentFuelLogs($vehicleId, 3) : [];
-        $serviceHistory = $vehicle ? $repository->getServiceHistory($vehicleId, 3) : [];
-        $maintenanceTasks = $vehicle ? $repository->getMaintenanceTasks($vehicleId, 4) : [];
+        $userId = $this->getCurrentUserId();
+        $vehicle = $repository->getVehicleById($userId, $vehicleId);
+
+        if ($this->isPost()) {
+            if (!$vehicle) {
+                $this->redirect('/my-cars');
+            }
+
+            $this->handleVehicleDetailsAction($repository, $userId, $vehicleId, $vehicle);
+        }
 
         if (!$vehicle) {
             http_response_code(404);
@@ -99,9 +105,18 @@ class CarsController extends AppController
             return $this->render('404', ['title' => $title]);
         }
 
+        $recentFuelLogs = $repository->getRecentFuelLogs($vehicleId, 3);
+        $fuelHistory = $repository->getFuelLogHistory($vehicleId);
+        $serviceHistory = $repository->getServiceHistory($vehicleId, 3);
+        $fullServiceHistory = $repository->getServiceHistory($vehicleId, 50);
+        $maintenanceTasks = $repository->getMaintenanceTasks($vehicleId, 4);
+        $allMaintenanceTasks = $repository->getMaintenanceTasks($vehicleId, 50);
+        $inspectionHistory = $repository->getInspectionHistory($vehicleId);
+
         return $this->render('vehicle_details', [
             'title' => $vehicle['display_name'],
             'vehicle' => [
+                'id' => (int) $vehicle['id'],
                 'title' => $vehicle['display_name'],
                 'subtitle' => $vehicle['trim_name'] ?: 'Brak wersji',
                 'brand' => $vehicle['brand_name'] ?: 'Brak danych',
@@ -112,8 +127,10 @@ class CarsController extends AppController
                 'mileage' => $this->formatMileage($vehicle['current_mileage_km'] ?? null),
                 'inspectionDate' => $this->formatDate($vehicle['next_inspection_date'] ?? null),
                 'inspectionDaysLeft' => $this->formatDaysLeft($vehicle['next_inspection_date'] ?? null),
+                'inspectionDaysLeftRaw' => $this->calculateDaysLeft($vehicle['next_inspection_date'] ?? null),
                 'insuranceDate' => $this->formatDate($vehicle['next_insurance_date'] ?? null),
                 'insuranceDaysLeft' => $this->formatDaysLeft($vehicle['next_insurance_date'] ?? null),
+                'insuranceDaysLeftRaw' => $this->calculateDaysLeft($vehicle['next_insurance_date'] ?? null),
                 'insurerName' => $vehicle['insurer_name'] ?: 'Brak danych',
                 'policyNumber' => $vehicle['policy_number'] ?: 'Brak danych',
                 'power' => $this->formatPower($vehicle['power_hp'] ?? null),
@@ -126,10 +143,47 @@ class CarsController extends AppController
                 'fuelType' => $this->formatVehicleFuelType($vehicle['fuel_type'] ?? null),
                 'technicalSpec' => $this->buildTechnicalSpec($vehicle),
             ],
+            'vehicleRecord' => $vehicle,
             'serviceHistory' => $this->mapServiceHistory($serviceHistory),
+            'fullServiceHistory' => $this->mapServiceHistory($fullServiceHistory),
             'maintenanceTasks' => $this->mapMaintenanceTasks($maintenanceTasks),
+            'allMaintenanceTasks' => $this->mapMaintenanceTasks($allMaintenanceTasks),
             'recentFuelLogs' => $this->mapRecentFuelLogs($recentFuelLogs),
+            'fuelHistory' => $this->mapRecentFuelLogs($fuelHistory),
+            'fuelFormOptions' => $this->buildFuelFormOptions($vehicle['fuel_type'] ?? null),
+            'inspectionHistory' => $this->mapInspectionHistory($inspectionHistory),
+            'scriptFiles' => ['vehicle_details.js'],
         ]);
+    }
+
+    private function handleVehicleDetailsAction(CarsRepository $repository, int $userId, int $vehicleId, array $vehicle): void
+    {
+        $action = $_POST['modal_action'] ?? '';
+
+        switch ($action) {
+            case 'spec_update':
+                $repository->updateVehicleSpecification($userId, $vehicleId, $this->buildSpecificationPayload($vehicle));
+                break;
+            case 'fuel_add':
+                $repository->addFuelLog($userId, $vehicleId, $this->buildFuelLogPayload($vehicle));
+                break;
+            case 'service_add':
+                $repository->addServiceRecord($userId, $vehicleId, $this->buildServiceRecordPayload());
+                break;
+            case 'task_add':
+                $repository->addMaintenanceTask($userId, $vehicleId, $this->buildMaintenanceTaskPayload());
+                break;
+            case 'inspection_update':
+                $repository->upsertInspection($userId, $vehicleId, $this->buildInspectionPayload());
+                break;
+            case 'insurance_update':
+                $repository->upsertInsurance($userId, $vehicleId, $this->buildInsurancePayload());
+                break;
+            default:
+                break;
+        }
+
+        $this->redirect('/my-cars/details?id=' . $vehicleId);
     }
 
     private function calculateGaragePlaceholderCount(int $carCount): int
@@ -204,6 +258,17 @@ class CarsController extends AppController
                 'mileage' => $this->formatMileage($entry['mileage_km'] ?? null),
             ];
         }, $fuelLogs);
+    }
+
+    private function mapInspectionHistory(array $inspectionHistory): array
+    {
+        return array_map(function (array $entry): array {
+            return [
+                'inspectionDate' => $this->formatDate($entry['inspection_date'] ?? null),
+                'validUntil' => $this->formatDate($entry['valid_until'] ?? null),
+                'result' => $this->formatInspectionResult($entry['result'] ?? null),
+            ];
+        }, $inspectionHistory);
     }
 
     private function formatMoney(float|int|string|null $amount, string $currency): string
@@ -310,7 +375,7 @@ class CarsController extends AppController
                 ['label' => 'Uklad cylindrow', 'value' => $vehicle['cylinder_layout'] ?: 'Brak danych'],
             ],
             'Nadwozie' => [
-                ['label' => 'Rodzaj nadwozia', 'value' => $this->formatBodyType($vehicle['body_type'] ?? null)],
+                ['label' => 'Rodzaj nadwozia', 'value' => $this->formatVehicleBodyType($vehicle['body_type'] ?? null)],
                 ['label' => 'Liczba miejsc', 'value' => $vehicle['seat_count'] ? (string) $vehicle['seat_count'] : 'Brak danych'],
                 ['label' => 'Dlugosc', 'value' => $this->formatMillimeters($vehicle['length_mm'] ?? null)],
                 ['label' => 'Szerokosc', 'value' => $this->formatMillimeters($vehicle['width_mm'] ?? null)],
@@ -366,5 +431,287 @@ class CarsController extends AppController
         }
 
         return (int) $value . ' mm';
+    }
+
+    private function formatVehicleBodyType(?string $bodyType): string
+    {
+        if (!$bodyType) {
+            return 'Brak danych';
+        }
+
+        return ucfirst((string) $bodyType);
+    }
+
+    private function buildSpecificationPayload(array $vehicle): array
+    {
+        return [
+            'brand_name' => $this->sanitizeText($_POST['brand_name'] ?? $vehicle['brand_name']) ?? ($vehicle['brand_name'] ?: 'Brak danych'),
+            'model_name' => $this->sanitizeText($_POST['model_name'] ?? $vehicle['model_name']) ?? ($vehicle['model_name'] ?: 'Brak danych'),
+            'display_name' => $this->sanitizeText($_POST['display_name'] ?? $vehicle['display_name']) ?? $vehicle['display_name'],
+            'trim_name' => $this->sanitizeNullableText($_POST['trim_name'] ?? $vehicle['trim_name']),
+            'production_year' => $this->sanitizeSmallInt($_POST['production_year'] ?? $vehicle['production_year']) ?? (int) $vehicle['production_year'],
+            'license_plate' => $this->sanitizeNullableText($_POST['license_plate'] ?? $vehicle['license_plate']),
+            'vin' => $this->sanitizeNullableText($_POST['vin'] ?? $vehicle['vin']),
+            'exterior_color' => $this->sanitizeNullableText($_POST['exterior_color'] ?? $vehicle['exterior_color']),
+            'drivetrain' => $this->sanitizeNullableText($_POST['drivetrain'] ?? $vehicle['drivetrain']),
+            'transmission' => $this->sanitizeNullableEnum($_POST['transmission'] ?? $vehicle['transmission'], ['manual', 'automatic', 'semi_automatic']),
+            'engine_capacity_cc' => $this->sanitizeNullablePositiveInt($_POST['engine_capacity_cc'] ?? $vehicle['engine_capacity_cc']),
+            'power_hp' => $this->sanitizeNullablePositiveInt($_POST['power_hp'] ?? $vehicle['power_hp']),
+            'power_nm' => $this->sanitizeNullablePositiveInt($_POST['power_nm'] ?? $vehicle['power_nm']),
+            'fuel_type' => $this->sanitizeOptionalFuelType($_POST['fuel_type'] ?? $vehicle['fuel_type']),
+            'is_factory_power' => $this->sanitizeNullableBool($_POST['is_factory_power'] ?? $vehicle['is_factory_power']),
+            'engine_mount' => $this->sanitizeNullableDisplayText($_POST['engine_mount'] ?? $vehicle['engine_mount']),
+            'aspiration' => $this->sanitizeNullableDisplayText($_POST['aspiration'] ?? $vehicle['aspiration']),
+            'cylinder_count' => $this->sanitizeNullablePositiveInt($_POST['cylinder_count'] ?? $vehicle['cylinder_count']),
+            'cylinder_layout' => $this->sanitizeNullableDisplayText($_POST['cylinder_layout'] ?? $vehicle['cylinder_layout']),
+            'body_type' => $this->sanitizeNullableDisplayText($_POST['body_type'] ?? $vehicle['body_type']),
+            'seat_count' => $this->sanitizeNullablePositiveInt($_POST['seat_count'] ?? $vehicle['seat_count']),
+            'length_mm' => $this->sanitizeNullablePositiveInt($_POST['length_mm'] ?? $vehicle['length_mm']),
+            'width_mm' => $this->sanitizeNullablePositiveInt($_POST['width_mm'] ?? $vehicle['width_mm']),
+            'height_mm' => $this->sanitizeNullablePositiveInt($_POST['height_mm'] ?? $vehicle['height_mm']),
+            'wheel_size_label' => $this->sanitizeNullableDisplayText($_POST['wheel_size_label'] ?? $vehicle['wheel_size_label']),
+            'tire_size_label' => $this->sanitizeNullableDisplayText($_POST['tire_size_label'] ?? $vehicle['tire_size_label']),
+            'front_brake_type' => $this->sanitizeNullableDisplayText($_POST['front_brake_type'] ?? $vehicle['front_brake_type']),
+            'rear_brake_type' => $this->sanitizeNullableDisplayText($_POST['rear_brake_type'] ?? $vehicle['rear_brake_type']),
+            'notes' => $this->sanitizeNullableText($_POST['notes'] ?? $vehicle['notes']),
+        ];
+    }
+
+    private function buildFuelLogPayload(array $vehicle): array
+    {
+        $allowedFuelTypes = $this->getAllowedFuelLogTypes($vehicle['fuel_type'] ?? null);
+        $selectedFuelType = $this->sanitizeRequiredEnum($_POST['fuel_type'] ?? null, $allowedFuelTypes);
+        $currentMileage = max(0, (int) ($vehicle['current_mileage_km'] ?? 0));
+        $enteredMileage = $this->sanitizeNullableInt($_POST['mileage_km'] ?? null);
+
+        return [
+            'fueled_at' => $this->sanitizeDateTime($_POST['fueled_at'] ?? null) ?? date('Y-m-d H:i:s'),
+            'mileage_km' => $enteredMileage === null ? $currentMileage : max($currentMileage, $enteredMileage),
+            'liters' => $this->sanitizeNullableDecimal($_POST['liters'] ?? null) ?? 0,
+            'total_cost' => $this->sanitizeNullableDecimal($_POST['total_cost'] ?? null) ?? 0,
+            'fuel_type' => $selectedFuelType ?? ($allowedFuelTypes[0] ?? 'other'),
+        ];
+    }
+
+    private function buildServiceRecordPayload(): array
+    {
+        return [
+            'service_date' => $this->sanitizeDate($_POST['service_date'] ?? null) ?? date('Y-m-d'),
+            'title' => $this->sanitizeText($_POST['title'] ?? null) ?? 'Nowy wpis',
+            'description' => $this->sanitizeNullableText($_POST['description'] ?? null),
+            'cost_amount' => $this->sanitizeNullableDecimal($_POST['cost_amount'] ?? null),
+        ];
+    }
+
+    private function buildMaintenanceTaskPayload(): array
+    {
+        return [
+            'title' => $this->sanitizeText($_POST['title'] ?? null) ?? 'Nowe zadanie',
+            'description' => $this->sanitizeNullableText($_POST['description'] ?? null),
+            'estimated_cost_amount' => $this->sanitizeNullableDecimal($_POST['estimated_cost_amount'] ?? null),
+        ];
+    }
+
+    private function buildInspectionPayload(): array
+    {
+        return [
+            'inspection_date' => $this->sanitizeDate($_POST['inspection_date'] ?? null) ?? date('Y-m-d'),
+            'valid_until' => $this->sanitizeDate($_POST['valid_until'] ?? null) ?? date('Y-m-d'),
+            'result' => $this->sanitizeRequiredEnum($_POST['result'] ?? null, ['passed', 'failed', 'conditional']) ?? 'passed',
+        ];
+    }
+
+    private function buildInsurancePayload(): array
+    {
+        return [
+            'insurer_name' => $this->sanitizeText($_POST['insurer_name'] ?? null) ?? 'Brak danych',
+            'policy_number' => $this->sanitizeNullableText($_POST['policy_number'] ?? null),
+            'purchased_on' => $this->sanitizeDate($_POST['purchased_on'] ?? null) ?? date('Y-m-d'),
+            'valid_until' => $this->sanitizeDate($_POST['valid_until'] ?? null) ?? date('Y-m-d'),
+        ];
+    }
+
+    private function sanitizeText(mixed $value): ?string
+    {
+        $text = trim((string) $value);
+
+        return $text === '' ? null : $text;
+    }
+
+    private function sanitizeNullableText(mixed $value): ?string
+    {
+        $text = trim((string) $value);
+
+        return $text === '' ? null : $text;
+    }
+
+    private function sanitizeNullableDisplayText(mixed $value): ?string
+    {
+        $text = trim((string) $value);
+
+        if ($text === '' || mb_strtolower($text) === 'brak danych') {
+            return null;
+        }
+
+        return $text;
+    }
+
+    private function sanitizeNullableInt(mixed $value): ?int
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return filter_var($value, FILTER_VALIDATE_INT) === false ? null : (int) $value;
+    }
+
+    private function sanitizeNullablePositiveInt(mixed $value): ?int
+    {
+        $number = $this->sanitizeNullableInt($value);
+
+        if ($number === null || $number <= 0) {
+            return null;
+        }
+
+        return $number;
+    }
+
+    private function sanitizeSmallInt(mixed $value): ?int
+    {
+        return $this->sanitizeNullableInt($value);
+    }
+
+    private function sanitizeNullableDecimal(mixed $value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $normalized = str_replace(',', '.', (string) $value);
+
+        return is_numeric($normalized) ? (float) $normalized : null;
+    }
+
+    private function sanitizeDate(mixed $value): ?string
+    {
+        $text = trim((string) $value);
+
+        if ($text === '') {
+            return null;
+        }
+
+        $date = DateTimeImmutable::createFromFormat('Y-m-d', $text);
+
+        return $date ? $date->format('Y-m-d') : null;
+    }
+
+    private function sanitizeDateTime(mixed $value): ?string
+    {
+        $text = trim((string) $value);
+
+        if ($text === '') {
+            return null;
+        }
+
+        $date = DateTimeImmutable::createFromFormat('Y-m-d\TH:i', $text);
+
+        if ($date) {
+            return $date->format('Y-m-d H:i:s');
+        }
+
+        $date = DateTimeImmutable::createFromFormat('Y-m-d', $text);
+
+        return $date ? $date->format('Y-m-d 12:00:00') : null;
+    }
+
+    private function sanitizeNullableBool(mixed $value): ?bool
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return match ((string) $value) {
+            '1' => true,
+            '0' => false,
+            default => null,
+        };
+    }
+
+    private function sanitizeRequiredEnum(mixed $value, array $allowedValues): ?string
+    {
+        $text = trim((string) $value);
+
+        return in_array($text, $allowedValues, true) ? $text : null;
+    }
+
+    private function sanitizeNullableEnum(mixed $value, array $allowedValues): ?string
+    {
+        $text = trim((string) $value);
+
+        if ($text === '') {
+            return null;
+        }
+
+        return in_array($text, $allowedValues, true) ? $text : null;
+    }
+
+    private function sanitizeOptionalFuelType(mixed $value): string
+    {
+        $fuelType = $this->sanitizeNullableEnum($value, ['petrol', 'diesel', 'hybrid', 'plug_in_hybrid', 'electric', 'lpg', 'cng', 'other']);
+
+        return $fuelType ?? 'other';
+    }
+
+    private function getAllowedFuelLogTypes(?string $vehicleFuelType): array
+    {
+        return match ($vehicleFuelType) {
+            'petrol' => ['petrol', 'premium_petrol'],
+            'diesel' => ['diesel', 'premium_diesel'],
+            'electric' => ['electric'],
+            'hybrid', 'plug_in_hybrid', 'lpg', 'cng', 'other' => ['petrol', 'premium_petrol', 'lpg', 'cng', 'diesel', 'premium_diesel', 'electric'],
+            default => ['petrol', 'premium_petrol', 'lpg', 'cng', 'diesel', 'premium_diesel', 'electric'],
+        };
+    }
+
+    private function buildFuelFormOptions(?string $vehicleFuelType): array
+    {
+        $labels = [
+            'petrol' => 'PB95',
+            'premium_petrol' => 'PB98 / PB100 / Benzyna premium',
+            'diesel' => 'Diesel',
+            'premium_diesel' => 'Diesel Premium',
+            'lpg' => 'LPG',
+            'cng' => 'CNG',
+            'electric' => 'EV',
+        ];
+
+        return array_map(function (string $value) use ($labels): array {
+            return [
+                'value' => $value,
+                'label' => $labels[$value] ?? $value,
+            ];
+        }, $this->getAllowedFuelLogTypes($vehicleFuelType));
+    }
+
+    private function formatInspectionResult(?string $result): string
+    {
+        return match ($result) {
+            'passed' => 'Pozytywny',
+            'failed' => 'Negatywny',
+            'conditional' => 'Warunkowy',
+            default => 'Brak danych',
+        };
+    }
+
+    private function calculateDaysLeft(?string $date): ?int
+    {
+        if (!$date) {
+            return null;
+        }
+
+        $today = new DateTimeImmutable('today');
+        $target = new DateTimeImmutable($date);
+
+        return (int) $today->diff($target)->format('%r%a');
     }
 }

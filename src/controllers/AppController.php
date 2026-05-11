@@ -51,6 +51,7 @@ class AppController
             'settings.css',
             'vehicle_details.css',
         ];
+        $scriptFiles = $variables['scriptFiles'] ?? [];
 
         extract($variables);
 

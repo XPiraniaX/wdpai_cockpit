@@ -23,13 +23,19 @@ class DashboardRepository
     {
         $statement = $this->connection->prepare(
             'SELECT
-                ti.valid_until,
+                current_inspection.valid_until,
                 v.display_name
-            FROM technical_inspections ti
-            INNER JOIN vehicles v ON v.id = ti.vehicle_id
+            FROM vehicles v
+            INNER JOIN LATERAL (
+                SELECT ti.valid_until
+                FROM technical_inspections ti
+                WHERE ti.vehicle_id = v.id
+                ORDER BY ti.id DESC
+                LIMIT 1
+            ) AS current_inspection ON TRUE
             WHERE v.user_id = :user_id
                 AND v.status = :status
-            ORDER BY ti.valid_until ASC
+            ORDER BY current_inspection.valid_until ASC
             LIMIT 1'
         );
         $statement->execute([
@@ -111,7 +117,7 @@ class DashboardRepository
                 SELECT ti.valid_until
                 FROM technical_inspections ti
                 WHERE ti.vehicle_id = v.id
-                ORDER BY ti.valid_until ASC
+                ORDER BY ti.id DESC
                 LIMIT 1
             ) AS next_inspection ON TRUE
             LEFT JOIN LATERAL (

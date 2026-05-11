@@ -1,3 +1,29 @@
+<?php
+$vehicleRecord = $vehicleRecord ?? [];
+$formAction = '/my-cars/details?id=' . (int) ($vehicle['id'] ?? 0);
+$transmissionOptions = [
+    'manual' => 'Manualna',
+    'automatic' => 'Automatyczna',
+    'semi_automatic' => 'Polautomatyczna',
+];
+$vehicleFuelOptions = [
+    'petrol' => 'Benzyna',
+    'diesel' => 'Diesel',
+    'hybrid' => 'Hybryda',
+    'plug_in_hybrid' => 'Plug-in Hybrid',
+    'electric' => 'Elektryczny',
+    'lpg' => 'LPG',
+    'cng' => 'CNG',
+    'other' => 'Inne',
+];
+$fuelFormOptions = $fuelFormOptions ?? [];
+$inspectionResultOptions = [
+    'passed' => 'Pozytywny',
+    'failed' => 'Negatywny',
+    'conditional' => 'Warunkowy',
+];
+?>
+
 <main class="vehicle-details-page">
     <section class="vehicle-details-shell">
         <section class="vehicle-hero">
@@ -39,7 +65,7 @@
             <article class="vehicle-stat-card vehicle-area-consumption">
                 <div class="vehicle-stat-head">
                     <div class="vehicle-title-group">
-                        <span class="vehicle-stat-icon" style="--icon-url: url('/public/assets/icons/distributor.svg');"></span>
+                        <span class="vehicle-stat-icon" style="--icon-url: url('/public/assets/icons/avg_usage.svg');"></span>
                         <span class="vehicle-stat-label">Srednie spalanie</span>
                     </div>
                 </div>
@@ -49,10 +75,10 @@
             <article class="vehicle-panel vehicle-panel-spec vehicle-area-spec">
                 <div class="vehicle-panel-head">
                     <div class="vehicle-title-group">
-                        <span class="vehicle-panel-icon" style="--icon-url: url('/public/assets/icons/mileage.svg');"></span>
+                        <span class="vehicle-panel-icon" style="--icon-url: url('/public/assets/icons/specification.svg');"></span>
                         <h2 class="vehicle-panel-title">Specyfikacja techniczna</h2>
                     </div>
-                    <button type="button" class="vehicle-panel-action vehicle-panel-action-top">Aktualizuj</button>
+                    <button type="button" class="vehicle-panel-action vehicle-panel-action-top" data-modal-open="modal-spec-edit">Aktualizuj</button>
                 </div>
                 <div class="vehicle-panel-body">
                     <?php foreach (($vehicle['technicalSpec'] ?? []) as $sectionTitle => $sectionRows): ?>
@@ -77,7 +103,7 @@
                         <span class="vehicle-panel-icon" style="--icon-url: url('/public/assets/icons/distributor.svg');"></span>
                         <h2 class="vehicle-panel-title">Ostatnie tankowania</h2>
                     </div>
-                    <button type="button" class="vehicle-panel-action vehicle-panel-action-top">Dodaj tankowanie</button>
+                    <button type="button" class="vehicle-panel-action vehicle-panel-action-top" data-modal-open="modal-fuel-add">Dodaj tankowanie</button>
                 </div>
 
                 <div class="vehicle-table-shell">
@@ -103,16 +129,16 @@
                         <div class="vehicle-table-empty">Brak zapisanych tankowan dla tego pojazdu.</div>
                     <?php endif; ?>
                 </div>
-                <button type="button" class="vehicle-panel-secondary-action">Historia</button>
+                <button type="button" class="vehicle-panel-secondary-action" data-modal-open="modal-fuel-history">Historia</button>
             </article>
 
             <article class="vehicle-panel vehicle-area-history">
                 <div class="vehicle-panel-head">
                     <div class="vehicle-title-group">
-                        <span class="vehicle-panel-icon" style="--icon-url: url('/public/assets/icons/mileage.svg');"></span>
+                        <span class="vehicle-panel-icon" style="--icon-url: url('/public/assets/icons/service_history.svg');"></span>
                         <h2 class="vehicle-panel-title">Historia serwisow</h2>
                     </div>
-                    <button type="button" class="vehicle-panel-action vehicle-panel-action-top">Dodaj serwis</button>
+                    <button type="button" class="vehicle-panel-action vehicle-panel-action-top" data-modal-open="modal-service-add">Dodaj serwis</button>
                 </div>
                 <div class="vehicle-panel-body">
                     <?php if (!empty($serviceHistory ?? [])): ?>
@@ -141,16 +167,16 @@
                         <div class="vehicle-table-empty">Brak historii serwisowej dla tego pojazdu.</div>
                     <?php endif; ?>
                 </div>
-                <button type="button" class="vehicle-panel-secondary-action">Historia</button>
+                <button type="button" class="vehicle-panel-secondary-action" data-modal-open="modal-service-history">Historia</button>
             </article>
 
             <article class="vehicle-panel vehicle-area-tasks">
                 <div class="vehicle-panel-head">
                     <div class="vehicle-title-group">
-                        <span class="vehicle-panel-icon" style="--icon-url: url('/public/assets/icons/mileage.svg');"></span>
+                        <span class="vehicle-panel-icon" style="--icon-url: url('/public/assets/icons/to_do.svg');"></span>
                         <h2 class="vehicle-panel-title">Do zrobienia</h2>
                     </div>
-                    <button type="button" class="vehicle-panel-action vehicle-panel-action-top">Dodaj</button>
+                    <button type="button" class="vehicle-panel-action vehicle-panel-action-top" data-modal-open="modal-task-add">Dodaj</button>
                 </div>
                 <div class="vehicle-panel-body">
                     <?php if (!empty($maintenanceTasks ?? [])): ?>
@@ -173,7 +199,7 @@
                         <div class="vehicle-table-empty">Brak otwartych zadan dla tego pojazdu.</div>
                     <?php endif; ?>
                 </div>
-                <button type="button" class="vehicle-panel-secondary-action">Pelna lista</button>
+                <button type="button" class="vehicle-panel-secondary-action" data-modal-open="modal-task-list">Pelna lista</button>
             </article>
 
             <article class="vehicle-panel vehicle-area-inspection">
@@ -182,7 +208,7 @@
                         <span class="vehicle-panel-icon" style="--icon-url: url('/public/assets/icons/calendar.svg');"></span>
                         <h2 class="vehicle-panel-title">Przeglad techniczny</h2>
                     </div>
-                    <button type="button" class="vehicle-panel-action vehicle-panel-action-top">Aktualizuj</button>
+                    <button type="button" class="vehicle-panel-action vehicle-panel-action-top" data-modal-open="modal-inspection-edit">Aktualizuj</button>
                 </div>
                 <div class="vehicle-panel-body">
                     <div class="vehicle-detail-row">
@@ -191,10 +217,12 @@
                     </div>
                     <div class="vehicle-detail-row">
                         <span class="vehicle-detail-label">Pozostaly czas</span>
-                        <span class="vehicle-detail-value"><?= htmlspecialchars($vehicle['inspectionDaysLeft'], ENT_QUOTES, 'UTF-8'); ?></span>
+                        <span class="vehicle-detail-value<?= isset($vehicle['inspectionDaysLeftRaw']) && $vehicle['inspectionDaysLeftRaw'] < 30 ? ' vehicle-detail-value-alert' : ''; ?>">
+                            <?= htmlspecialchars($vehicle['inspectionDaysLeft'], ENT_QUOTES, 'UTF-8'); ?>
+                        </span>
                     </div>
                 </div>
-                <button type="button" class="vehicle-panel-secondary-action">Historia</button>
+                <button type="button" class="vehicle-panel-secondary-action" data-modal-open="modal-inspection-history">Historia</button>
             </article>
 
             <article class="vehicle-panel vehicle-area-insurance">
@@ -203,7 +231,7 @@
                         <span class="vehicle-panel-icon" style="--icon-url: url('/public/assets/icons/insurance.svg');"></span>
                         <h2 class="vehicle-panel-title">Ubezpieczenie</h2>
                     </div>
-                    <button type="button" class="vehicle-panel-action vehicle-panel-action-top">Aktualizuj</button>
+                    <button type="button" class="vehicle-panel-action vehicle-panel-action-top" data-modal-open="modal-insurance-edit">Aktualizuj</button>
                 </div>
                 <div class="vehicle-panel-body">
                     <div class="vehicle-detail-row">
@@ -212,7 +240,9 @@
                     </div>
                     <div class="vehicle-detail-row">
                         <span class="vehicle-detail-label">Pozostaly czas</span>
-                        <span class="vehicle-detail-value"><?= htmlspecialchars($vehicle['insuranceDaysLeft'], ENT_QUOTES, 'UTF-8'); ?></span>
+                        <span class="vehicle-detail-value<?= isset($vehicle['insuranceDaysLeftRaw']) && $vehicle['insuranceDaysLeftRaw'] < 30 ? ' vehicle-detail-value-alert' : ''; ?>">
+                            <?= htmlspecialchars($vehicle['insuranceDaysLeft'], ENT_QUOTES, 'UTF-8'); ?>
+                        </span>
                     </div>
                     <div class="vehicle-detail-row">
                         <span class="vehicle-detail-label">Nr polisy</span>
@@ -227,3 +257,504 @@
         </section>
     </section>
 </main>
+
+<div class="vehicle-modal-backdrop" data-vehicle-modal-root hidden>
+    <div class="vehicle-modal-scrim" data-vehicle-modal-scrim></div>
+
+    <div class="vehicle-modal-shell">
+        <section class="vehicle-modal-panel vehicle-modal-panel-spec" data-modal-panel="modal-spec-edit" hidden>
+            <div class="vehicle-modal-head">
+                <div class="vehicle-modal-title-wrap">
+                    <div class="vehicle-modal-kicker">Edycja danych</div>
+                    <h3 class="vehicle-modal-title">Specyfikacja techniczna</h3>
+                </div>
+                <button type="button" class="vehicle-modal-close" aria-label="Zamknij" data-vehicle-modal-close>X</button>
+            </div>
+            <form method="post" action="<?= htmlspecialchars($formAction, ENT_QUOTES, 'UTF-8'); ?>" class="vehicle-modal-form vehicle-modal-form-spec">
+                <input type="hidden" name="modal_action" value="spec_update">
+
+                <section class="vehicle-modal-section">
+                    <div class="vehicle-modal-section-title">Ogolne</div>
+                <div class="vehicle-modal-grid vehicle-modal-grid-single vehicle-modal-grid-narrow">
+                        <label class="vehicle-modal-field">
+                            <span>Nazwa wyswietlana</span>
+                            <input type="text" name="display_name" value="<?= htmlspecialchars($vehicleRecord['display_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" placeholder="Brak danych" required>
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Marka</span>
+                            <input type="text" name="brand_name" value="<?= htmlspecialchars($vehicleRecord['brand_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" placeholder="Brak danych" required readonly>
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Model</span>
+                            <input type="text" name="model_name" value="<?= htmlspecialchars($vehicleRecord['model_name'] ?? '', ENT_QUOTES, 'UTF-8'); ?>" placeholder="Brak danych" required readonly>
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Wersja</span>
+                            <input type="text" name="trim_name" value="<?= htmlspecialchars((string) ($vehicleRecord['trim_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Brak danych" readonly>
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Rocznik</span>
+                            <input type="number" name="production_year" value="<?= htmlspecialchars((string) ($vehicleRecord['production_year'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="1886" max="2100" required readonly>
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Tablice</span>
+                            <input type="text" name="license_plate" value="<?= htmlspecialchars((string) ($vehicleRecord['license_plate'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Brak danych">
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>VIN</span>
+                            <input type="text" name="vin" value="<?= htmlspecialchars((string) ($vehicleRecord['vin'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" maxlength="17" placeholder="Brak danych" readonly>
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Kolor</span>
+                            <input type="text" name="exterior_color" value="<?= htmlspecialchars((string) ($vehicleRecord['exterior_color'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Brak danych">
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Rodzaj napedu</span>
+                            <input type="text" name="drivetrain" value="<?= htmlspecialchars((string) ($vehicleRecord['drivetrain'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Brak danych">
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Skrzynia biegow</span>
+                            <select name="transmission">
+                                <option value="">Brak danych</option>
+                                <?php foreach ($transmissionOptions as $optionValue => $optionLabel): ?>
+                                    <option value="<?= htmlspecialchars($optionValue, ENT_QUOTES, 'UTF-8'); ?>"<?= ($vehicleRecord['transmission'] ?? '') === $optionValue ? ' selected' : ''; ?>>
+                                        <?= htmlspecialchars($optionLabel, ENT_QUOTES, 'UTF-8'); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                    </div>
+                </section>
+
+                <section class="vehicle-modal-section">
+                    <div class="vehicle-modal-section-title">Silnik</div>
+                    <div class="vehicle-modal-grid vehicle-modal-grid-single vehicle-modal-grid-narrow">
+                        <label class="vehicle-modal-field">
+                            <span>Pojemnosc silnika (cc)</span>
+                            <input type="number" name="engine_capacity_cc" value="<?= htmlspecialchars((string) ($vehicleRecord['engine_capacity_cc'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Moc (KM)</span>
+                            <input type="number" name="power_hp" value="<?= htmlspecialchars((string) ($vehicleRecord['power_hp'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Moment obrotowy (Nm)</span>
+                            <input type="number" name="power_nm" value="<?= htmlspecialchars((string) ($vehicleRecord['power_nm'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Rodzaj paliwa</span>
+                            <select name="fuel_type">
+                                <option value="">Brak danych</option>
+                                <?php foreach ($vehicleFuelOptions as $optionValue => $optionLabel): ?>
+                                    <option value="<?= htmlspecialchars($optionValue, ENT_QUOTES, 'UTF-8'); ?>"<?= ($vehicleRecord['fuel_type'] ?? '') === $optionValue ? ' selected' : ''; ?>>
+                                        <?= htmlspecialchars($optionLabel, ENT_QUOTES, 'UTF-8'); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Moc fabryczna</span>
+                            <select name="is_factory_power">
+                                <option value="">Brak danych</option>
+                                <option value="1"<?= isset($vehicleRecord['is_factory_power']) && (bool) $vehicleRecord['is_factory_power'] ? ' selected' : ''; ?>>Tak</option>
+                                <option value="0"<?= array_key_exists('is_factory_power', $vehicleRecord) && !(bool) $vehicleRecord['is_factory_power'] ? ' selected' : ''; ?>>Nie</option>
+                            </select>
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Montaz silnika</span>
+                            <input type="text" name="engine_mount" value="<?= htmlspecialchars((string) ($vehicleRecord['engine_mount'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Brak danych">
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Doladowanie</span>
+                            <input type="text" name="aspiration" value="<?= htmlspecialchars((string) ($vehicleRecord['aspiration'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Brak danych">
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Liczba cylindrow</span>
+                            <input type="number" name="cylinder_count" value="<?= htmlspecialchars((string) ($vehicleRecord['cylinder_count'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Uklad cylindrow</span>
+                            <input type="text" name="cylinder_layout" value="<?= htmlspecialchars((string) ($vehicleRecord['cylinder_layout'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Brak danych">
+                        </label>
+                    </div>
+                </section>
+
+                <section class="vehicle-modal-section">
+                    <div class="vehicle-modal-section-title">Nadwozie</div>
+                    <div class="vehicle-modal-grid vehicle-modal-grid-single vehicle-modal-grid-narrow">
+                        <label class="vehicle-modal-field">
+                            <span>Rodzaj nadwozia</span>
+                            <input type="text" name="body_type" value="<?= htmlspecialchars((string) ($vehicleRecord['body_type'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Brak danych">
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Liczba miejsc</span>
+                            <input type="number" name="seat_count" value="<?= htmlspecialchars((string) ($vehicleRecord['seat_count'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Dlugosc (mm)</span>
+                            <input type="number" name="length_mm" value="<?= htmlspecialchars((string) ($vehicleRecord['length_mm'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Szerokosc (mm)</span>
+                            <input type="number" name="width_mm" value="<?= htmlspecialchars((string) ($vehicleRecord['width_mm'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Wysokosc (mm)</span>
+                            <input type="number" name="height_mm" value="<?= htmlspecialchars((string) ($vehicleRecord['height_mm'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                        </label>
+                    </div>
+                </section>
+
+                <section class="vehicle-modal-section">
+                    <div class="vehicle-modal-section-title">Kola i hamulce</div>
+                    <div class="vehicle-modal-grid vehicle-modal-grid-single vehicle-modal-grid-narrow">
+                        <label class="vehicle-modal-field">
+                            <span>Rozmiar felg</span>
+                            <input type="text" name="wheel_size_label" value="<?= htmlspecialchars((string) ($vehicleRecord['wheel_size_label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Brak danych">
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Rozmiar opon</span>
+                            <input type="text" name="tire_size_label" value="<?= htmlspecialchars((string) ($vehicleRecord['tire_size_label'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Brak danych">
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Hamulce przod</span>
+                            <input type="text" name="front_brake_type" value="<?= htmlspecialchars((string) ($vehicleRecord['front_brake_type'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Brak danych">
+                        </label>
+                        <label class="vehicle-modal-field">
+                            <span>Hamulce tyl</span>
+                            <input type="text" name="rear_brake_type" value="<?= htmlspecialchars((string) ($vehicleRecord['rear_brake_type'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Brak danych">
+                        </label>
+                    </div>
+                </section>
+
+                <section class="vehicle-modal-section">
+                    <div class="vehicle-modal-section-title">Notatki</div>
+                    <label class="vehicle-modal-field vehicle-modal-field-full">
+                        <span>Opis pojazdu</span>
+                        <textarea name="notes" rows="4" placeholder="Brak danych"><?= htmlspecialchars((string) ($vehicleRecord['notes'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                    </label>
+                </section>
+
+                <div class="vehicle-modal-footer">
+                    <button type="submit" class="vehicle-modal-submit">Aktualizuj</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="vehicle-modal-panel vehicle-modal-panel-fuel" data-modal-panel="modal-fuel-add" hidden>
+            <div class="vehicle-modal-head">
+                <div class="vehicle-modal-title-wrap">
+                    <div class="vehicle-modal-kicker">Nowy wpis</div>
+                    <h3 class="vehicle-modal-title">Dodaj tankowanie</h3>
+                </div>
+                <button type="button" class="vehicle-modal-close" aria-label="Zamknij" data-vehicle-modal-close>X</button>
+            </div>
+            <form method="post" action="<?= htmlspecialchars($formAction, ENT_QUOTES, 'UTF-8'); ?>" class="vehicle-modal-form vehicle-modal-form-spacious">
+                <input type="hidden" name="modal_action" value="fuel_add">
+                <div class="vehicle-modal-grid vehicle-modal-grid-fuel vehicle-modal-grid-balanced">
+                    <label class="vehicle-modal-field">
+                        <span>Data</span>
+                        <input type="date" name="fueled_at" value="<?= htmlspecialchars(date('Y-m-d'), ENT_QUOTES, 'UTF-8'); ?>" required>
+                    </label>
+                    <label class="vehicle-modal-field">
+                        <span>Paliwo (L)</span>
+                        <input type="number" name="liters" step="0.01" min="0" placeholder="Brak danych" required>
+                    </label>
+                    <label class="vehicle-modal-field">
+                        <span>Rodzaj paliwa</span>
+                        <select name="fuel_type" required>
+                            <?php foreach ($fuelFormOptions as $option): ?>
+                                <option value="<?= htmlspecialchars($option['value'], ENT_QUOTES, 'UTF-8'); ?>"><?= htmlspecialchars($option['label'], ENT_QUOTES, 'UTF-8'); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                    <label class="vehicle-modal-field">
+                        <span>Kwota</span>
+                        <input type="number" name="total_cost" step="0.01" min="0" placeholder="Brak danych" required>
+                    </label>
+                    <label class="vehicle-modal-field">
+                        <span>Przebieg</span>
+                        <input
+                            type="number"
+                            name="mileage_km"
+                            min="<?= htmlspecialchars((string) max(0, (int) ($vehicleRecord['current_mileage_km'] ?? 0)), ENT_QUOTES, 'UTF-8'); ?>"
+                            placeholder="Aktualny przebieg: <?= htmlspecialchars(number_format((int) ($vehicleRecord['current_mileage_km'] ?? 0), 0, ',', ' '), ENT_QUOTES, 'UTF-8'); ?> km"
+                            required
+                        >
+                    </label>
+                </div>
+                <div class="vehicle-modal-footer">
+                    <button type="submit" class="vehicle-modal-submit">Dodaj tankowanie</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="vehicle-modal-panel vehicle-modal-panel-short" data-modal-panel="modal-service-add" hidden>
+            <div class="vehicle-modal-head">
+                <div class="vehicle-modal-title-wrap">
+                    <div class="vehicle-modal-kicker">Nowy wpis</div>
+                    <h3 class="vehicle-modal-title">Dodaj serwis</h3>
+                </div>
+                <button type="button" class="vehicle-modal-close" aria-label="Zamknij" data-vehicle-modal-close>X</button>
+            </div>
+            <form method="post" action="<?= htmlspecialchars($formAction, ENT_QUOTES, 'UTF-8'); ?>" class="vehicle-modal-form">
+                <input type="hidden" name="modal_action" value="service_add">
+                <div class="vehicle-modal-grid vehicle-modal-grid-single vehicle-modal-grid-balanced">
+                    <label class="vehicle-modal-field">
+                        <span>Data serwisu</span>
+                        <input type="date" name="service_date" value="<?= htmlspecialchars(date('Y-m-d'), ENT_QUOTES, 'UTF-8'); ?>" required>
+                    </label>
+                    <label class="vehicle-modal-field">
+                        <span>Krotka nazwa</span>
+                        <input type="text" name="title" placeholder="Brak danych" maxlength="40" required>
+                    </label>
+                    <label class="vehicle-modal-field">
+                        <span>Kwota</span>
+                        <input type="number" name="cost_amount" step="0.01" min="0" placeholder="Brak danych">
+                    </label>
+                    <label class="vehicle-modal-field vehicle-modal-field-full">
+                        <span>Opis szczegolowy</span>
+                        <textarea name="description" rows="5" placeholder="Brak danych"></textarea>
+                    </label>
+                </div>
+                <div class="vehicle-modal-footer">
+                    <button type="submit" class="vehicle-modal-submit">Dodaj serwis</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="vehicle-modal-panel vehicle-modal-panel-short" data-modal-panel="modal-task-add" hidden>
+            <div class="vehicle-modal-head">
+                <div class="vehicle-modal-title-wrap">
+                    <div class="vehicle-modal-kicker">Nowa pozycja</div>
+                    <h3 class="vehicle-modal-title">Dodaj zadanie</h3>
+                </div>
+                <button type="button" class="vehicle-modal-close" aria-label="Zamknij" data-vehicle-modal-close>X</button>
+            </div>
+            <form method="post" action="<?= htmlspecialchars($formAction, ENT_QUOTES, 'UTF-8'); ?>" class="vehicle-modal-form">
+                <input type="hidden" name="modal_action" value="task_add">
+                <div class="vehicle-modal-grid vehicle-modal-grid-single vehicle-modal-grid-balanced">
+                    <label class="vehicle-modal-field">
+                        <span>Krotka nazwa</span>
+                        <input type="text" name="title" placeholder="Brak danych" maxlength="40" required>
+                    </label>
+                    <label class="vehicle-modal-field">
+                        <span>Przewidywany koszt</span>
+                        <input type="number" name="estimated_cost_amount" step="0.01" min="0" placeholder="Brak danych">
+                    </label>
+                    <label class="vehicle-modal-field vehicle-modal-field-full">
+                        <span>Opis szczegolowy</span>
+                        <textarea name="description" rows="5" placeholder="Brak danych"></textarea>
+                    </label>
+                </div>
+                <div class="vehicle-modal-footer">
+                    <button type="submit" class="vehicle-modal-submit">Dodaj</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="vehicle-modal-panel vehicle-modal-panel-compact-wide" data-modal-panel="modal-inspection-edit" hidden>
+            <div class="vehicle-modal-head">
+                <div class="vehicle-modal-title-wrap">
+                    <div class="vehicle-modal-kicker">Edycja danych</div>
+                    <h3 class="vehicle-modal-title">Aktualizuj przeglad techniczny</h3>
+                </div>
+                <button type="button" class="vehicle-modal-close" aria-label="Zamknij" data-vehicle-modal-close>X</button>
+            </div>
+            <form method="post" action="<?= htmlspecialchars($formAction, ENT_QUOTES, 'UTF-8'); ?>" class="vehicle-modal-form">
+                <input type="hidden" name="modal_action" value="inspection_update">
+                <div class="vehicle-modal-grid vehicle-modal-grid-balanced">
+                    <label class="vehicle-modal-field">
+                        <span>Data przegladu</span>
+                        <input type="date" name="inspection_date" value="<?= htmlspecialchars(date('Y-m-d'), ENT_QUOTES, 'UTF-8'); ?>" required>
+                    </label>
+                    <label class="vehicle-modal-field">
+                        <span>Wazne do</span>
+                        <input type="date" name="valid_until" value="<?= htmlspecialchars(date('Y-m-d', strtotime('+1 year')), ENT_QUOTES, 'UTF-8'); ?>" required>
+                    </label>
+                    <label class="vehicle-modal-field">
+                        <span>Wynik</span>
+                        <select name="result" required>
+                            <?php foreach ($inspectionResultOptions as $optionValue => $optionLabel): ?>
+                                <option value="<?= htmlspecialchars($optionValue, ENT_QUOTES, 'UTF-8'); ?>"<?= ($vehicleRecord['inspection_result'] ?? '') === $optionValue ? ' selected' : ''; ?>>
+                                    <?= htmlspecialchars($optionLabel, ENT_QUOTES, 'UTF-8'); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                </div>
+                <div class="vehicle-modal-footer">
+                    <button type="submit" class="vehicle-modal-submit">Aktualizuj</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="vehicle-modal-panel vehicle-modal-panel-compact-wide" data-modal-panel="modal-insurance-edit" hidden>
+            <div class="vehicle-modal-head">
+                <div class="vehicle-modal-title-wrap">
+                    <div class="vehicle-modal-kicker">Edycja danych</div>
+                    <h3 class="vehicle-modal-title">Aktualizuj ubezpieczenie</h3>
+                </div>
+                <button type="button" class="vehicle-modal-close" aria-label="Zamknij" data-vehicle-modal-close>X</button>
+            </div>
+            <form method="post" action="<?= htmlspecialchars($formAction, ENT_QUOTES, 'UTF-8'); ?>" class="vehicle-modal-form">
+                <input type="hidden" name="modal_action" value="insurance_update">
+                <div class="vehicle-modal-grid vehicle-modal-grid-balanced">
+                    <label class="vehicle-modal-field">
+                        <span>Data wykupienia</span>
+                        <input type="date" name="purchased_on" value="<?= htmlspecialchars(date('Y-m-d'), ENT_QUOTES, 'UTF-8'); ?>" required>
+                    </label>
+                    <label class="vehicle-modal-field">
+                        <span>Wazne do</span>
+                        <input type="date" name="valid_until" value="<?= htmlspecialchars(date('Y-m-d', strtotime('+1 year')), ENT_QUOTES, 'UTF-8'); ?>" required>
+                    </label>
+                    <label class="vehicle-modal-field">
+                        <span>Nr polisy</span>
+                        <input type="text" name="policy_number" value="" placeholder="Brak danych">
+                    </label>
+                    <label class="vehicle-modal-field">
+                        <span>Firma ubezpieczeniowa</span>
+                        <input type="text" name="insurer_name" value="" placeholder="Brak danych" required>
+                    </label>
+                </div>
+                <div class="vehicle-modal-footer">
+                    <button type="submit" class="vehicle-modal-submit">Aktualizuj</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="vehicle-modal-panel" data-modal-panel="modal-fuel-history" hidden>
+            <div class="vehicle-modal-head">
+                <div class="vehicle-modal-title-wrap">
+                    <div class="vehicle-modal-kicker">Pelna lista</div>
+                    <h3 class="vehicle-modal-title">Historia tankowan</h3>
+                </div>
+                <button type="button" class="vehicle-modal-close" aria-label="Zamknij" data-vehicle-modal-close>X</button>
+            </div>
+            <div class="vehicle-modal-form">
+                <div class="vehicle-modal-table">
+                    <div class="vehicle-modal-table-row vehicle-modal-table-head">
+                        <span>Data</span>
+                        <span>Paliwo (L)</span>
+                        <span>Rodzaj</span>
+                        <span>Kwota</span>
+                        <span>Przebieg</span>
+                    </div>
+                    <?php if (!empty($fuelHistory ?? [])): ?>
+                        <?php foreach ($fuelHistory as $entry): ?>
+                            <div class="vehicle-modal-table-row">
+                                <span><?= htmlspecialchars($entry['date'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <span><?= htmlspecialchars($entry['liters'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <span><?= htmlspecialchars($entry['fuelType'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <span><?= htmlspecialchars($entry['cost'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <span><?= htmlspecialchars($entry['mileage'], ENT_QUOTES, 'UTF-8'); ?></span>
+                            </div>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <div class="vehicle-modal-empty">Brak historii tankowan.</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </section>
+
+        <section class="vehicle-modal-panel" data-modal-panel="modal-service-history" hidden>
+            <div class="vehicle-modal-head">
+                <div class="vehicle-modal-title-wrap">
+                    <div class="vehicle-modal-kicker">Pelna lista</div>
+                    <h3 class="vehicle-modal-title">Historia serwisow</h3>
+                </div>
+                <button type="button" class="vehicle-modal-close" aria-label="Zamknij" data-vehicle-modal-close>X</button>
+            </div>
+            <div class="vehicle-modal-form">
+                <?php if (!empty($fullServiceHistory ?? [])): ?>
+                    <div class="vehicle-modal-history-list">
+                        <?php foreach ($fullServiceHistory as $historyIndex => $entry): ?>
+                            <div class="cars-history-item">
+                                <div class="cars-history-marker">
+                                    <img
+                                        src="<?= $historyIndex === 0 ? '/public/assets/icons/newest_service_dot.svg' : '/public/assets/icons/older_service_dot.svg'; ?>"
+                                        alt=""
+                                        class="cars-history-dot-icon"
+                                    >
+                                    <?php if ($historyIndex < count($fullServiceHistory) - 1): ?>
+                                        <img src="/public/assets/icons/service_line.svg" alt="" class="cars-history-line-icon">
+                                    <?php endif; ?>
+                                </div>
+                                <div class="cars-history-copy">
+                                    <div class="cars-history-date"><?= htmlspecialchars($entry['monthYear'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                    <div class="cars-history-title"><?= htmlspecialchars($entry['title'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                    <?php if (!empty($entry['description'])): ?>
+                                        <div class="vehicle-modal-history-description"><?= htmlspecialchars($entry['description'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                    <?php endif; ?>
+                                    <div class="cars-history-meta"><?= htmlspecialchars($entry['cost'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="vehicle-modal-empty">Brak historii serwisowej.</div>
+                <?php endif; ?>
+            </div>
+        </section>
+
+        <section class="vehicle-modal-panel" data-modal-panel="modal-task-list" hidden>
+            <div class="vehicle-modal-head">
+                <div class="vehicle-modal-title-wrap">
+                    <div class="vehicle-modal-kicker">Pelna lista</div>
+                    <h3 class="vehicle-modal-title">Do zrobienia</h3>
+                </div>
+                <button type="button" class="vehicle-modal-close" aria-label="Zamknij" data-vehicle-modal-close>X</button>
+            </div>
+            <div class="vehicle-modal-form">
+                <?php if (!empty($allMaintenanceTasks ?? [])): ?>
+                    <div class="vehicle-modal-task-list">
+                        <?php foreach ($allMaintenanceTasks as $task): ?>
+                            <div class="vehicle-task-item">
+                                <img src="/public/assets/icons/older_service_dot.svg" alt="" class="vehicle-task-dot">
+                                <div class="vehicle-task-copy">
+                                    <div class="vehicle-task-title"><?= htmlspecialchars($task['title'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                    <?php if (!empty($task['description'])): ?>
+                                        <div class="vehicle-modal-history-description"><?= htmlspecialchars($task['description'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                    <?php endif; ?>
+                                    <div class="vehicle-task-cost"><?= htmlspecialchars($task['cost'], ENT_QUOTES, 'UTF-8'); ?></div>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="vehicle-modal-empty">Brak otwartych zadan.</div>
+                <?php endif; ?>
+            </div>
+        </section>
+
+        <section class="vehicle-modal-panel" data-modal-panel="modal-inspection-history" hidden>
+            <div class="vehicle-modal-head">
+                <div class="vehicle-modal-title-wrap">
+                    <div class="vehicle-modal-kicker">Pelna lista</div>
+                    <h3 class="vehicle-modal-title">Historia przegladow</h3>
+                </div>
+                <button type="button" class="vehicle-modal-close" aria-label="Zamknij" data-vehicle-modal-close>X</button>
+            </div>
+            <div class="vehicle-modal-form">
+                <?php if (!empty($inspectionHistory ?? [])): ?>
+                    <div class="vehicle-modal-table">
+                        <div class="vehicle-modal-table-row vehicle-modal-table-head vehicle-modal-table-head-inspections">
+                            <span>Data przegladu</span>
+                            <span>Wazne do</span>
+                            <span>Wynik</span>
+                        </div>
+                        <?php foreach ($inspectionHistory as $entry): ?>
+                            <div class="vehicle-modal-table-row vehicle-modal-table-row-inspections">
+                                <span><?= htmlspecialchars($entry['inspectionDate'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <span><?= htmlspecialchars($entry['validUntil'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <span><?= htmlspecialchars($entry['result'], ENT_QUOTES, 'UTF-8'); ?></span>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="vehicle-modal-empty">Brak historii przegladow.</div>
+                <?php endif; ?>
+            </div>
+        </section>
+    </div>
+</div>
