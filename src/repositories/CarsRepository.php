@@ -332,6 +332,23 @@ class CarsRepository
         ]);
     }
 
+    public function deleteMaintenanceTask(int $userId, int $vehicleId, int $taskId): void
+    {
+        $statement = $this->connection->prepare(
+            'DELETE FROM maintenance_tasks mt
+            USING vehicles v
+            WHERE mt.id = :task_id
+                AND mt.vehicle_id = :vehicle_id
+                AND v.id = mt.vehicle_id
+                AND v.user_id = :user_id'
+        );
+        $statement->execute([
+            'task_id' => $taskId,
+            'vehicle_id' => $vehicleId,
+            'user_id' => $userId,
+        ]);
+    }
+
     public function addMaintenanceTask(int $userId, int $vehicleId, array $data): void
     {
         $statement = $this->connection->prepare(

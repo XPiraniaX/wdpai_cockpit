@@ -168,10 +168,21 @@ class CarsController extends AppController
                 $repository->addFuelLog($userId, $vehicleId, $this->buildFuelLogPayload($vehicle));
                 break;
             case 'service_add':
-                $repository->addServiceRecord($userId, $vehicleId, $this->buildServiceRecordPayload());
+                $servicePayload = $this->buildServiceRecordPayload();
+                $repository->addServiceRecord($userId, $vehicleId, $servicePayload);
+                $sourceTaskId = $this->sanitizeNullableInt($_POST['source_task_id'] ?? null);
+                if ($sourceTaskId !== null) {
+                    $repository->deleteMaintenanceTask($userId, $vehicleId, $sourceTaskId);
+                }
                 break;
             case 'task_add':
                 $repository->addMaintenanceTask($userId, $vehicleId, $this->buildMaintenanceTaskPayload());
+                break;
+            case 'task_delete':
+                $taskId = $this->sanitizeNullableInt($_POST['task_id'] ?? null);
+                if ($taskId !== null) {
+                    $repository->deleteMaintenanceTask($userId, $vehicleId, $taskId);
+                }
                 break;
             case 'inspection_update':
                 $repository->upsertInspection($userId, $vehicleId, $this->buildInspectionPayload());
@@ -286,9 +297,11 @@ class CarsController extends AppController
             $cost = $this->formatMoney($task['estimated_cost_amount'] ?? null, 'PLN');
 
             return [
+                'id' => isset($task['id']) ? (int) $task['id'] : 0,
                 'title' => $task['title'],
                 'description' => $task['description'] ?: '',
                 'cost' => $cost === 'Brak kwoty' ? $cost : '~' . $cost,
+                'costValue' => $task['estimated_cost_amount'] ?? null,
             ];
         }, $tasks);
     }
