@@ -160,4 +160,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     enhanceNumberInputs();
+
+    const openModalFromQuery = () => {
+        const params = new URLSearchParams(window.location.search);
+        const modalName = params.get('open_modal');
+
+        if (!modalName) {
+            return;
+        }
+
+        const hasPanel = panels.some((panel) => panel.dataset.modalPanel === modalName);
+
+        if (hasPanel) {
+            openModal(modalName);
+        }
+    };
+
+    openModalFromQuery();
 });

@@ -110,6 +110,13 @@
     box-shadow: 0 12px 24px rgba(56, 189, 248, 0.22);
 }
 
+.stat-card-action.is-disabled {
+    background: rgba(56, 189, 248, 0.16);
+    color: rgba(148, 163, 184, 0.72);
+    box-shadow: none;
+    pointer-events: none;
+}
+
 .section-head {
     display: flex;
     align-items: flex-start;
@@ -448,6 +455,53 @@
     position: relative;
     box-sizing: border-box;
     overflow: hidden;
+}
+
+.dashboard-fuel-modal {
+    max-width: 620px;
+    margin: 0 auto;
+}
+
+.dashboard-fuel-modal-body {
+    padding: 24px;
+}
+
+.dashboard-fuel-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.dashboard-fuel-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 16px 18px;
+    border-radius: 20px;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    background: rgba(8, 15, 30, 0.52);
+    text-decoration: none;
+    transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.dashboard-fuel-item:hover {
+    transform: translateY(-1px);
+    border-color: rgba(56, 189, 248, 0.28);
+    background: rgba(13, 24, 46, 0.8);
+}
+
+.dashboard-fuel-item-title {
+    color: #eef4ff;
+    font-size: 18px;
+    line-height: 1.2;
+    font-family: var(--font-serif);
+}
+
+.dashboard-fuel-item-subtitle {
+    color: rgba(203, 213, 225, 0.56);
+    font-size: 13px;
+    line-height: 1.4;
+    font-family: var(--font-sans);
 }
 
 .feature-panel-header {

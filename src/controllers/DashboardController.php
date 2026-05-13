@@ -20,11 +20,14 @@ class DashboardController extends AppController
         $stats = [
             'nextInspectionDate' => $this->formatDate($nextInspection['valid_until'] ?? null),
             'nextInspectionCar' => $nextInspection['display_name'] ?? 'Brak danych',
+            'nextInspectionAction' => $this->buildDetailsModalPath($nextInspection['vehicle_id'] ?? null, 'modal-inspection-edit'),
             'nextInsuranceDate' => $this->formatDate($nextInsurance['valid_until'] ?? null),
             'nextInsuranceCar' => $nextInsurance['display_name'] ?? 'Brak danych',
+            'nextInsuranceAction' => $this->buildDetailsModalPath($nextInsurance['vehicle_id'] ?? null, 'modal-insurance-edit'),
             'lastFuelAmount' => $this->formatMoney($lastFuelLog['total_cost'] ?? null, $lastFuelLog['currency'] ?? 'PLN'),
             'lastFuelCount' => $this->formatLiters($lastFuelLog['liters'] ?? null),
             'lastFuelMeta' => $lastFuelLog['display_name'] ?? 'Brak danych',
+            'lastFuelAction' => $this->buildDetailsModalPath($lastFuelLog['vehicle_id'] ?? null, 'modal-fuel-add'),
             'carCount' => (string) $carCount,
             'carCountMeta' => $this->formatCarCountMeta($carCount),
         ];
@@ -53,6 +56,15 @@ class DashboardController extends AppController
             'cars' => $cars,
             'garagePlaceholderCount' => $placeholderCount,
             'currentUserId' => $userId,
+            'fuelChooserCars' => array_map(function (array $car): array {
+                return [
+                    'id' => (int) $car['id'],
+                    'title' => $car['display_name'],
+                    'subtitle' => $car['trim_name'] ?: 'Brak wersji',
+                    'fuelActionPath' => '/my-cars/details?id=' . (int) $car['id'] . '&open_modal=modal-fuel-add',
+                ];
+            }, $garageCars),
+            'scriptFiles' => ['dashboard.js'],
         ]);
     }
 
@@ -142,5 +154,14 @@ class DashboardController extends AppController
         }
 
         return $redirectTo;
+    }
+
+    private function buildDetailsModalPath(int|string|null $vehicleId, string $modal): ?string
+    {
+        if (filter_var($vehicleId, FILTER_VALIDATE_INT) === false || (int) $vehicleId <= 0) {
+            return null;
+        }
+
+        return '/my-cars/details?id=' . (int) $vehicleId . '&open_modal=' . rawurlencode($modal);
     }
 }

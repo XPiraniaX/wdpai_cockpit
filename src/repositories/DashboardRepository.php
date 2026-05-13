@@ -23,6 +23,7 @@ class DashboardRepository
     {
         $statement = $this->connection->prepare(
             'SELECT
+                v.id AS vehicle_id,
                 current_inspection.valid_until,
                 v.display_name
             FROM vehicles v
@@ -52,6 +53,7 @@ class DashboardRepository
     {
         $statement = $this->connection->prepare(
             'SELECT
+                v.id AS vehicle_id,
                 ip.valid_until,
                 v.display_name
             FROM insurance_policies ip
@@ -75,6 +77,7 @@ class DashboardRepository
     {
         $statement = $this->connection->prepare(
             'SELECT
+                v.id AS vehicle_id,
                 fl.total_cost,
                 fl.liters,
                 fl.fueled_at,
