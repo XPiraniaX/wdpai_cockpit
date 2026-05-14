@@ -92,7 +92,7 @@ class AppController
             return;
         }
 
-        $this->setFlash('error', 'Zaloguj sie, aby przejsc dalej.');
+        $this->setFlash('error', 'Zaloguj się, aby przejść dalej.');
         $this->redirect('/login');
     }
 
@@ -135,7 +135,7 @@ class AppController
     {
         $fallbackUser = [
             'id' => $userId,
-            'full_name' => 'Uzytkownik testowy',
+            'full_name' => 'Użytkownik testowy',
             'membership_tier' => 'free',
         ];
 

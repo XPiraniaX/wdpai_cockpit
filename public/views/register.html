@@ -8,7 +8,7 @@
             <form method="post" action="/register" class="auth-form" novalidate>
                 <div class="auth-form-grid">
                     <div class="auth-field">
-                        <label for="first_name" class="auth-label">Imie</label>
+                        <label for="first_name" class="auth-label">Imię</label>
                         <input
                             id="first_name"
                             name="first_name"
@@ -74,7 +74,7 @@
 
                 <div class="auth-form-grid">
                     <div class="auth-field">
-                        <label for="password" class="auth-label">Haslo</label>
+                        <label for="password" class="auth-label">Hasło</label>
                         <input
                             id="password"
                             name="password"
@@ -89,13 +89,13 @@
                     </div>
 
                     <div class="auth-field">
-                        <label for="password_confirmation" class="auth-label">Powtorz haslo</label>
+                        <label for="password_confirmation" class="auth-label">Powtórz hasło</label>
                         <input
                             id="password_confirmation"
                             name="password_confirmation"
                             type="password"
                             class="auth-input"
-                            placeholder="powtorz haslo"
+                            placeholder="powtórz hasło"
                             autocomplete="new-password"
                         >
                         <?php if (!empty($errors['password_confirmation'] ?? null)): ?>

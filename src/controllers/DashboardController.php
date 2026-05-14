@@ -41,7 +41,7 @@ class DashboardController extends AppController
                 'subtitle' => $car['trim_name'] ?: 'Brak wersji',
                 'imagePath' => $car['image_path'] ?? null,
                 'isPrimary' => (bool) $car['is_primary'],
-                'primaryLabel' => (bool) $car['is_primary'] ? 'Pojazd glowny' : 'Ustaw jako glowny',
+                'primaryLabel' => (bool) $car['is_primary'] ? 'Pojazd główny' : 'Ustaw jako główny',
                 'mileage' => $this->formatMileage($car['current_mileage_km'] ?? null),
                 'inspectionDate' => $this->formatDate($car['next_inspection_date'] ?? null),
                 'insuranceDate' => $this->formatDate($car['next_insurance_date'] ?? null),
@@ -135,7 +135,7 @@ class DashboardController extends AppController
             return 'Aktywne pojazdy';
         }
 
-        return 'Aktywnych pojazdow';
+        return 'Aktywnych pojazdów';
     }
 
     private function calculateGaragePlaceholderCount(int $carCount): int

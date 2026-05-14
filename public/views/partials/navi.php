@@ -30,7 +30,7 @@ $menuItems = [
         <a href="/settings" class="menu-item<?= $currentPath === 'settings' ? ' active' : ''; ?>">
             <span class="menu-icon"
                   style="--icon-url: url('/public/assets/icons/settings.svg');"></span>
-            <span class="menu-label">Settings</span>
+            <span class="menu-label">Ustawienia</span>
         </a>
     </div>
 </aside>

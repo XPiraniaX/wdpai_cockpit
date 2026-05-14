@@ -22,14 +22,14 @@
 
                     <div class="cars-hero-body">
                         <div class="cars-hero-tags">
-                            <span class="cars-hero-tag is-primary">Glowny pojazd</span>
+                            <span class="cars-hero-tag is-primary">Główny pojazd</span>
                             <span class="cars-hero-tag"><?= htmlspecialchars($heroVehicle['bodyType'], ENT_QUOTES, 'UTF-8'); ?></span>
                         </div>
 
                         <h1 class="cars-hero-title"><?= htmlspecialchars($heroVehicle['title'], ENT_QUOTES, 'UTF-8'); ?></h1>
                         <div class="cars-hero-footer">
                             <div class="cars-hero-subtitle"><?= htmlspecialchars($heroVehicle['subtitle'], ENT_QUOTES, 'UTF-8'); ?></div>
-                            <a href="<?= htmlspecialchars($heroVehicle['detailsPath'], ENT_QUOTES, 'UTF-8'); ?>" class="cars-hero-arrow" aria-label="Przejdz do szczegolow pojazdu"></a>
+                            <a href="<?= htmlspecialchars($heroVehicle['detailsPath'], ENT_QUOTES, 'UTF-8'); ?>" class="cars-hero-arrow" aria-label="Przejdź do szczegółów pojazdu"></a>
                         </div>
                     </div>
                 </article>
@@ -58,7 +58,7 @@
                             rel="noopener noreferrer"
                             class="cars-stats-action"
                         >
-                            Pelny raport techniczny
+                            Pełny raport techniczny
                         </a>
                     </article>
 
@@ -86,7 +86,7 @@
                                     </div>
                                 <?php endforeach; ?>
                             <?php else: ?>
-                                <div class="cars-history-empty">Brak historii serwisow dla pojazdu glownego.</div>
+                                <div class="cars-history-empty">Brak historii serwisów dla pojazdu głównego.</div>
                             <?php endif; ?>
                         </div>
                     </article>
@@ -95,8 +95,8 @@
         <?php else: ?>
             <section class="cars-empty-state">
                 <div class="section-head-copy">
-                    <div class="section-head-title">Brak pojazdow</div>
-                    <div class="section-head-subtitle">Dodaj pierwszy samochod, aby zobaczyc tutaj swoj garaz.</div>
+                    <div class="section-head-title">Brak pojazdów</div>
+                    <div class="section-head-subtitle">Dodaj pierwszy samochód, aby zobaczyć tutaj swój garaż.</div>
                 </div>
                 <button type="button" class="cars-add-button" data-cars-modal-open="cars-add-vehicle">Dodaj pojazd</button>
             </section>
@@ -106,7 +106,7 @@
             <div class="section-head">
                 <div class="section-head-copy">
                     <div class="section-head-title">Pozostale pojazdy</div>
-                    <div class="section-head-subtitle">Zarzadzaj swoja kolekcja w jednym miejscu.</div>
+                    <div class="section-head-subtitle">Zarządzaj swoją kolekcją w jednym miejscu.</div>
                 </div>
                 <button type="button" class="cars-add-button" data-cars-modal-open="cars-add-vehicle">Dodaj pojazd</button>
             </div>
@@ -155,7 +155,7 @@
                             <div class="car-card-meta">
                                 <div class="car-card-meta-copy">
                                     <div class="car-card-line">
-                                        <span class="car-card-line-label">Nast. przeglad:</span>
+                                        <span class="car-card-line-label">Nast. przegląd:</span>
                                         <span class="car-card-line-value"><?= htmlspecialchars($car['inspectionDate'], ENT_QUOTES, 'UTF-8'); ?></span>
                                     </div>
                                     <div class="car-card-line">
@@ -163,7 +163,7 @@
                                         <span class="car-card-line-value"><?= htmlspecialchars($car['insuranceDate'], ENT_QUOTES, 'UTF-8'); ?></span>
                                     </div>
                                 </div>
-                                <a href="<?= htmlspecialchars($car['detailsPath'], ENT_QUOTES, 'UTF-8'); ?>" class="car-card-arrow" aria-label="Przejdz do szczegolow pojazdu"></a>
+                                <a href="<?= htmlspecialchars($car['detailsPath'], ENT_QUOTES, 'UTF-8'); ?>" class="car-card-arrow" aria-label="Przejdź do szczegółów pojazdu"></a>
                             </div>
                         </div>
                     </article>
@@ -208,7 +208,7 @@
                                 multiple
                                 required
                             >
-                            <div class="cars-add-media-note">Zdjecia pojazdu, maks. 10</div>
+                            <div class="cars-add-media-note">Zdjęcia pojazdu, maks. 10</div>
                             <div class="cars-add-gallery" data-add-vehicle-gallery></div>
                         </div>
                     </aside>
@@ -230,7 +230,7 @@
                                     <input type="text" name="trim_name" placeholder="Brak danych" required>
                                 </label>
                                 <label class="vehicle-modal-field">
-                                    <span>Nazwa wyswietlana</span>
+                                    <span>Nazwa wyświetlana</span>
                                     <input type="text" name="display_name" placeholder="Brak danych" required>
                                 </label>
                                 <label class="vehicle-modal-field">
@@ -255,7 +255,7 @@
                         <section class="vehicle-modal-section">
                             <div class="cars-optional-copy">
                                 <div class="vehicle-modal-section-title">Opcjonalne</div>
-                                <div class="cars-optional-note">Te dane mozesz uzupelnic teraz albo pozniej w szczegolach pojazdu.</div>
+                                <div class="cars-optional-note">Te dane możesz uzupełnić teraz albo później w szczegółach pojazdu.</div>
                             </div>
 
                             <div class="cars-accordion-list">
@@ -263,7 +263,7 @@
                                     <summary class="cars-accordion-summary">Silnik</summary>
                                     <div class="vehicle-modal-grid vehicle-modal-grid-single cars-accordion-body">
                                         <label class="vehicle-modal-field">
-                                            <span>Pojemnosc silnika (cc)</span>
+                                            <span>Pojemność silnika (cc)</span>
                                             <input type="number" name="engine_capacity_cc" min="0" placeholder="Brak danych">
                                         </label>
                                         <label class="vehicle-modal-field">
@@ -292,29 +292,29 @@
                                             </select>
                                         </label>
                                         <label class="vehicle-modal-field">
-                                            <span>Doladowanie</span>
+                                            <span>Doładowanie</span>
                                             <input type="text" name="aspiration" placeholder="Brak danych">
                                         </label>
                                         <label class="vehicle-modal-field">
-                                            <span>Liczba cylindrow</span>
+                                            <span>Liczba cylindrów</span>
                                             <input type="number" name="cylinder_count" min="0" placeholder="Brak danych">
                                         </label>
                                         <label class="vehicle-modal-field">
-                                            <span>Uklad cylindrow</span>
+                                            <span>Układ cylindrów</span>
                                             <input type="text" name="cylinder_layout" placeholder="Brak danych">
                                         </label>
                                     </div>
                                 </details>
 
                                 <details class="cars-accordion-item">
-                                    <summary class="cars-accordion-summary">Naped</summary>
+                                    <summary class="cars-accordion-summary">Napęd</summary>
                                     <div class="vehicle-modal-grid vehicle-modal-grid-single cars-accordion-body">
                                         <label class="vehicle-modal-field">
-                                            <span>Rodzaj napedu</span>
+                                            <span>Rodzaj napędu</span>
                                             <input type="text" name="drivetrain" placeholder="Brak danych">
                                         </label>
                                         <label class="vehicle-modal-field">
-                                            <span>Skrzynia biegow</span>
+                                            <span>Skrzynia biegów</span>
                                             <select name="transmission">
                                                 <option value="">Brak danych</option>
                                                 <?php foreach ($transmissionOptions as $optionValue => $optionLabel): ?>
@@ -337,22 +337,22 @@
                                             <input type="number" name="seat_count" min="0" placeholder="Brak danych">
                                         </label>
                                         <label class="vehicle-modal-field">
-                                            <span>Dlugosc (mm)</span>
+                                            <span>Długość (mm)</span>
                                             <input type="number" name="length_mm" min="0" placeholder="Brak danych">
                                         </label>
                                         <label class="vehicle-modal-field">
-                                            <span>Szerokosc (mm)</span>
+                                            <span>Szerokość (mm)</span>
                                             <input type="number" name="width_mm" min="0" placeholder="Brak danych">
                                         </label>
                                         <label class="vehicle-modal-field">
-                                            <span>Wysokosc (mm)</span>
+                                            <span>Wysokość (mm)</span>
                                             <input type="number" name="height_mm" min="0" placeholder="Brak danych">
                                         </label>
                                     </div>
                                 </details>
 
                                 <details class="cars-accordion-item">
-                                    <summary class="cars-accordion-summary">Kola</summary>
+                                    <summary class="cars-accordion-summary">Koła</summary>
                                     <div class="vehicle-modal-grid vehicle-modal-grid-single cars-accordion-body">
                                         <label class="vehicle-modal-field">
                                             <span>Rozmiar felg</span>
@@ -369,11 +369,11 @@
                                     <summary class="cars-accordion-summary">Hamulce</summary>
                                     <div class="vehicle-modal-grid vehicle-modal-grid-single cars-accordion-body">
                                         <label class="vehicle-modal-field">
-                                            <span>Hamulce przod</span>
+                                            <span>Hamulce przód</span>
                                             <input type="text" name="front_brake_type" placeholder="Brak danych">
                                         </label>
                                         <label class="vehicle-modal-field">
-                                            <span>Hamulce tyl</span>
+                                            <span>Hamulce tył</span>
                                             <input type="text" name="rear_brake_type" placeholder="Brak danych">
                                         </label>
                                     </div>
@@ -382,10 +382,10 @@
                         </section>
 
                         <section class="vehicle-modal-section">
-                            <div class="vehicle-modal-section-title">Przeglad</div>
+                            <div class="vehicle-modal-section-title">Przegląd</div>
                             <div class="vehicle-modal-grid vehicle-modal-grid-single">
                                 <label class="vehicle-modal-field">
-                                    <span>Wazny przeglad do</span>
+                                    <span>Ważny przegląd do</span>
                                     <input type="date" name="inspection_valid_until" value="<?= htmlspecialchars(date('Y-m-d', strtotime('+1 year')), ENT_QUOTES, 'UTF-8'); ?>" required>
                                 </label>
                             </div>
@@ -395,7 +395,7 @@
                             <div class="vehicle-modal-section-title">Ubezpieczenie</div>
                             <div class="vehicle-modal-grid vehicle-modal-grid-single">
                                 <label class="vehicle-modal-field">
-                                    <span>Wazne ubezpieczenie do</span>
+                                    <span>Ważne ubezpieczenie do</span>
                                     <input type="date" name="insurance_valid_until" value="<?= htmlspecialchars(date('Y-m-d', strtotime('+1 year')), ENT_QUOTES, 'UTF-8'); ?>" required>
                                 </label>
                                 <label class="vehicle-modal-field">

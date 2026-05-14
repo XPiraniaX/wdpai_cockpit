@@ -22,7 +22,7 @@ class SecurityController extends AppController {
             }
 
             if ($password === '') {
-                $errors['password'] = 'Podaj haslo.';
+                $errors['password'] = 'Podaj hasło.';
             }
 
             if ($errors === []) {
@@ -30,7 +30,7 @@ class SecurityController extends AppController {
                 $user = $repository->findForAuthentication($form['login']);
 
                 if (!$user || !$this->canAuthenticate((string) $user['password'], $password)) {
-                    $errors['auth'] = 'Niepoprawny login lub haslo.';
+                    $errors['auth'] = 'Niepoprawny login lub hasło.';
                 } else {
                     $this->loginUser((int) $user['id']);
                     $repository->updateLastLoginAt((int) $user['id']);
@@ -67,7 +67,7 @@ class SecurityController extends AppController {
             $passwordConfirmation = (string) ($_POST['password_confirmation'] ?? '');
 
             if ($form['first_name'] === '') {
-                $errors['first_name'] = 'Podaj imie.';
+                $errors['first_name'] = 'Podaj imię.';
             }
 
             if ($form['last_name'] === '') {
@@ -77,7 +77,7 @@ class SecurityController extends AppController {
             if ($form['username'] === '') {
                 $errors['username'] = 'Podaj login.';
             } elseif (strlen($form['username']) < 3) {
-                $errors['username'] = 'Login musi miec co najmniej 3 znaki.';
+                $errors['username'] = 'Login musi mieć co najmniej 3 znaki.';
             }
 
             if ($form['email'] === '') {
@@ -87,26 +87,26 @@ class SecurityController extends AppController {
             }
 
             if ($password === '') {
-                $errors['password'] = 'Podaj haslo.';
+                $errors['password'] = 'Podaj hasło.';
             } elseif (strlen($password) < 8) {
-                $errors['password'] = 'Haslo musi miec co najmniej 8 znakow.';
+                $errors['password'] = 'Hasło musi mieć co najmniej 8 znaków.';
             }
 
             if ($passwordConfirmation === '') {
-                $errors['password_confirmation'] = 'Powtorz haslo.';
+                $errors['password_confirmation'] = 'Powtórz hasło.';
             } elseif ($password !== $passwordConfirmation) {
-                $errors['password_confirmation'] = 'Hasla musza byc identyczne.';
+                $errors['password_confirmation'] = 'Hasła muszą być identyczne.';
             }
 
             if ($errors === []) {
                 $repository = new UserRepository(Database::getConnection());
 
                 if ($repository->usernameExists($form['username'])) {
-                    $errors['username'] = 'Ten login jest juz zajety.';
+                    $errors['username'] = 'Ten login jest już zajęty.';
                 }
 
                 if ($repository->emailExists($form['email'])) {
-                    $errors['email'] = 'Ten email jest juz zajety.';
+                    $errors['email'] = 'Ten email jest już zajęty.';
                 }
 
                 if ($errors === []) {
@@ -118,7 +118,7 @@ class SecurityController extends AppController {
                         'password' => password_hash($password, PASSWORD_DEFAULT),
                     ]);
 
-                    $this->setFlash('success', 'Konto zostalo utworzone. Mozesz sie teraz zalogowac.');
+                    $this->setFlash('success', 'Konto zostało utworzone. Możesz się teraz zalogować.');
                     $this->redirect('/login');
                 }
             }
@@ -134,7 +134,7 @@ class SecurityController extends AppController {
     public function logout(): void
     {
         $this->logoutUser();
-        $this->setFlash('success', 'Zostales wylogowany.');
+        $this->setFlash('success', 'Zostałeś wylogowany.');
         $this->redirect('/login');
     }
 

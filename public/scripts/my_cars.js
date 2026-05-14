@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeButtons = modalRoot.querySelectorAll('[data-cars-modal-close]');
     const scrim = modalRoot.querySelector('[data-cars-modal-scrim]');
     const addVehicleForm = modalRoot.querySelector('[data-cars-modal-panel="cars-add-vehicle"] form');
+    const mediaColumn = modalRoot.querySelector('.cars-add-media-column');
     const gallery = modalRoot.querySelector('[data-add-vehicle-gallery]');
     const imageInput = modalRoot.querySelector('[data-add-vehicle-image-input]');
     let activePanel = null;
@@ -89,6 +90,10 @@ document.addEventListener('DOMContentLoaded', () => {
             placeholder.appendChild(placeholderContent);
             placeholderCard.appendChild(placeholder);
             gallery.appendChild(placeholderCard);
+        }
+
+        if (mediaColumn && selectedFiles.length > 0) {
+            mediaColumn.scrollTop = 0;
         }
     };
 

@@ -34,12 +34,12 @@ class CarsController extends AppController
                 'icon' => '/public/assets/icons/mileage.svg',
             ],
             [
-                'label' => 'Spalanie sr.',
+                'label' => 'Spalanie śr.',
                 'value' => $this->formatConsumption($primaryVehicle['average_consumption_l_100km'] ?? null),
                 'icon' => '/public/assets/icons/distributor.svg',
             ],
             [
-                'label' => 'Nast. przeglad',
+                'label' => 'Nast. przegląd',
                 'value' => $this->formatDate($primaryVehicle['next_inspection_date'] ?? null),
                 'icon' => '/public/assets/icons/calendar.svg',
             ],
@@ -59,7 +59,7 @@ class CarsController extends AppController
                 'subtitle' => $car['trim_name'] ?: 'Brak wersji',
                 'imagePath' => $car['image_path'] ?? null,
                 'isPrimary' => (bool) $car['is_primary'],
-                'primaryLabel' => (bool) $car['is_primary'] ? 'Pojazd glowny' : 'Ustaw jako glowny',
+                'primaryLabel' => (bool) $car['is_primary'] ? 'Pojazd główny' : 'Ustaw jako główny',
                 'mileage' => $this->formatMileage($car['current_mileage_km'] ?? null),
                 'inspectionDate' => $this->formatDate($car['next_inspection_date'] ?? null),
                 'insuranceDate' => $this->formatDate($car['next_insurance_date'] ?? null),
@@ -256,7 +256,7 @@ class CarsController extends AppController
     private function formatBodyType(?string $bodyType): string
     {
         if (!$bodyType) {
-            return 'Pojazd glowny';
+            return 'Pojazd główny';
         }
 
         return ucfirst($bodyType);
@@ -386,7 +386,7 @@ class CarsController extends AppController
     private function buildTechnicalSpec(array $vehicle): array
     {
         return [
-            'Ogolne' => [
+            'Ogólne' => [
                 ['label' => 'Marka', 'value' => $vehicle['brand_name'] ?: 'Brak danych'],
                 ['label' => 'Model', 'value' => $vehicle['model_name'] ?: 'Brak danych'],
                 ['label' => 'Wersja', 'value' => $vehicle['trim_name'] ?: 'Brak danych'],
@@ -400,28 +400,28 @@ class CarsController extends AppController
                 ['label' => 'Moc kW / KM / Nm', 'value' => $this->formatPowerWithTorque($vehicle['power_hp'] ?? null, $vehicle['power_nm'] ?? null)],
                 ['label' => 'Rodzaj paliwa', 'value' => $this->formatVehicleFuelType($vehicle['fuel_type'] ?? null)],
                 ['label' => 'Moc fabryczna', 'value' => $this->formatBooleanLabel($vehicle['is_factory_power'] ?? null)],
-                ['label' => 'Doladowanie', 'value' => $vehicle['aspiration'] ?: 'Brak danych'],
-                ['label' => 'Liczba cylindrow', 'value' => $vehicle['cylinder_count'] ? (string) $vehicle['cylinder_count'] : 'Brak danych'],
-                ['label' => 'Uklad cylindrow', 'value' => $vehicle['cylinder_layout'] ?: 'Brak danych'],
+                ['label' => 'Doładowanie', 'value' => $vehicle['aspiration'] ?: 'Brak danych'],
+                ['label' => 'Liczba cylindrów', 'value' => $vehicle['cylinder_count'] ? (string) $vehicle['cylinder_count'] : 'Brak danych'],
+                ['label' => 'Układ cylindrów', 'value' => $vehicle['cylinder_layout'] ?: 'Brak danych'],
             ],
-            'Naped' => [
-                ['label' => 'Rodzaj napedu', 'value' => $vehicle['drivetrain'] ? strtoupper((string) $vehicle['drivetrain']) : 'Brak danych'],
-                ['label' => 'Skrzynia biegow', 'value' => $this->formatTransmission($vehicle['transmission'] ?? null)],
+            'Napęd' => [
+                ['label' => 'Rodzaj napędu', 'value' => $vehicle['drivetrain'] ? strtoupper((string) $vehicle['drivetrain']) : 'Brak danych'],
+                ['label' => 'Skrzynia biegów', 'value' => $this->formatTransmission($vehicle['transmission'] ?? null)],
             ],
             'Nadwozie' => [
                 ['label' => 'Rodzaj nadwozia', 'value' => $this->formatVehicleBodyType($vehicle['body_type'] ?? null)],
                 ['label' => 'Liczba miejsc', 'value' => $vehicle['seat_count'] ? (string) $vehicle['seat_count'] : 'Brak danych'],
-                ['label' => 'Dlugosc', 'value' => $this->formatMillimeters($vehicle['length_mm'] ?? null)],
-                ['label' => 'Szerokosc', 'value' => $this->formatMillimeters($vehicle['width_mm'] ?? null)],
-                ['label' => 'Wysokosc', 'value' => $this->formatMillimeters($vehicle['height_mm'] ?? null)],
+                ['label' => 'Długość', 'value' => $this->formatMillimeters($vehicle['length_mm'] ?? null)],
+                ['label' => 'Szerokość', 'value' => $this->formatMillimeters($vehicle['width_mm'] ?? null)],
+                ['label' => 'Wysokość', 'value' => $this->formatMillimeters($vehicle['height_mm'] ?? null)],
             ],
-            'Kola' => [
+            'Koła' => [
                 ['label' => 'Rozmiar felg', 'value' => $vehicle['wheel_size_label'] ?: 'Brak danych'],
                 ['label' => 'Rozmiar opon', 'value' => $vehicle['tire_size_label'] ?: 'Brak danych'],
             ],
             'Hamulce' => [
-                ['label' => 'Rodzaj hamulcow przod', 'value' => $vehicle['front_brake_type'] ?: 'Brak danych'],
-                ['label' => 'Rodzaj hamulcow tyl', 'value' => $vehicle['rear_brake_type'] ?: 'Brak danych'],
+                ['label' => 'Rodzaj hamulców przód', 'value' => $vehicle['front_brake_type'] ?: 'Brak danych'],
+                ['label' => 'Rodzaj hamulców tył', 'value' => $vehicle['rear_brake_type'] ?: 'Brak danych'],
             ],
         ];
     }

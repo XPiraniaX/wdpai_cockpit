@@ -10,11 +10,11 @@
         <div class="settings-grid">
             <article class="settings-panel">
                 <div class="settings-panel-kicker">Konto</div>
-                <h1 class="settings-panel-title">Profil uzytkownika</h1>
+                <h1 class="settings-panel-title">Profil użytkownika</h1>
 
                 <div class="settings-list">
                     <div class="settings-row">
-                        <span class="settings-label">Imie i nazwisko</span>
+                        <span class="settings-label">Imię i nazwisko</span>
                         <span class="settings-value"><?= htmlspecialchars($currentUser['full_name'] ?? 'Brak danych', ENT_QUOTES, 'UTF-8'); ?></span>
                     </div>
 
@@ -45,10 +45,10 @@
             <article class="settings-panel settings-panel-danger">
                 <div class="settings-panel-kicker">Sesja</div>
                 <h2 class="settings-panel-title">Wylogowanie</h2>
-                <p class="settings-panel-copy">Zakoncz aktualna sesje i wroc do ekranu logowania.</p>
+                <p class="settings-panel-copy">Zakończ aktualną sesję i wróć do ekranu logowania.</p>
 
                 <form method="post" action="/logout" class="settings-actions">
-                    <button type="submit" class="settings-logout-button">Wyloguj sie</button>
+                    <button type="submit" class="settings-logout-button">Wyloguj się</button>
                 </form>
             </article>
         </div>
