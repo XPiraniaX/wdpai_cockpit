@@ -449,6 +449,168 @@ class CarsRepository
         ]);
     }
 
+    public function createVehicle(int $userId, array $data): int
+    {
+        $this->connection->beginTransaction();
+
+        try {
+            $brandId = $this->resolveBrandId($data['brand_name']);
+            $modelId = $this->resolveModelId($brandId, $data['model_name']);
+            $displayOrder = $this->resolveNextDisplayOrder($userId);
+            $isPrimary = !$this->userHasActiveVehicles($userId);
+
+            $vehicleStatement = $this->connection->prepare(
+                'INSERT INTO vehicles (
+                    user_id,
+                    brand_id,
+                    model_id,
+                    display_name,
+                    trim_name,
+                    production_year,
+                    vin,
+                    license_plate,
+                    body_type,
+                    drivetrain,
+                    fuel_type,
+                    transmission,
+                    engine_capacity_cc,
+                    power_hp,
+                    power_nm,
+                    is_factory_power,
+                    engine_mount,
+                    aspiration,
+                    cylinder_count,
+                    cylinder_layout,
+                    seat_count,
+                    length_mm,
+                    width_mm,
+                    height_mm,
+                    wheel_size_label,
+                    tire_size_label,
+                    front_brake_type,
+                    rear_brake_type,
+                    current_mileage_km,
+                    exterior_color,
+                    status,
+                    display_order,
+                    is_primary,
+                    notes
+                ) VALUES (
+                    :user_id,
+                    :brand_id,
+                    :model_id,
+                    :display_name,
+                    :trim_name,
+                    :production_year,
+                    :vin,
+                    :license_plate,
+                    :body_type,
+                    :drivetrain,
+                    :fuel_type,
+                    :transmission,
+                    :engine_capacity_cc,
+                    :power_hp,
+                    :power_nm,
+                    :is_factory_power,
+                    :engine_mount,
+                    :aspiration,
+                    :cylinder_count,
+                    :cylinder_layout,
+                    :seat_count,
+                    :length_mm,
+                    :width_mm,
+                    :height_mm,
+                    :wheel_size_label,
+                    :tire_size_label,
+                    :front_brake_type,
+                    :rear_brake_type,
+                    0,
+                    :exterior_color,
+                    \'active\',
+                    :display_order,
+                    :is_primary,
+                    NULL
+                )
+                RETURNING id'
+            );
+            $vehicleStatement->execute([
+                'user_id' => $userId,
+                'brand_id' => $brandId,
+                'model_id' => $modelId,
+                'display_name' => $data['display_name'],
+                'trim_name' => $data['trim_name'],
+                'production_year' => $data['production_year'],
+                'vin' => $data['vin'],
+                'license_plate' => $data['license_plate'],
+                'body_type' => $data['body_type'],
+                'drivetrain' => $data['drivetrain'],
+                'fuel_type' => $data['fuel_type'],
+                'transmission' => $data['transmission'],
+                'engine_capacity_cc' => $data['engine_capacity_cc'],
+                'power_hp' => $data['power_hp'],
+                'power_nm' => $data['power_nm'],
+                'is_factory_power' => $data['is_factory_power'],
+                'engine_mount' => $data['engine_mount'],
+                'aspiration' => $data['aspiration'],
+                'cylinder_count' => $data['cylinder_count'],
+                'cylinder_layout' => $data['cylinder_layout'],
+                'seat_count' => $data['seat_count'],
+                'length_mm' => $data['length_mm'],
+                'width_mm' => $data['width_mm'],
+                'height_mm' => $data['height_mm'],
+                'wheel_size_label' => $data['wheel_size_label'],
+                'tire_size_label' => $data['tire_size_label'],
+                'front_brake_type' => $data['front_brake_type'],
+                'rear_brake_type' => $data['rear_brake_type'],
+                'exterior_color' => $data['exterior_color'],
+                'display_order' => $displayOrder,
+                'is_primary' => $isPrimary,
+            ]);
+
+            $vehicleId = (int) $vehicleStatement->fetchColumn();
+
+            $inspectionStatement = $this->connection->prepare(
+                'INSERT INTO technical_inspections (vehicle_id, inspection_date, valid_until, result)
+                VALUES (:vehicle_id, :inspection_date, :valid_until, \'passed\')'
+            );
+            $inspectionStatement->execute([
+                'vehicle_id' => $vehicleId,
+                'inspection_date' => $data['inspection_date'],
+                'valid_until' => $data['inspection_valid_until'],
+            ]);
+
+            $insuranceStatement = $this->connection->prepare(
+                'INSERT INTO insurance_policies (vehicle_id, insurer_name, policy_number, purchased_on, valid_until)
+                VALUES (:vehicle_id, :insurer_name, :policy_number, :purchased_on, :valid_until)'
+            );
+            $insuranceStatement->execute([
+                'vehicle_id' => $vehicleId,
+                'insurer_name' => $data['insurer_name'],
+                'policy_number' => $data['policy_number'],
+                'purchased_on' => $data['insurance_purchased_on'],
+                'valid_until' => $data['insurance_valid_until'],
+            ]);
+
+            if (!empty($data['image_path'])) {
+                $imageStatement = $this->connection->prepare(
+                    'INSERT INTO vehicle_images (vehicle_id, image_path, is_primary)
+                    VALUES (:vehicle_id, :image_path, TRUE)'
+                );
+                $imageStatement->execute([
+                    'vehicle_id' => $vehicleId,
+                    'image_path' => $data['image_path'],
+                ]);
+            }
+
+            $this->connection->commit();
+
+            return $vehicleId;
+        } catch (Throwable $exception) {
+            $this->connection->rollBack();
+            throw $exception;
+        }
+    }
+
     private function buildVehicleBaseQuery(): string
     {
         return 'SELECT
@@ -589,5 +751,31 @@ class CarsRepository
         ]);
 
         return (int) $this->connection->lastInsertId();
+    }
+
+    private function resolveNextDisplayOrder(int $userId): int
+    {
+        $statement = $this->connection->prepare(
+            'SELECT COALESCE(MAX(display_order), 0) + 1
+            FROM vehicles
+            WHERE user_id = :user_id'
+        );
+        $statement->execute(['user_id' => $userId]);
+
+        return (int) $statement->fetchColumn();
+    }
+
+    private function userHasActiveVehicles(int $userId): bool
+    {
+        $statement = $this->connection->prepare(
+            'SELECT 1
+            FROM vehicles
+            WHERE user_id = :user_id
+                AND status = \'active\'
+            LIMIT 1'
+        );
+        $statement->execute(['user_id' => $userId]);
+
+        return (bool) $statement->fetchColumn();
     }
 }

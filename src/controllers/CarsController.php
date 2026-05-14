@@ -9,6 +9,10 @@ class CarsController extends AppController
         $repository = new CarsRepository(Database::getConnection());
         $userId = $this->getCurrentUserId();
 
+        if ($this->isPost() && ($_POST['modal_action'] ?? '') === 'vehicle_add') {
+            $this->handleVehicleCreate($repository, $userId);
+        }
+
         $primaryVehicle = $repository->getPrimaryVehicle($userId);
         $remainingVehicles = $repository->getRemainingVehicles($userId);
         $serviceHistory = $primaryVehicle ? $repository->getServiceHistory((int) $primaryVehicle['id'], 3) : [];
@@ -73,6 +77,22 @@ class CarsController extends AppController
             'serviceHistory' => $this->mapServiceHistory($serviceHistory),
             'cars' => $cars,
             'garagePlaceholderCount' => $placeholderCount,
+            'transmissionOptions' => [
+                'manual' => 'Manualna',
+                'automatic' => 'Automatyczna',
+                'semi_automatic' => 'Polautomatyczna',
+            ],
+            'fuelTypeOptions' => [
+                'petrol' => 'Benzyna',
+                'diesel' => 'Diesel',
+                'hybrid' => 'Hybryda',
+                'plug_in_hybrid' => 'Plug-in Hybrid',
+                'electric' => 'Elektryczny',
+                'lpg' => 'LPG',
+                'cng' => 'CNG',
+                'other' => 'Inne',
+            ],
+            'scriptFiles' => ['my_cars.js'],
         ]);
     }
 
@@ -374,18 +394,19 @@ class CarsController extends AppController
                 ['label' => 'Tablice', 'value' => $vehicle['license_plate'] ?: 'Brak danych'],
                 ['label' => 'VIN', 'value' => $vehicle['vin'] ?: 'Brak danych'],
                 ['label' => 'Kolor', 'value' => $vehicle['exterior_color'] ?: 'Brak danych'],
-                ['label' => 'Rodzaj napedu', 'value' => $vehicle['drivetrain'] ? strtoupper((string) $vehicle['drivetrain']) : 'Brak danych'],
-                ['label' => 'Skrzynia biegow', 'value' => $this->formatTransmission($vehicle['transmission'] ?? null)],
             ],
             'Silnik' => [
                 ['label' => 'Silnik', 'value' => $vehicle['engine_capacity_cc'] ? number_format(((int) $vehicle['engine_capacity_cc']) / 1000, 1, ',', '') . ' L' : 'Brak danych'],
                 ['label' => 'Moc kW / KM / Nm', 'value' => $this->formatPowerWithTorque($vehicle['power_hp'] ?? null, $vehicle['power_nm'] ?? null)],
                 ['label' => 'Rodzaj paliwa', 'value' => $this->formatVehicleFuelType($vehicle['fuel_type'] ?? null)],
                 ['label' => 'Moc fabryczna', 'value' => $this->formatBooleanLabel($vehicle['is_factory_power'] ?? null)],
-                ['label' => 'Montaz silnika', 'value' => $vehicle['engine_mount'] ?: 'Brak danych'],
                 ['label' => 'Doladowanie', 'value' => $vehicle['aspiration'] ?: 'Brak danych'],
                 ['label' => 'Liczba cylindrow', 'value' => $vehicle['cylinder_count'] ? (string) $vehicle['cylinder_count'] : 'Brak danych'],
                 ['label' => 'Uklad cylindrow', 'value' => $vehicle['cylinder_layout'] ?: 'Brak danych'],
+            ],
+            'Naped' => [
+                ['label' => 'Rodzaj napedu', 'value' => $vehicle['drivetrain'] ? strtoupper((string) $vehicle['drivetrain']) : 'Brak danych'],
+                ['label' => 'Skrzynia biegow', 'value' => $this->formatTransmission($vehicle['transmission'] ?? null)],
             ],
             'Nadwozie' => [
                 ['label' => 'Rodzaj nadwozia', 'value' => $this->formatVehicleBodyType($vehicle['body_type'] ?? null)],
@@ -726,5 +747,98 @@ class CarsController extends AppController
         $target = new DateTimeImmutable($date);
 
         return (int) $today->diff($target)->format('%r%a');
+    }
+
+    private function handleVehicleCreate(CarsRepository $repository, int $userId): void
+    {
+        $payload = $this->buildVehicleCreatePayload();
+        $payload['image_path'] = $this->handleVehicleImageUpload(
+            $userId,
+            $payload['brand_name'],
+            $payload['model_name']
+        );
+
+        if ($payload['image_path'] === null) {
+            $this->redirect('/my-cars?open_modal=cars-add-vehicle');
+        }
+
+        $repository->createVehicle($userId, $payload);
+        $this->redirect('/my-cars');
+    }
+
+    private function buildVehicleCreatePayload(): array
+    {
+        return [
+            'brand_name' => $this->sanitizeText($_POST['brand_name'] ?? null) ?? 'Brak danych',
+            'model_name' => $this->sanitizeText($_POST['model_name'] ?? null) ?? 'Brak danych',
+            'trim_name' => $this->sanitizeText($_POST['trim_name'] ?? null) ?? 'Brak danych',
+            'display_name' => $this->sanitizeText($_POST['display_name'] ?? null) ?? 'Brak danych',
+            'production_year' => $this->sanitizeSmallInt($_POST['production_year'] ?? null) ?? (int) date('Y'),
+            'license_plate' => $this->sanitizeText($_POST['license_plate'] ?? null) ?? 'Brak danych',
+            'vin' => $this->sanitizeText($_POST['vin'] ?? null) ?? 'Brak danych',
+            'exterior_color' => $this->sanitizeText($_POST['exterior_color'] ?? null) ?? 'Brak danych',
+            'fuel_type' => $this->sanitizeOptionalFuelType($_POST['fuel_type'] ?? null),
+            'engine_capacity_cc' => $this->sanitizeNullablePositiveInt($_POST['engine_capacity_cc'] ?? null),
+            'power_hp' => $this->sanitizeNullablePositiveInt($_POST['power_hp'] ?? null),
+            'power_nm' => $this->sanitizeNullablePositiveInt($_POST['power_nm'] ?? null),
+            'is_factory_power' => $this->sanitizeNullableBool($_POST['is_factory_power'] ?? null),
+            'aspiration' => $this->sanitizeNullableDisplayText($_POST['aspiration'] ?? null),
+            'cylinder_count' => $this->sanitizeNullablePositiveInt($_POST['cylinder_count'] ?? null),
+            'cylinder_layout' => $this->sanitizeNullableDisplayText($_POST['cylinder_layout'] ?? null),
+            'drivetrain' => $this->sanitizeNullableDisplayText($_POST['drivetrain'] ?? null),
+            'transmission' => $this->sanitizeNullableEnum($_POST['transmission'] ?? null, ['manual', 'automatic', 'semi_automatic']),
+            'body_type' => $this->sanitizeNullableDisplayText($_POST['body_type'] ?? null),
+            'seat_count' => $this->sanitizeNullablePositiveInt($_POST['seat_count'] ?? null),
+            'length_mm' => $this->sanitizeNullablePositiveInt($_POST['length_mm'] ?? null),
+            'width_mm' => $this->sanitizeNullablePositiveInt($_POST['width_mm'] ?? null),
+            'height_mm' => $this->sanitizeNullablePositiveInt($_POST['height_mm'] ?? null),
+            'wheel_size_label' => $this->sanitizeNullableDisplayText($_POST['wheel_size_label'] ?? null),
+            'tire_size_label' => $this->sanitizeNullableDisplayText($_POST['tire_size_label'] ?? null),
+            'front_brake_type' => $this->sanitizeNullableDisplayText($_POST['front_brake_type'] ?? null),
+            'rear_brake_type' => $this->sanitizeNullableDisplayText($_POST['rear_brake_type'] ?? null),
+            'engine_mount' => null,
+            'inspection_date' => date('Y-m-d'),
+            'inspection_valid_until' => $this->sanitizeDate($_POST['inspection_valid_until'] ?? null) ?? date('Y-m-d', strtotime('+1 year')),
+            'insurance_purchased_on' => date('Y-m-d'),
+            'insurance_valid_until' => $this->sanitizeDate($_POST['insurance_valid_until'] ?? null) ?? date('Y-m-d', strtotime('+1 year')),
+            'policy_number' => $this->sanitizeText($_POST['policy_number'] ?? null) ?? 'Brak danych',
+            'insurer_name' => $this->sanitizeText($_POST['insurer_name'] ?? null) ?? 'Brak danych',
+        ];
+    }
+
+    private function handleVehicleImageUpload(int $userId, string $brandName, string $modelName): ?string
+    {
+        if (empty($_FILES['vehicle_image']) || ($_FILES['vehicle_image']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            return null;
+        }
+
+        $userRepository = new UserRepository(Database::getConnection());
+        $user = $userRepository->getById($userId);
+        $username = $user['username'] ?? ('user-' . $userId);
+        $extension = strtolower(pathinfo((string) $_FILES['vehicle_image']['name'], PATHINFO_EXTENSION));
+        $safeExtension = in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true) ? $extension : 'jpg';
+        $filename = $this->slugify($username . '-' . $brandName . '-' . $modelName) . '-' . date('Ymd-His') . '.' . $safeExtension;
+        $uploadDirectory = getcwd() . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'vehicles';
+
+        if (!is_dir($uploadDirectory)) {
+            mkdir($uploadDirectory, 0775, true);
+        }
+
+        $targetPath = $uploadDirectory . DIRECTORY_SEPARATOR . $filename;
+        if (!move_uploaded_file((string) $_FILES['vehicle_image']['tmp_name'], $targetPath)) {
+            return null;
+        }
+
+        return '/public/uploads/vehicles/' . $filename;
+    }
+
+    private function slugify(string $value): string
+    {
+        $normalized = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+        $normalized = $normalized === false ? $value : $normalized;
+        $normalized = strtolower($normalized);
+        $normalized = preg_replace('/[^a-z0-9]+/', '-', $normalized) ?? '';
+
+        return trim($normalized, '-') ?: 'vehicle';
     }
 }

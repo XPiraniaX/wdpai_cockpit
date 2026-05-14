@@ -586,6 +586,21 @@ body.vehicle-modal-open {
     transform: translateY(-1px);
 }
 
+.vehicle-modal-close-icon {
+    width: 14px;
+    height: 14px;
+    display: block;
+    background: url('/public/assets/icons/close.svg') center/contain no-repeat;
+    opacity: 0.82;
+    transition: transform 0.2s ease, opacity 0.2s ease, filter 0.2s ease;
+}
+
+.vehicle-modal-close:hover .vehicle-modal-close-icon {
+    opacity: 1;
+    transform: scale(1.08);
+    filter: brightness(1.15);
+}
+
 .vehicle-modal-form {
     box-sizing: border-box;
     width: 100%;
