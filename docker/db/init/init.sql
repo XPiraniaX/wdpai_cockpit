@@ -95,6 +95,7 @@ CREATE TABLE vehicle_images (
     id SERIAL PRIMARY KEY,
     vehicle_id INTEGER NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
     image_path TEXT NOT NULL,
+    display_order INTEGER NOT NULL DEFAULT 1,
     is_primary BOOLEAN NOT NULL DEFAULT FALSE
 );
 
@@ -398,23 +399,24 @@ INSERT INTO vehicles (
 INSERT INTO vehicle_images (
     vehicle_id,
     image_path,
+    display_order,
     is_primary
 ) VALUES
-    (1, '/public/uploads/vehicles/porsche-911-main.jpg', TRUE),
-    (2, '/public/uploads/vehicles/bmw-m3-main.jpg', TRUE),
-    (3, '/public/uploads/vehicles/audi-rs6-main.jpg', TRUE),
-    (4, '/public/uploads/vehicles/porsche-911-main.jpg', TRUE),
-    (5, '/public/uploads/vehicles/bmw-m3-main.jpg', TRUE),
-    (6, '/public/uploads/vehicles/audi-rs6-main.jpg', TRUE),
-    (7, '/public/uploads/vehicles/porsche-911-main.jpg', TRUE),
-    (8, '/public/uploads/vehicles/bmw-m3-main.jpg', TRUE),
-    (9, '/public/uploads/vehicles/audi-rs6-main.jpg', TRUE),
-    (10, '/public/uploads/vehicles/bmw-m3-main.jpg', TRUE),
-    (11, '/public/uploads/vehicles/porsche-911-main.jpg', TRUE),
-    (12, '/public/uploads/vehicles/bmw-m3-main.jpg', TRUE),
-    (13, '/public/uploads/vehicles/audi-rs6-main.jpg', TRUE),
-    (14, '/public/uploads/vehicles/porsche-911-main.jpg', TRUE),
-    (15, '/public/uploads/vehicles/audi-rs6-main.jpg', TRUE);
+    (1, '/public/uploads/vehicles/porsche-911-main.jpg', 1, TRUE),
+    (2, '/public/uploads/vehicles/bmw-m3-main.jpg', 1, TRUE),
+    (3, '/public/uploads/vehicles/audi-rs6-main.jpg', 1, TRUE),
+    (4, '/public/uploads/vehicles/porsche-911-main.jpg', 1, TRUE),
+    (5, '/public/uploads/vehicles/bmw-m3-main.jpg', 1, TRUE),
+    (6, '/public/uploads/vehicles/audi-rs6-main.jpg', 1, TRUE),
+    (7, '/public/uploads/vehicles/porsche-911-main.jpg', 1, TRUE),
+    (8, '/public/uploads/vehicles/bmw-m3-main.jpg', 1, TRUE),
+    (9, '/public/uploads/vehicles/audi-rs6-main.jpg', 1, TRUE),
+    (10, '/public/uploads/vehicles/bmw-m3-main.jpg', 1, TRUE),
+    (11, '/public/uploads/vehicles/porsche-911-main.jpg', 1, TRUE),
+    (12, '/public/uploads/vehicles/bmw-m3-main.jpg', 1, TRUE),
+    (13, '/public/uploads/vehicles/audi-rs6-main.jpg', 1, TRUE),
+    (14, '/public/uploads/vehicles/porsche-911-main.jpg', 1, TRUE),
+    (15, '/public/uploads/vehicles/audi-rs6-main.jpg', 1, TRUE);
 
 INSERT INTO technical_inspections (
     vehicle_id,

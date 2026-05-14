@@ -591,15 +591,19 @@ class CarsRepository
                 'valid_until' => $data['insurance_valid_until'],
             ]);
 
-            if (!empty($data['image_path'])) {
+            if (!empty($data['image_paths']) && is_array($data['image_paths'])) {
                 $imageStatement = $this->connection->prepare(
-                    'INSERT INTO vehicle_images (vehicle_id, image_path, is_primary)
-                    VALUES (:vehicle_id, :image_path, TRUE)'
+                    'INSERT INTO vehicle_images (vehicle_id, image_path, display_order, is_primary)
+                    VALUES (:vehicle_id, :image_path, :display_order, :is_primary)'
                 );
-                $imageStatement->execute([
-                    'vehicle_id' => $vehicleId,
-                    'image_path' => $data['image_path'],
-                ]);
+                foreach ($data['image_paths'] as $index => $imagePath) {
+                    $imageStatement->execute([
+                        'vehicle_id' => $vehicleId,
+                        'image_path' => $imagePath,
+                        'display_order' => $index + 1,
+                        'is_primary' => $index === 0,
+                    ]);
+                }
             }
 
             $this->connection->commit();

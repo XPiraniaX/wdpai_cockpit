@@ -566,39 +566,25 @@ body.vehicle-modal-open {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    border-radius: 999px;
-    background: transparent;
-    color: #eef4ff;
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    width: 46px;
+    height: 46px;
+    border: 0;
+    border-radius: 0;
+    background: url('/public/assets/icons/close.svg') center/contain no-repeat;
+    color: transparent;
+    font-size: 0;
     cursor: pointer;
-    transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+    transition: transform 0.2s ease, filter 0.2s ease, opacity 0.2s ease;
 }
 
 .vehicle-modal-close:hover {
-    border-color: rgba(56, 189, 248, 0.34);
-    background: rgba(56, 189, 248, 0.08);
     transform: translateY(-1px);
+    filter: brightness(1.08) drop-shadow(0 10px 18px rgba(2, 6, 23, 0.28));
+    opacity: 0.96;
 }
 
 .vehicle-modal-close-icon {
-    width: 14px;
-    height: 14px;
-    display: block;
-    background: url('/public/assets/icons/close.svg') center/contain no-repeat;
-    opacity: 0.82;
-    transition: transform 0.2s ease, opacity 0.2s ease, filter 0.2s ease;
-}
-
-.vehicle-modal-close:hover .vehicle-modal-close-icon {
-    opacity: 1;
-    transform: scale(1.08);
-    filter: brightness(1.15);
+    display: none;
 }
 
 .vehicle-modal-form {

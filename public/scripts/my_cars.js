@@ -5,25 +5,97 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
+    const MAX_VEHICLE_IMAGES = 10;
     const panels = Array.from(modalRoot.querySelectorAll('[data-cars-modal-panel]'));
     const openButtons = document.querySelectorAll('[data-cars-modal-open]');
     const closeButtons = modalRoot.querySelectorAll('[data-cars-modal-close]');
     const scrim = modalRoot.querySelector('[data-cars-modal-scrim]');
     const addVehicleForm = modalRoot.querySelector('[data-cars-modal-panel="cars-add-vehicle"] form');
-    const previewImage = modalRoot.querySelector('[data-add-vehicle-preview-image]');
-    const previewPlaceholder = modalRoot.querySelector('[data-add-vehicle-preview-placeholder]');
+    const gallery = modalRoot.querySelector('[data-add-vehicle-gallery]');
     const imageInput = modalRoot.querySelector('[data-add-vehicle-image-input]');
     let activePanel = null;
+    let selectedFiles = [];
+
+    const syncImageInput = () => {
+        if (!imageInput) {
+            return;
+        }
+
+        const transfer = new DataTransfer();
+        selectedFiles.forEach((file) => transfer.items.add(file));
+        imageInput.files = transfer.files;
+    };
+
+    const openImagePicker = () => {
+        if (imageInput && selectedFiles.length < MAX_VEHICLE_IMAGES) {
+            imageInput.click();
+        }
+    };
+
+    const renderImageGallery = () => {
+        if (!gallery) {
+            return;
+        }
+
+        gallery.innerHTML = '';
+
+        selectedFiles.forEach((file, index) => {
+            const card = document.createElement('div');
+            card.className = 'cars-add-image-preview';
+
+            const image = document.createElement('img');
+            image.className = 'cars-add-image-preview-photo';
+            image.alt = `Podglad pojazdu ${index + 1}`;
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'cars-add-image-remove';
+            removeButton.setAttribute('aria-label', `Usun zdjecie ${index + 1}`);
+            removeButton.addEventListener('click', () => {
+                selectedFiles = selectedFiles.filter((_, fileIndex) => fileIndex !== index);
+                syncImageInput();
+                renderImageGallery();
+            });
+
+            const fileReader = new FileReader();
+            fileReader.onload = () => {
+                image.src = String(fileReader.result ?? '');
+            };
+            fileReader.readAsDataURL(file);
+
+            card.appendChild(image);
+            card.appendChild(removeButton);
+            gallery.appendChild(card);
+        });
+
+        if (selectedFiles.length < MAX_VEHICLE_IMAGES) {
+            const placeholderCard = document.createElement('button');
+            placeholderCard.type = 'button';
+            placeholderCard.className = 'cars-add-image-preview cars-add-image-picker is-placeholder';
+            placeholderCard.setAttribute('aria-label', 'Dodaj zdjecie pojazdu');
+            placeholderCard.addEventListener('click', openImagePicker);
+
+            const placeholder = document.createElement('div');
+            placeholder.className = 'cars-add-image-placeholder';
+
+            const placeholderContent = document.createElement('div');
+            placeholderContent.className = 'cars-add-image-placeholder-content';
+
+            const plus = document.createElement('div');
+            plus.className = 'cars-add-image-placeholder-plus';
+            plus.textContent = '+';
+
+            placeholderContent.appendChild(plus);
+            placeholder.appendChild(placeholderContent);
+            placeholderCard.appendChild(placeholder);
+            gallery.appendChild(placeholderCard);
+        }
+    };
 
     const resetAddVehiclePreview = () => {
-        if (previewImage) {
-            previewImage.src = '';
-            previewImage.hidden = true;
-        }
-
-        if (previewPlaceholder) {
-            previewPlaceholder.hidden = false;
-        }
+        selectedFiles = [];
+        syncImageInput();
+        renderImageGallery();
     };
 
     const closeModal = () => {
@@ -80,26 +152,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (imageInput) {
         imageInput.addEventListener('change', () => {
-            const file = imageInput.files && imageInput.files[0];
+            const incomingFiles = Array.from(imageInput.files ?? []);
 
-            if (!file) {
-                resetAddVehiclePreview();
+            if (incomingFiles.length === 0) {
+                syncImageInput();
                 return;
             }
 
-            const fileReader = new FileReader();
-            fileReader.onload = () => {
-                if (!previewImage || !previewPlaceholder) {
-                    return;
-                }
+            const remainingSlots = MAX_VEHICLE_IMAGES - selectedFiles.length;
+            if (remainingSlots <= 0) {
+                syncImageInput();
+                renderImageGallery();
+                return;
+            }
 
-                previewImage.src = String(fileReader.result ?? '');
-                previewImage.hidden = false;
-                previewPlaceholder.hidden = true;
-            };
-            fileReader.readAsDataURL(file);
+            selectedFiles = selectedFiles.concat(incomingFiles.slice(0, remainingSlots));
+            syncImageInput();
+            renderImageGallery();
         });
     }
+
+    renderImageGallery();
 
     const params = new URLSearchParams(window.location.search);
     if (params.get('open_modal') === 'cars-add-vehicle') {

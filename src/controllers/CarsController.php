@@ -752,13 +752,13 @@ class CarsController extends AppController
     private function handleVehicleCreate(CarsRepository $repository, int $userId): void
     {
         $payload = $this->buildVehicleCreatePayload();
-        $payload['image_path'] = $this->handleVehicleImageUpload(
+        $payload['image_paths'] = $this->handleVehicleImageUploads(
             $userId,
             $payload['brand_name'],
             $payload['model_name']
         );
 
-        if ($payload['image_path'] === null) {
+        if (empty($payload['image_paths'])) {
             $this->redirect('/my-cars?open_modal=cars-add-vehicle');
         }
 
@@ -806,30 +806,71 @@ class CarsController extends AppController
         ];
     }
 
-    private function handleVehicleImageUpload(int $userId, string $brandName, string $modelName): ?string
+    private function handleVehicleImageUploads(int $userId, string $brandName, string $modelName): array
     {
-        if (empty($_FILES['vehicle_image']) || ($_FILES['vehicle_image']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-            return null;
+        if (empty($_FILES['vehicle_images']) || !is_array($_FILES['vehicle_images']['error'] ?? null)) {
+            return [];
         }
 
         $userRepository = new UserRepository(Database::getConnection());
         $user = $userRepository->getById($userId);
         $username = $user['username'] ?? ('user-' . $userId);
-        $extension = strtolower(pathinfo((string) $_FILES['vehicle_image']['name'], PATHINFO_EXTENSION));
-        $safeExtension = in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true) ? $extension : 'jpg';
-        $filename = $this->slugify($username . '-' . $brandName . '-' . $modelName) . '-' . date('Ymd-His') . '.' . $safeExtension;
         $uploadDirectory = getcwd() . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'vehicles';
 
         if (!is_dir($uploadDirectory)) {
             mkdir($uploadDirectory, 0775, true);
         }
 
-        $targetPath = $uploadDirectory . DIRECTORY_SEPARATOR . $filename;
-        if (!move_uploaded_file((string) $_FILES['vehicle_image']['tmp_name'], $targetPath)) {
-            return null;
+        $files = $this->normalizeVehicleImageUploads($_FILES['vehicle_images']);
+        if (count($files) === 0) {
+            return [];
         }
 
-        return '/public/uploads/vehicles/' . $filename;
+        $uploadedPaths = [];
+        $slugBase = $this->slugify($username . '-' . $brandName . '-' . $modelName);
+        $timestamp = date('Ymd-His');
+        $requestToken = bin2hex(random_bytes(3));
+
+        foreach (array_slice($files, 0, 10) as $index => $file) {
+            if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                continue;
+            }
+
+            $extension = strtolower(pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
+            $safeExtension = in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true) ? $extension : 'jpg';
+            $filename = $slugBase . '-' . $timestamp . '-' . $requestToken . '-' . ($index + 1) . '.' . $safeExtension;
+            $targetPath = $uploadDirectory . DIRECTORY_SEPARATOR . $filename;
+
+            if (!move_uploaded_file((string) ($file['tmp_name'] ?? ''), $targetPath)) {
+                continue;
+            }
+
+            $uploadedPaths[] = '/public/uploads/vehicles/' . $filename;
+        }
+
+        return $uploadedPaths;
+    }
+
+    private function normalizeVehicleImageUploads(array $upload): array
+    {
+        $names = $upload['name'] ?? [];
+        $tmpNames = $upload['tmp_name'] ?? [];
+        $errors = $upload['error'] ?? [];
+
+        if (!is_array($names) || !is_array($tmpNames) || !is_array($errors)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($names as $index => $name) {
+            $normalized[] = [
+                'name' => $name,
+                'tmp_name' => $tmpNames[$index] ?? null,
+                'error' => $errors[$index] ?? UPLOAD_ERR_NO_FILE,
+            ];
+        }
+
+        return $normalized;
     }
 
     private function slugify(string $value): string

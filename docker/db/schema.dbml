@@ -97,6 +97,7 @@ Table vehicle_images {
   id serial [pk]
   vehicle_id int [not null]
   image_path text [not null]
+  display_order int [not null, default: 1]
   is_primary boolean [not null, default: false, note: 'Partial unique per vehicle in SQL']
 }
 
