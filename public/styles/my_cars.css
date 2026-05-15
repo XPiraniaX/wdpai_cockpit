@@ -8,6 +8,31 @@
     gap: clamp(24px, 2.4vw, 34px);
 }
 
+.cars-flash {
+    display: flex;
+    align-items: center;
+    min-height: 56px;
+    padding: 0 22px;
+    border-radius: 18px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(15, 25, 48, 0.92);
+    color: #e2e8f0;
+    font-size: 14px;
+    line-height: 1.4;
+    font-family: var(--font-sans);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.cars-flash.is-error {
+    border-color: rgba(248, 113, 113, 0.28);
+    color: #fecaca;
+}
+
+.cars-flash.is-success {
+    border-color: rgba(74, 222, 128, 0.24);
+    color: #bbf7d0;
+}
+
 .cars-hero-grid {
     display: grid;
     grid-template-columns: minmax(0, 2.2fr) minmax(260px, 0.6fr);
@@ -333,6 +358,58 @@
 .cars-add-modal {
     max-width: 1120px;
     margin: 0 auto;
+}
+
+.cars-feedback-modal {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px;
+    background: rgba(2, 6, 23, 0.48);
+    backdrop-filter: blur(6px);
+}
+
+.cars-feedback-modal[hidden] {
+    display: none !important;
+}
+
+.cars-feedback-card {
+    width: min(100%, 420px);
+    padding: 28px 24px 24px;
+    border-radius: 28px;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    background: #0f1930;
+    box-shadow:
+        0 28px 56px rgba(2, 6, 23, 0.34),
+        inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+    text-align: center;
+}
+
+.cars-feedback-kicker {
+    color: rgba(148, 163, 184, 0.82);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    font-family: var(--font-sans);
+}
+
+.cars-feedback-message {
+    color: #eef4ff;
+    font-size: 15px;
+    line-height: 1.55;
+    font-family: var(--font-sans);
+}
+
+.cars-feedback-button {
+    min-width: 132px;
 }
 
 .cars-add-form {

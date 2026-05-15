@@ -10,7 +10,125 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeButtons = modalRoot.querySelectorAll('[data-vehicle-modal-close]');
     const scrim = modalRoot.querySelector('[data-vehicle-modal-scrim]');
     const serviceForm = modalRoot.querySelector('[data-modal-panel="modal-service-add"] form');
+    const heroMenu = document.querySelector('[data-hero-menu]');
+    const heroMenuTrigger = document.querySelector('[data-hero-menu-trigger]');
+    const heroMenuDropdown = document.querySelector('[data-hero-menu-dropdown]');
+    const heroCarousel = document.querySelector('[data-hero-carousel]');
+    const heroCarouselTrack = document.querySelector('[data-hero-carousel-track]');
+    const heroCarouselPrev = document.querySelector('[data-hero-carousel-prev]');
+    const heroCarouselNext = document.querySelector('[data-hero-carousel-next]');
     let activePanel = null;
+
+    const closeHeroMenu = () => {
+        if (!heroMenuTrigger || !heroMenuDropdown) {
+            return;
+        }
+
+        heroMenuTrigger.setAttribute('aria-expanded', 'false');
+        heroMenuDropdown.hidden = true;
+    };
+
+    const toggleHeroMenu = () => {
+        if (!heroMenuTrigger || !heroMenuDropdown) {
+            return;
+        }
+
+        const isOpen = heroMenuTrigger.getAttribute('aria-expanded') === 'true';
+        heroMenuTrigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+        heroMenuDropdown.hidden = isOpen;
+    };
+
+    const initializeHeroCarousel = () => {
+        if (!heroCarousel || !heroCarouselTrack) {
+            return;
+        }
+
+        const initialSlides = Array.from(heroCarouselTrack.children);
+        if (initialSlides.length <= 1) {
+            return;
+        }
+
+        const firstClone = initialSlides[0].cloneNode(true);
+        const lastClone = initialSlides[initialSlides.length - 1].cloneNode(true);
+        heroCarouselTrack.insertBefore(lastClone, initialSlides[0]);
+        heroCarouselTrack.appendChild(firstClone);
+        const allSlides = Array.from(heroCarouselTrack.children);
+
+        let currentIndex = 1;
+        let isAnimating = false;
+        let slideWidth = heroCarousel.getBoundingClientRect().width;
+
+        const applySlideWidths = () => {
+            slideWidth = heroCarousel.getBoundingClientRect().width;
+            heroCarouselTrack.style.width = `${slideWidth * allSlides.length}px`;
+
+            allSlides.forEach((slide) => {
+                slide.style.width = `${slideWidth}px`;
+                slide.style.minWidth = `${slideWidth}px`;
+                slide.style.maxWidth = `${slideWidth}px`;
+                slide.style.flex = `0 0 ${slideWidth}px`;
+            });
+        };
+
+        const syncPosition = () => {
+            heroCarouselTrack.style.transform = `translateX(-${currentIndex * slideWidth}px)`;
+        };
+
+        const moveToIndex = (nextIndex) => {
+            if (isAnimating) {
+                return;
+            }
+
+            isAnimating = true;
+            currentIndex = nextIndex;
+            syncPosition();
+        };
+
+        heroCarouselTrack.addEventListener('transitionend', () => {
+            const totalSlides = initialSlides.length;
+
+            if (currentIndex === 0) {
+                heroCarouselTrack.classList.add('is-no-transition');
+                currentIndex = totalSlides;
+                syncPosition();
+                heroCarouselTrack.offsetHeight;
+                heroCarouselTrack.classList.remove('is-no-transition');
+            } else if (currentIndex === totalSlides + 1) {
+                heroCarouselTrack.classList.add('is-no-transition');
+                currentIndex = 1;
+                syncPosition();
+                heroCarouselTrack.offsetHeight;
+                heroCarouselTrack.classList.remove('is-no-transition');
+            }
+
+            isAnimating = false;
+        });
+
+        if (heroCarouselPrev) {
+            heroCarouselPrev.addEventListener('click', () => {
+                moveToIndex(currentIndex - 1);
+            });
+        }
+
+        if (heroCarouselNext) {
+            heroCarouselNext.addEventListener('click', () => {
+                moveToIndex(currentIndex + 1);
+            });
+        }
+
+        window.addEventListener('resize', () => {
+            applySlideWidths();
+            heroCarouselTrack.classList.add('is-no-transition');
+            syncPosition();
+            heroCarouselTrack.offsetHeight;
+            heroCarouselTrack.classList.remove('is-no-transition');
+        });
+
+        requestAnimationFrame(() => {
+            applySlideWidths();
+            syncPosition();
+        });
+    };
 
     const enhanceNumberInputs = () => {
         const numberInputs = modalRoot.querySelectorAll('.vehicle-modal-field input[type="number"]:not([readonly])');
@@ -78,6 +196,8 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        closeHeroMenu();
+
         panels.forEach((panel) => {
             panel.hidden = true;
         });
@@ -108,6 +228,19 @@ document.addEventListener('DOMContentLoaded', () => {
             openModal(button.dataset.modalOpen);
         });
     });
+
+    if (heroMenuTrigger) {
+        heroMenuTrigger.addEventListener('click', (event) => {
+            event.stopPropagation();
+            toggleHeroMenu();
+        });
+    }
+
+    if (heroMenuDropdown) {
+        heroMenuDropdown.addEventListener('click', (event) => {
+            event.stopPropagation();
+        });
+    }
 
     modalRoot.querySelectorAll('[data-task-realize]').forEach((button) => {
         button.addEventListener('click', () => {
@@ -156,10 +289,25 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && !modalRoot.hidden) {
             closeModal();
+            closeHeroMenu();
+            return;
+        }
+
+        if (event.key === 'Escape') {
+            closeHeroMenu();
         }
     });
 
+    document.addEventListener('click', (event) => {
+        if (!heroMenu || heroMenu.contains(event.target)) {
+            return;
+        }
+
+        closeHeroMenu();
+    });
+
     enhanceNumberInputs();
+    initializeHeroCarousel();
 
     const openModalFromQuery = () => {
         const params = new URLSearchParams(window.location.search);

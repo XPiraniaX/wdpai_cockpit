@@ -14,8 +14,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const mediaColumn = modalRoot.querySelector('.cars-add-media-column');
     const gallery = modalRoot.querySelector('[data-add-vehicle-gallery]');
     const imageInput = modalRoot.querySelector('[data-add-vehicle-image-input]');
+    const feedbackModal = modalRoot.querySelector('[data-cars-feedback]');
+    const feedbackMessage = modalRoot.querySelector('[data-cars-feedback-message]');
+    const feedbackCloseButton = modalRoot.querySelector('[data-cars-feedback-close]');
     let activePanel = null;
     let selectedFiles = [];
+    let isSubmittingAddVehicle = false;
 
     const syncImageInput = () => {
         if (!imageInput) {
@@ -69,11 +73,11 @@ document.addEventListener('DOMContentLoaded', () => {
             gallery.appendChild(card);
         });
 
-        if (selectedFiles.length < MAX_VEHICLE_IMAGES) {
+        const renderPlaceholderCard = () => {
             const placeholderCard = document.createElement('button');
             placeholderCard.type = 'button';
             placeholderCard.className = 'cars-add-image-preview cars-add-image-picker is-placeholder';
-            placeholderCard.setAttribute('aria-label', 'Dodaj zdjecie pojazdu');
+            placeholderCard.setAttribute('aria-label', 'Dodaj zdjęcie pojazdu');
             placeholderCard.addEventListener('click', openImagePicker);
 
             const placeholder = document.createElement('div');
@@ -90,6 +94,13 @@ document.addEventListener('DOMContentLoaded', () => {
             placeholder.appendChild(placeholderContent);
             placeholderCard.appendChild(placeholder);
             gallery.appendChild(placeholderCard);
+        };
+
+        if (selectedFiles.length === 0) {
+            renderPlaceholderCard();
+            renderPlaceholderCard();
+        } else if (selectedFiles.length < MAX_VEHICLE_IMAGES) {
+            renderPlaceholderCard();
         }
 
         if (mediaColumn && selectedFiles.length > 0) {
@@ -104,6 +115,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const closeModal = () => {
+        if (feedbackModal) {
+            feedbackModal.hidden = true;
+        }
+
         modalRoot.hidden = true;
         document.body.classList.remove('vehicle-modal-open');
 
@@ -130,6 +145,22 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.add('vehicle-modal-open');
     };
 
+    const showFeedback = (message) => {
+        if (!feedbackModal || !feedbackMessage) {
+            window.alert(message);
+            return;
+        }
+
+        feedbackMessage.textContent = message;
+        feedbackModal.hidden = false;
+    };
+
+    const hideFeedback = () => {
+        if (feedbackModal) {
+            feedbackModal.hidden = true;
+        }
+    };
+
     openButtons.forEach((button) => {
         button.addEventListener('click', () => {
             if (button.dataset.carsModalOpen === 'cars-add-vehicle' && addVehicleForm) {
@@ -145,11 +176,20 @@ document.addEventListener('DOMContentLoaded', () => {
         button.addEventListener('click', closeModal);
     });
 
+    if (feedbackCloseButton) {
+        feedbackCloseButton.addEventListener('click', hideFeedback);
+    }
+
     if (scrim) {
         scrim.addEventListener('click', closeModal);
     }
 
     document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && feedbackModal && !feedbackModal.hidden) {
+            hideFeedback();
+            return;
+        }
+
         if (event.key === 'Escape' && !modalRoot.hidden) {
             closeModal();
         }
@@ -174,6 +214,56 @@ document.addEventListener('DOMContentLoaded', () => {
             selectedFiles = selectedFiles.concat(incomingFiles.slice(0, remainingSlots));
             syncImageInput();
             renderImageGallery();
+        });
+    }
+
+    if (addVehicleForm) {
+        addVehicleForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            if (isSubmittingAddVehicle) {
+                return;
+            }
+
+            isSubmittingAddVehicle = true;
+            hideFeedback();
+
+            const submitButton = addVehicleForm.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+            }
+
+            try {
+                const response = await fetch(addVehicleForm.action, {
+                    method: 'POST',
+                    body: new FormData(addVehicleForm),
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    },
+                });
+
+                let payload = null;
+                try {
+                    payload = await response.json();
+                } catch (jsonError) {
+                    payload = null;
+                }
+
+                if (!response.ok || !payload?.success) {
+                    showFeedback(payload?.message || 'Nie udało się dodać pojazdu. Sprawdź dane i spróbuj ponownie.');
+                    return;
+                }
+
+                window.location.href = payload.redirect || '/my-cars';
+            } catch (error) {
+                showFeedback('Nie udało się połączyć z serwerem. Spróbuj ponownie.');
+            } finally {
+                isSubmittingAddVehicle = false;
+                if (submitButton) {
+                    submitButton.disabled = false;
+                }
+            }
         });
     }
 

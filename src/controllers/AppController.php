@@ -25,6 +25,14 @@ class AppController
         exit;
     }
 
+    protected function jsonResponse(array $payload, int $statusCode = 200): void
+    {
+        http_response_code($statusCode);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
+    }
+
     protected function isGet(): bool
     {
         return $_SERVER['REQUEST_METHOD'] === 'GET';
@@ -35,12 +43,18 @@ class AppController
         return $_SERVER['REQUEST_METHOD'] === 'POST';
     }
 
+    protected function isAjaxRequest(): bool
+    {
+        return strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '')) === 'xmlhttprequest';
+    }
+
     protected function render(string $template, array $variables = []): void
     {
         $templatePath = 'public/views/' . $template . '.html';
         $viewPath = file_exists($templatePath) ? $templatePath : 'public/views/404.html';
         $currentUserId = $this->getCurrentUserId();
         $currentUser = $this->resolveCurrentUser($currentUserId);
+        $flash = $this->consumeFlash();
         $styleFiles = [
             'base.css',
             'layout.css',

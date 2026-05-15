@@ -187,6 +187,191 @@ class CarsRepository
         return $statement->fetchAll();
     }
 
+    public function getVehicleImagePaths(int $userId, int $vehicleId): array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT vi.image_path
+            FROM vehicle_images vi
+            INNER JOIN vehicles v ON v.id = vi.vehicle_id
+            WHERE vi.vehicle_id = :vehicle_id
+                AND v.user_id = :user_id
+            ORDER BY vi.display_order ASC, vi.id ASC'
+        );
+        $statement->execute([
+            'vehicle_id' => $vehicleId,
+            'user_id' => $userId,
+        ]);
+
+        return array_values(array_filter(array_map(
+            static fn (array $row): ?string => isset($row['image_path']) ? (string) $row['image_path'] : null,
+            $statement->fetchAll()
+        )));
+    }
+
+    public function getVehicleImages(int $userId, int $vehicleId): array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT
+                vi.id,
+                vi.image_path,
+                vi.display_order,
+                vi.is_primary
+            FROM vehicle_images vi
+            INNER JOIN vehicles v ON v.id = vi.vehicle_id
+            WHERE vi.vehicle_id = :vehicle_id
+                AND v.user_id = :user_id
+            ORDER BY vi.display_order ASC, vi.id ASC'
+        );
+        $statement->execute([
+            'vehicle_id' => $vehicleId,
+            'user_id' => $userId,
+        ]);
+
+        return $statement->fetchAll();
+    }
+
+    public function replaceVehicleImages(int $userId, int $vehicleId, array $keptImageIdsInOrder, array $newImagePaths): void
+    {
+        $this->connection->beginTransaction();
+
+        try {
+            $currentImagesStatement = $this->connection->prepare(
+                'SELECT vi.id
+                FROM vehicle_images vi
+                INNER JOIN vehicles v ON v.id = vi.vehicle_id
+                WHERE vi.vehicle_id = :vehicle_id
+                    AND v.user_id = :user_id
+                ORDER BY vi.display_order ASC, vi.id ASC'
+            );
+            $currentImagesStatement->execute([
+                'vehicle_id' => $vehicleId,
+                'user_id' => $userId,
+            ]);
+
+            $currentImageIds = array_map(
+                static fn (array $row): int => (int) $row['id'],
+                $currentImagesStatement->fetchAll()
+            );
+            $currentImageIdSet = array_fill_keys($currentImageIds, true);
+
+            $keptIds = [];
+            foreach ($keptImageIdsInOrder as $imageId) {
+                $normalizedId = (int) $imageId;
+                if ($normalizedId > 0 && isset($currentImageIdSet[$normalizedId]) && !in_array($normalizedId, $keptIds, true)) {
+                    $keptIds[] = $normalizedId;
+                }
+            }
+
+            $idsToDelete = array_values(array_diff($currentImageIds, $keptIds));
+
+            if (!empty($idsToDelete)) {
+                $deleteStatement = $this->connection->prepare(
+                    'DELETE FROM vehicle_images
+                    WHERE vehicle_id = :vehicle_id
+                        AND id = :image_id'
+                );
+
+                foreach ($idsToDelete as $imageIdToDelete) {
+                    $deleteStatement->execute([
+                        'vehicle_id' => $vehicleId,
+                        'image_id' => $imageIdToDelete,
+                    ]);
+                }
+            }
+
+            $updateStatement = $this->connection->prepare(
+                'UPDATE vehicle_images
+                SET display_order = :display_order,
+                    is_primary = :is_primary
+                WHERE id = :image_id
+                    AND vehicle_id = :vehicle_id'
+            );
+
+            $nextDisplayOrder = 1;
+            foreach ($keptIds as $keptIndex => $keptImageId) {
+                $updateStatement->execute([
+                    'display_order' => $nextDisplayOrder,
+                    'is_primary' => $this->toPgBoolean($keptIndex === 0),
+                    'image_id' => $keptImageId,
+                    'vehicle_id' => $vehicleId,
+                ]);
+                $nextDisplayOrder++;
+            }
+
+            if (!empty($newImagePaths)) {
+                $insertStatement = $this->connection->prepare(
+                    'INSERT INTO vehicle_images (vehicle_id, image_path, display_order, is_primary)
+                    VALUES (:vehicle_id, :image_path, :display_order, :is_primary)'
+                );
+
+                foreach ($newImagePaths as $newIndex => $newImagePath) {
+                    $insertStatement->execute([
+                        'vehicle_id' => $vehicleId,
+                        'image_path' => $newImagePath,
+                        'display_order' => $nextDisplayOrder,
+                        'is_primary' => $this->toPgBoolean(empty($keptIds) && $newIndex === 0),
+                    ]);
+                    $nextDisplayOrder++;
+                }
+            }
+
+            $this->connection->commit();
+        } catch (Throwable $exception) {
+            $this->connection->rollBack();
+            throw $exception;
+        }
+    }
+
+    public function vehicleVinExists(string $vin, ?int $excludeVehicleId = null): bool
+    {
+        $query = 'SELECT 1
+            FROM vehicles
+            WHERE UPPER(vin) = UPPER(:vin)';
+
+        if ($excludeVehicleId !== null) {
+            $query .= '
+                AND id <> :exclude_vehicle_id';
+        }
+
+        $query .= '
+            LIMIT 1';
+
+        $statement = $this->connection->prepare(
+            $query
+        );
+        $parameters = ['vin' => $vin];
+        if ($excludeVehicleId !== null) {
+            $parameters['exclude_vehicle_id'] = $excludeVehicleId;
+        }
+        $statement->execute($parameters);
+
+        return (bool) $statement->fetchColumn();
+    }
+
+    public function vehicleLicensePlateExists(string $licensePlate, ?int $excludeVehicleId = null): bool
+    {
+        $query = 'SELECT 1
+            FROM vehicles
+            WHERE UPPER(license_plate) = UPPER(:license_plate)';
+
+        if ($excludeVehicleId !== null) {
+            $query .= '
+                AND id <> :exclude_vehicle_id';
+        }
+
+        $query .= '
+            LIMIT 1';
+
+        $statement = $this->connection->prepare($query);
+        $parameters = ['license_plate' => $licensePlate];
+        if ($excludeVehicleId !== null) {
+            $parameters['exclude_vehicle_id'] = $excludeVehicleId;
+        }
+        $statement->execute($parameters);
+
+        return (bool) $statement->fetchColumn();
+    }
+
     public function updateVehicleSpecification(int $userId, int $vehicleId, array $data): void
     {
         $this->connection->beginTransaction();
@@ -245,7 +430,7 @@ class CarsRepository
                 'power_hp' => $data['power_hp'],
                 'power_nm' => $data['power_nm'],
                 'fuel_type' => $data['fuel_type'],
-                'is_factory_power' => $data['is_factory_power'],
+                'is_factory_power' => $this->toPgBoolean($data['is_factory_power'] ?? null),
                 'engine_mount' => $data['engine_mount'],
                 'aspiration' => $data['aspiration'],
                 'cylinder_count' => $data['cylinder_count'],
@@ -344,6 +529,19 @@ class CarsRepository
         );
         $statement->execute([
             'task_id' => $taskId,
+            'vehicle_id' => $vehicleId,
+            'user_id' => $userId,
+        ]);
+    }
+
+    public function deleteVehicle(int $userId, int $vehicleId): void
+    {
+        $statement = $this->connection->prepare(
+            'DELETE FROM vehicles
+            WHERE id = :vehicle_id
+                AND user_id = :user_id'
+        );
+        $statement->execute([
             'vehicle_id' => $vehicleId,
             'user_id' => $userId,
         ]);
@@ -524,7 +722,7 @@ class CarsRepository
                     :tire_size_label,
                     :front_brake_type,
                     :rear_brake_type,
-                    0,
+                    :current_mileage_km,
                     :exterior_color,
                     \'active\',
                     :display_order,
@@ -549,7 +747,7 @@ class CarsRepository
                 'engine_capacity_cc' => $data['engine_capacity_cc'],
                 'power_hp' => $data['power_hp'],
                 'power_nm' => $data['power_nm'],
-                'is_factory_power' => $data['is_factory_power'],
+                'is_factory_power' => $this->toPgBoolean($data['is_factory_power'] ?? null),
                 'engine_mount' => $data['engine_mount'],
                 'aspiration' => $data['aspiration'],
                 'cylinder_count' => $data['cylinder_count'],
@@ -562,9 +760,10 @@ class CarsRepository
                 'tire_size_label' => $data['tire_size_label'],
                 'front_brake_type' => $data['front_brake_type'],
                 'rear_brake_type' => $data['rear_brake_type'],
+                'current_mileage_km' => $data['current_mileage_km'],
                 'exterior_color' => $data['exterior_color'],
                 'display_order' => $displayOrder,
-                'is_primary' => $isPrimary,
+                'is_primary' => $this->toPgBoolean($isPrimary),
             ]);
 
             $vehicleId = (int) $vehicleStatement->fetchColumn();
@@ -601,7 +800,7 @@ class CarsRepository
                         'vehicle_id' => $vehicleId,
                         'image_path' => $imagePath,
                         'display_order' => $index + 1,
-                        'is_primary' => $index === 0,
+                        'is_primary' => $this->toPgBoolean($index === 0),
                     ]);
                 }
             }
@@ -781,5 +980,14 @@ class CarsRepository
         $statement->execute(['user_id' => $userId]);
 
         return (bool) $statement->fetchColumn();
+    }
+
+    private function toPgBoolean(?bool $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return $value ? 'true' : 'false';
     }
 }

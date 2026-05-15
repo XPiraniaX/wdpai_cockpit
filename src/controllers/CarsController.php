@@ -16,6 +16,7 @@ class CarsController extends AppController
         $primaryVehicle = $repository->getPrimaryVehicle($userId);
         $remainingVehicles = $repository->getRemainingVehicles($userId);
         $serviceHistory = $primaryVehicle ? $repository->getServiceHistory((int) $primaryVehicle['id'], 3) : [];
+        $addVehicleForm = $this->consumeAddVehicleFormDraft();
 
         $heroVehicle = $primaryVehicle ? [
             'id' => (int) $primaryVehicle['id'],
@@ -92,6 +93,7 @@ class CarsController extends AppController
                 'cng' => 'CNG',
                 'other' => 'Inne',
             ],
+            'addVehicleForm' => $addVehicleForm,
             'scriptFiles' => ['my_cars.js'],
         ]);
     }
@@ -132,6 +134,7 @@ class CarsController extends AppController
         $maintenanceTasks = $repository->getMaintenanceTasks($vehicleId, 4);
         $allMaintenanceTasks = $repository->getMaintenanceTasks($vehicleId, 50);
         $inspectionHistory = $repository->getInspectionHistory($vehicleId);
+        $vehicleImages = $repository->getVehicleImages($userId, $vehicleId);
 
         return $this->render('vehicle_details', [
             'title' => $vehicle['display_name'],
@@ -164,6 +167,15 @@ class CarsController extends AppController
                 'technicalSpec' => $this->buildTechnicalSpec($vehicle),
             ],
             'vehicleRecord' => $vehicle,
+            'vehicleImages' => array_map(
+                static fn (array $image): array => [
+                    'id' => (int) ($image['id'] ?? 0),
+                    'path' => (string) ($image['image_path'] ?? ''),
+                    'displayOrder' => (int) ($image['display_order'] ?? 0),
+                    'isPrimary' => (bool) ($image['is_primary'] ?? false),
+                ],
+                $vehicleImages
+            ),
             'serviceHistory' => $this->mapServiceHistory($serviceHistory),
             'fullServiceHistory' => $this->mapServiceHistory($fullServiceHistory),
             'maintenanceTasks' => $this->mapMaintenanceTasks($maintenanceTasks),
@@ -182,7 +194,12 @@ class CarsController extends AppController
 
         switch ($action) {
             case 'spec_update':
-                $repository->updateVehicleSpecification($userId, $vehicleId, $this->buildSpecificationPayload($vehicle));
+                $payload = $this->buildSpecificationPayload($vehicle);
+                if ($message = $this->validateVehicleSpecificationUniqueness($repository, $vehicleId, $payload)) {
+                    $this->setFlash('error', $message);
+                    $this->redirect('/my-cars/details?id=' . $vehicleId . '&open_modal=modal-spec-edit');
+                }
+                $repository->updateVehicleSpecification($userId, $vehicleId, $payload);
                 break;
             case 'fuel_add':
                 $repository->addFuelLog($userId, $vehicleId, $this->buildFuelLogPayload($vehicle));
@@ -209,6 +226,14 @@ class CarsController extends AppController
                 break;
             case 'insurance_update':
                 $repository->upsertInsurance($userId, $vehicleId, $this->buildInsurancePayload());
+                break;
+            case 'vehicle_images_update':
+                $this->updateVehicleImages($repository, $userId, $vehicleId, $vehicle);
+                break;
+            case 'vehicle_delete':
+                $this->deleteVehicleWithImages($repository, $userId, $vehicleId);
+                $this->setFlash('success', 'Pojazd został usunięty.');
+                $this->redirect('/my-cars');
                 break;
             default:
                 break;
@@ -752,6 +777,20 @@ class CarsController extends AppController
     private function handleVehicleCreate(CarsRepository $repository, int $userId): void
     {
         $payload = $this->buildVehicleCreatePayload();
+
+        if ($message = $this->validateVehicleCreateUniqueness($repository, $payload)) {
+            if ($this->isAjaxRequest()) {
+                $this->jsonResponse([
+                    'success' => false,
+                    'message' => $message,
+                ], 422);
+            }
+
+            $this->rememberAddVehicleFormDraft();
+            $this->setFlash('error', $message);
+            $this->redirect('/my-cars?open_modal=cars-add-vehicle');
+        }
+
         $payload['image_paths'] = $this->handleVehicleImageUploads(
             $userId,
             $payload['brand_name'],
@@ -759,11 +798,104 @@ class CarsController extends AppController
         );
 
         if (empty($payload['image_paths'])) {
+            if ($this->isAjaxRequest()) {
+                $this->jsonResponse([
+                    'success' => false,
+                    'message' => 'Dodaj co najmniej jedno zdjęcie pojazdu.',
+                ], 422);
+            }
+            $this->rememberAddVehicleFormDraft();
+            $this->setFlash('error', 'Dodaj co najmniej jedno zdjęcie pojazdu. Pozostałe dane zostały zachowane.');
             $this->redirect('/my-cars?open_modal=cars-add-vehicle');
         }
 
-        $repository->createVehicle($userId, $payload);
+        try {
+            $repository->createVehicle($userId, $payload);
+        } catch (PDOException $exception) {
+            if ($this->isUniqueViolation($exception)) {
+                if ($this->isAjaxRequest()) {
+                    $this->jsonResponse([
+                        'success' => false,
+                        'message' => $this->buildUniqueViolationMessage($exception),
+                    ], 422);
+                }
+
+                $this->rememberAddVehicleFormDraft();
+                $this->setFlash('error', $this->buildUniqueViolationMessage($exception));
+                $this->redirect('/my-cars?open_modal=cars-add-vehicle');
+            }
+
+            if ($this->isAjaxRequest()) {
+                $this->jsonResponse([
+                    'success' => false,
+                    'message' => 'Nie udało się dodać pojazdu. Spróbuj ponownie.',
+                ], 500);
+            }
+
+            throw $exception;
+        }
+
+        if ($this->isAjaxRequest()) {
+            $this->jsonResponse([
+                'success' => true,
+                'redirect' => '/my-cars',
+            ]);
+        }
+
         $this->redirect('/my-cars');
+    }
+
+    private function updateVehicleImages(CarsRepository $repository, int $userId, int $vehicleId, array $vehicle): void
+    {
+        $currentImages = $repository->getVehicleImages($userId, $vehicleId);
+        $keptImageIds = array_map('intval', $_POST['existing_image_ids'] ?? []);
+        $newImagePaths = $this->handleVehicleImageUploads(
+            $userId,
+            $vehicle['brand_name'] ?? 'vehicle',
+            $vehicle['model_name'] ?? 'vehicle',
+            'vehicle_images_new'
+        );
+
+        $validCurrentImageIds = array_fill_keys(
+            array_map(static fn (array $image): int => (int) ($image['id'] ?? 0), $currentImages),
+            true
+        );
+        $keptImageIds = array_values(array_filter(
+            $keptImageIds,
+            static fn (int $imageId): bool => $imageId > 0 && isset($validCurrentImageIds[$imageId])
+        ));
+
+        $totalImagesAfterSave = count($keptImageIds) + count($newImagePaths);
+        if ($totalImagesAfterSave <= 0) {
+            $this->setFlash('error', 'Pojazd musi mieć co najmniej jedno zdjęcie.');
+            $this->redirect('/my-cars/details?id=' . $vehicleId . '&open_modal=modal-images-edit');
+        }
+
+        if ($totalImagesAfterSave > 10) {
+            $this->deleteUploadedFiles($newImagePaths);
+            $this->setFlash('error', 'Możesz zapisać maksymalnie 10 zdjęć pojazdu.');
+            $this->redirect('/my-cars/details?id=' . $vehicleId . '&open_modal=modal-images-edit');
+        }
+
+        $keptImageIdSet = array_fill_keys($keptImageIds, true);
+        $deletedImagePaths = [];
+        foreach ($currentImages as $currentImage) {
+            $currentImageId = (int) ($currentImage['id'] ?? 0);
+            if ($currentImageId > 0 && !isset($keptImageIdSet[$currentImageId]) && !empty($currentImage['image_path'])) {
+                $deletedImagePaths[] = (string) $currentImage['image_path'];
+            }
+        }
+
+        try {
+            $repository->replaceVehicleImages($userId, $vehicleId, $keptImageIds, $newImagePaths);
+        } catch (Throwable $exception) {
+            $this->deleteUploadedFiles($newImagePaths);
+            throw $exception;
+        }
+
+        $this->deleteUploadedFiles($deletedImagePaths);
+        $this->setFlash('success', 'Zdjęcia pojazdu zostały zaktualizowane.');
+        $this->redirect('/my-cars/details?id=' . $vehicleId);
     }
 
     private function buildVehicleCreatePayload(): array
@@ -774,6 +906,7 @@ class CarsController extends AppController
             'trim_name' => $this->sanitizeText($_POST['trim_name'] ?? null) ?? 'Brak danych',
             'display_name' => $this->sanitizeText($_POST['display_name'] ?? null) ?? 'Brak danych',
             'production_year' => $this->sanitizeSmallInt($_POST['production_year'] ?? null) ?? (int) date('Y'),
+            'current_mileage_km' => $this->sanitizeNullablePositiveInt($_POST['current_mileage_km'] ?? null) ?? 0,
             'license_plate' => $this->sanitizeText($_POST['license_plate'] ?? null) ?? 'Brak danych',
             'vin' => $this->sanitizeText($_POST['vin'] ?? null) ?? 'Brak danych',
             'exterior_color' => $this->sanitizeText($_POST['exterior_color'] ?? null) ?? 'Brak danych',
@@ -806,9 +939,9 @@ class CarsController extends AppController
         ];
     }
 
-    private function handleVehicleImageUploads(int $userId, string $brandName, string $modelName): array
+    private function handleVehicleImageUploads(int $userId, string $brandName, string $modelName, string $fieldName = 'vehicle_images'): array
     {
-        if (empty($_FILES['vehicle_images']) || !is_array($_FILES['vehicle_images']['error'] ?? null)) {
+        if (empty($_FILES[$fieldName]) || !is_array($_FILES[$fieldName]['error'] ?? null)) {
             return [];
         }
 
@@ -821,7 +954,7 @@ class CarsController extends AppController
             mkdir($uploadDirectory, 0775, true);
         }
 
-        $files = $this->normalizeVehicleImageUploads($_FILES['vehicle_images']);
+        $files = $this->normalizeVehicleImageUploads($_FILES[$fieldName]);
         if (count($files) === 0) {
             return [];
         }
@@ -873,6 +1006,39 @@ class CarsController extends AppController
         return $normalized;
     }
 
+    private function deleteVehicleWithImages(CarsRepository $repository, int $userId, int $vehicleId): void
+    {
+        $imagePaths = $repository->getVehicleImagePaths($userId, $vehicleId);
+
+        $this->deleteUploadedFiles($imagePaths);
+
+        $repository->deleteVehicle($userId, $vehicleId);
+    }
+
+    private function deleteUploadedFiles(array $imagePaths): void
+    {
+        foreach ($imagePaths as $imagePath) {
+            if (!is_string($imagePath) || $imagePath === '') {
+                continue;
+            }
+
+            $localPath = $this->resolvePublicPathToFilesystem($imagePath);
+            if ($localPath !== null && is_file($localPath)) {
+                @unlink($localPath);
+            }
+        }
+    }
+
+    private function resolvePublicPathToFilesystem(string $publicPath): ?string
+    {
+        $normalized = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, ltrim($publicPath, '/\\'));
+        if ($normalized === '') {
+            return null;
+        }
+
+        return getcwd() . DIRECTORY_SEPARATOR . $normalized;
+    }
+
     private function slugify(string $value): string
     {
         $normalized = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
@@ -881,5 +1047,125 @@ class CarsController extends AppController
         $normalized = preg_replace('/[^a-z0-9]+/', '-', $normalized) ?? '';
 
         return trim($normalized, '-') ?: 'vehicle';
+    }
+
+    private function rememberAddVehicleFormDraft(): void
+    {
+        $fields = [
+            'brand_name',
+            'model_name',
+            'trim_name',
+            'display_name',
+            'production_year',
+            'current_mileage_km',
+            'license_plate',
+            'vin',
+            'exterior_color',
+            'inspection_valid_until',
+            'insurance_valid_until',
+            'policy_number',
+            'insurer_name',
+            'engine_capacity_cc',
+            'power_hp',
+            'power_nm',
+            'fuel_type',
+            'is_factory_power',
+            'aspiration',
+            'cylinder_count',
+            'cylinder_layout',
+            'drivetrain',
+            'transmission',
+            'body_type',
+            'seat_count',
+            'length_mm',
+            'width_mm',
+            'height_mm',
+            'wheel_size_label',
+            'tire_size_label',
+            'front_brake_type',
+            'rear_brake_type',
+        ];
+
+        $draft = [];
+        foreach ($fields as $field) {
+            $value = $_POST[$field] ?? null;
+            if (is_scalar($value) || $value === null) {
+                $draft[$field] = $value;
+            }
+        }
+
+        $_SESSION['cars_add_vehicle_form'] = $draft;
+    }
+
+    private function consumeAddVehicleFormDraft(): array
+    {
+        $draft = $_SESSION['cars_add_vehicle_form'] ?? [];
+        unset($_SESSION['cars_add_vehicle_form']);
+
+        return is_array($draft) ? $draft : [];
+    }
+
+    private function validateVehicleCreateUniqueness(CarsRepository $repository, array $payload): ?string
+    {
+        if (!empty($payload['vin']) && $repository->vehicleVinExists((string) $payload['vin'])) {
+            return 'Taki numer VIN już istnieje: ' . $payload['vin'] . '.';
+        }
+
+        if (!empty($payload['license_plate']) && $repository->vehicleLicensePlateExists((string) $payload['license_plate'])) {
+            return 'Takie tablice rejestracyjne już istnieją: ' . $payload['license_plate'] . '.';
+        }
+
+        return null;
+    }
+
+    private function validateVehicleSpecificationUniqueness(CarsRepository $repository, int $vehicleId, array $payload): ?string
+    {
+        if (!empty($payload['vin']) && $repository->vehicleVinExists((string) $payload['vin'], $vehicleId)) {
+            return 'Taki numer VIN już istnieje: ' . $payload['vin'] . '.';
+        }
+
+        if (!empty($payload['license_plate']) && $repository->vehicleLicensePlateExists((string) $payload['license_plate'], $vehicleId)) {
+            return 'Takie tablice rejestracyjne już istnieją: ' . $payload['license_plate'] . '.';
+        }
+
+        return null;
+    }
+
+    private function isUniqueViolation(PDOException $exception): bool
+    {
+        return ($exception->getCode() === '23505')
+            || (($exception->errorInfo[0] ?? null) === '23505');
+    }
+
+    private function buildUniqueViolationMessage(PDOException $exception): string
+    {
+        $message = $exception->getMessage();
+
+        if (preg_match('/Key \(([^)]+)\)=\(([^)]*)\) already exists/', $message, $matches) === 1) {
+            $field = trim($matches[1]);
+            $value = trim($matches[2]);
+            $labels = [
+                'vin' => 'Taki numer VIN już istnieje',
+                'license_plate' => 'Takie tablice rejestracyjne już istnieją',
+                'username' => 'Taki login już istnieje',
+                'email' => 'Taki adres email już istnieje',
+            ];
+
+            $baseMessage = $labels[$field] ?? 'Taka unikalna wartość już istnieje';
+
+            return $value !== ''
+                ? $baseMessage . ': ' . $value . '.'
+                : $baseMessage . '.';
+        }
+
+        if (str_contains($message, 'uq_vehicles_primary_per_user')) {
+            return 'Ten użytkownik ma już pojazd główny.';
+        }
+
+        if (str_contains($message, 'uq_vehicle_images_primary_per_vehicle')) {
+            return 'Ten pojazd ma już ustawione zdjęcie główne.';
+        }
+
+        return 'Jedna z unikalnych wartości już istnieje. Zmień dane i spróbuj ponownie.';
     }
 }
