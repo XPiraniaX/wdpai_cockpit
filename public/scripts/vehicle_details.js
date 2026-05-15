@@ -13,11 +13,152 @@ document.addEventListener('DOMContentLoaded', () => {
     const heroMenu = document.querySelector('[data-hero-menu]');
     const heroMenuTrigger = document.querySelector('[data-hero-menu-trigger]');
     const heroMenuDropdown = document.querySelector('[data-hero-menu-dropdown]');
+    const imagesEditForm = modalRoot.querySelector('[data-vehicle-images-form]');
+    const imagesEditGallery = modalRoot.querySelector('[data-vehicle-images-gallery]');
+    const imagesEditInput = modalRoot.querySelector('[data-vehicle-images-input]');
     const heroCarousel = document.querySelector('[data-hero-carousel]');
     const heroCarouselTrack = document.querySelector('[data-hero-carousel-track]');
     const heroCarouselPrev = document.querySelector('[data-hero-carousel-prev]');
     const heroCarouselNext = document.querySelector('[data-hero-carousel-next]');
     let activePanel = null;
+    let initialEditableExistingImages = [];
+    let editableExistingImages = [];
+    let editableNewFiles = [];
+
+    const syncImagesEditInput = () => {
+        if (!imagesEditInput) {
+            return;
+        }
+
+        const transfer = new DataTransfer();
+        editableNewFiles.forEach((file) => transfer.items.add(file));
+        imagesEditInput.files = transfer.files;
+    };
+
+    const countEditableImages = () => editableExistingImages.length + editableNewFiles.length;
+
+    const openImagesEditPicker = () => {
+        if (imagesEditInput && countEditableImages() < 10) {
+            imagesEditInput.click();
+        }
+    };
+
+    const buildImagePlaceholder = () => {
+        const placeholderButton = document.createElement('button');
+        placeholderButton.type = 'button';
+        placeholderButton.className = 'vehicle-images-edit-card vehicle-images-edit-card-placeholder';
+        placeholderButton.setAttribute('aria-label', 'Dodaj zdjęcie pojazdu');
+        placeholderButton.addEventListener('click', openImagesEditPicker);
+
+        const placeholder = document.createElement('div');
+        placeholder.className = 'vehicle-images-edit-placeholder';
+
+        const placeholderContent = document.createElement('div');
+        placeholderContent.className = 'vehicle-images-edit-placeholder-content';
+
+        const plus = document.createElement('div');
+        plus.className = 'vehicle-images-edit-placeholder-plus';
+        plus.textContent = '+';
+
+        placeholderContent.appendChild(plus);
+        placeholder.appendChild(placeholderContent);
+        placeholderButton.appendChild(placeholder);
+
+        return placeholderButton;
+    };
+
+    const renderImagesEditGallery = () => {
+        if (!imagesEditGallery) {
+            return;
+        }
+
+        imagesEditGallery.innerHTML = '';
+
+        editableExistingImages.forEach((image, index) => {
+            const card = document.createElement('div');
+            card.className = 'vehicle-images-edit-card';
+
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'existing_image_ids[]';
+            input.value = String(image.id);
+
+            const photo = document.createElement('img');
+            photo.className = 'vehicle-images-edit-photo';
+            photo.src = image.path;
+            photo.alt = `Zdjęcie pojazdu ${index + 1}`;
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'vehicle-images-edit-remove';
+            removeButton.setAttribute('aria-label', `Usuń zdjęcie ${index + 1}`);
+            removeButton.addEventListener('click', () => {
+                editableExistingImages = editableExistingImages.filter((_, imageIndex) => imageIndex !== index);
+                renderImagesEditGallery();
+            });
+
+            card.appendChild(input);
+            card.appendChild(photo);
+            card.appendChild(removeButton);
+            imagesEditGallery.appendChild(card);
+        });
+
+        editableNewFiles.forEach((file, index) => {
+            const overallIndex = editableExistingImages.length + index;
+            const card = document.createElement('div');
+            card.className = 'vehicle-images-edit-card';
+
+            const photo = document.createElement('img');
+            photo.className = 'vehicle-images-edit-photo';
+            photo.alt = `Nowe zdjęcie pojazdu ${overallIndex + 1}`;
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'vehicle-images-edit-remove';
+            removeButton.setAttribute('aria-label', `Usuń nowe zdjęcie ${overallIndex + 1}`);
+            removeButton.addEventListener('click', () => {
+                editableNewFiles = editableNewFiles.filter((_, fileIndex) => fileIndex !== index);
+                syncImagesEditInput();
+                renderImagesEditGallery();
+            });
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                photo.src = String(reader.result ?? '');
+            };
+            reader.readAsDataURL(file);
+
+            card.appendChild(photo);
+            card.appendChild(removeButton);
+            imagesEditGallery.appendChild(card);
+        });
+
+        if (countEditableImages() < 10) {
+            imagesEditGallery.appendChild(buildImagePlaceholder());
+        }
+    };
+
+    const initializeImagesEditState = () => {
+        if (!imagesEditGallery) {
+            return;
+        }
+
+        editableExistingImages = initialEditableExistingImages.map((image) => ({ ...image }));
+        editableNewFiles = [];
+        syncImagesEditInput();
+        renderImagesEditGallery();
+    };
+
+    const captureInitialImagesEditState = () => {
+        if (!imagesEditGallery) {
+            return;
+        }
+
+        initialEditableExistingImages = Array.from(imagesEditGallery.querySelectorAll('[data-vehicle-image-existing]')).map((card) => ({
+            id: Number(card.dataset.imageId || 0),
+            path: String(card.dataset.imagePath || ''),
+        })).filter((image) => image.id > 0 && image.path !== '');
+    };
 
     const closeHeroMenu = () => {
         if (!heroMenuTrigger || !heroMenuDropdown) {
@@ -196,6 +337,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        if (panelName === 'modal-images-edit') {
+            initializeImagesEditState();
+        }
+
         closeHeroMenu();
 
         panels.forEach((panel) => {
@@ -307,7 +452,31 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     enhanceNumberInputs();
+    captureInitialImagesEditState();
+    initializeImagesEditState();
     initializeHeroCarousel();
+
+    if (imagesEditInput) {
+        imagesEditInput.addEventListener('change', () => {
+            const incomingFiles = Array.from(imagesEditInput.files ?? []);
+
+            if (incomingFiles.length === 0) {
+                syncImagesEditInput();
+                return;
+            }
+
+            const remainingSlots = 10 - countEditableImages();
+            if (remainingSlots <= 0) {
+                syncImagesEditInput();
+                renderImagesEditGallery();
+                return;
+            }
+
+            editableNewFiles = editableNewFiles.concat(incomingFiles.slice(0, remainingSlots));
+            syncImagesEditInput();
+            renderImagesEditGallery();
+        });
+    }
 
     const openModalFromQuery = () => {
         const params = new URLSearchParams(window.location.search);
