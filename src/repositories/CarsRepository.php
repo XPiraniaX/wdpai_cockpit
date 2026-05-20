@@ -232,7 +232,7 @@ class CarsRepository
 
     public function replaceVehicleImages(int $userId, int $vehicleId, array $keptImageIdsInOrder, array $newImagePaths): void
     {
-        $this->connection->beginTransaction();
+        $this->beginTransaction('REPEATABLE READ');
 
         try {
             $currentImagesStatement = $this->connection->prepare(
@@ -374,7 +374,7 @@ class CarsRepository
 
     public function updateVehicleSpecification(int $userId, int $vehicleId, array $data): void
     {
-        $this->connection->beginTransaction();
+        $this->beginTransaction('READ COMMITTED');
 
         try {
             $brandId = $this->resolveBrandId($data['brand_name']);
@@ -458,7 +458,7 @@ class CarsRepository
 
     public function addFuelLog(int $userId, int $vehicleId, array $data): void
     {
-        $this->connection->beginTransaction();
+        $this->beginTransaction('READ COMMITTED');
 
         try {
             $insert = $this->connection->prepare(
@@ -474,19 +474,6 @@ class CarsRepository
                 'liters' => $data['liters'],
                 'total_cost' => $data['total_cost'],
                 'fuel_type' => $data['fuel_type'],
-                'vehicle_id' => $vehicleId,
-                'user_id' => $userId,
-            ]);
-
-            $updateMileage = $this->connection->prepare(
-                'UPDATE vehicles
-                SET current_mileage_km = :mileage_km
-                WHERE id = :vehicle_id
-                    AND user_id = :user_id
-                    AND current_mileage_km <= :mileage_km'
-            );
-            $updateMileage->execute([
-                'mileage_km' => $data['mileage_km'],
                 'vehicle_id' => $vehicleId,
                 'user_id' => $userId,
             ]);
@@ -649,7 +636,7 @@ class CarsRepository
 
     public function createVehicle(int $userId, array $data): int
     {
-        $this->connection->beginTransaction();
+        $this->beginTransaction('REPEATABLE READ');
 
         try {
             $brandId = $this->resolveBrandId($data['brand_name']);
@@ -818,8 +805,8 @@ class CarsRepository
     {
         return 'SELECT
                 v.id,
-                cb.name AS brand_name,
-                cm.name AS model_name,
+                v.brand_name,
+                v.model_name,
                 v.display_name,
                 v.trim_name,
                 v.production_year,
@@ -848,68 +835,29 @@ class CarsRepository
                 v.rear_brake_type,
                 v.vin,
                 v.license_plate,
-                vi.image_path,
-                next_inspection.inspection_date,
-                next_inspection.valid_until AS next_inspection_date,
-                next_inspection.result AS inspection_result,
-                next_insurance.purchased_on,
-                next_insurance.valid_until AS next_insurance_date,
-                next_insurance.insurer_name AS insurer_name,
-                next_insurance.policy_number AS policy_number,
-                last_fuel.fueled_at AS last_fuel_at,
-                last_fuel.total_cost AS last_fuel_cost,
-                avg_consumption.average_consumption_l_100km
-            FROM vehicles v
-            INNER JOIN car_brands cb
-                ON cb.id = v.brand_id
-            LEFT JOIN car_models cm
-                ON cm.id = v.model_id
-            LEFT JOIN vehicle_images vi
-                ON vi.vehicle_id = v.id
-                AND vi.is_primary = TRUE
-            LEFT JOIN LATERAL (
-                SELECT ti.inspection_date, ti.valid_until, ti.result
-                FROM technical_inspections ti
-                WHERE ti.vehicle_id = v.id
-                ORDER BY ti.id DESC
-                LIMIT 1
-            ) AS next_inspection ON TRUE
-            LEFT JOIN LATERAL (
-                SELECT ip.purchased_on, ip.valid_until, ip.insurer_name, ip.policy_number
-                FROM insurance_policies ip
-                WHERE ip.vehicle_id = v.id
-                ORDER BY ip.valid_until ASC
-                LIMIT 1
-            ) AS next_insurance ON TRUE
-            LEFT JOIN LATERAL (
-                SELECT fl.fueled_at, fl.total_cost
-                FROM fuel_logs fl
-                WHERE fl.vehicle_id = v.id
-                ORDER BY fl.fueled_at DESC
-                LIMIT 1
-            ) AS last_fuel ON TRUE
-            LEFT JOIN LATERAL (
-                SELECT ROUND(AVG(consumption_l_100km)::numeric, 1) AS average_consumption_l_100km
-                FROM (
-                    SELECT
-                        CASE
-                            WHEN previous_log.mileage_km IS NULL THEN NULL
-                            WHEN current_log.mileage_km <= previous_log.mileage_km THEN NULL
-                            ELSE (current_log.liters / NULLIF(current_log.mileage_km - previous_log.mileage_km, 0)) * 100
-                        END AS consumption_l_100km
-                    FROM fuel_logs current_log
-                    LEFT JOIN LATERAL (
-                        SELECT fl_prev.mileage_km
-                        FROM fuel_logs fl_prev
-                        WHERE fl_prev.vehicle_id = current_log.vehicle_id
-                            AND fl_prev.fueled_at < current_log.fueled_at
-                        ORDER BY fl_prev.fueled_at DESC
-                        LIMIT 1
-                    ) AS previous_log ON TRUE
-                    WHERE current_log.vehicle_id = v.id
-                ) AS consumption_samples
-            ) AS avg_consumption ON TRUE
+                v.image_path,
+                v.inspection_date,
+                v.next_inspection_date,
+                v.inspection_result,
+                v.purchased_on,
+                v.next_insurance_date,
+                v.insurer_name,
+                v.policy_number,
+                v.last_fuel_at,
+                v.last_fuel_cost,
+                v.average_consumption_l_100km,
+                v.user_id,
+                v.status,
+                v.is_primary,
+                v.display_order
+            FROM vw_vehicle_overview v
             WHERE 1 = 1';
+    }
+
+    private function beginTransaction(string $isolationLevel = 'READ COMMITTED'): void
+    {
+        $this->connection->beginTransaction();
+        $this->connection->exec('SET TRANSACTION ISOLATION LEVEL ' . $isolationLevel);
     }
 
     private function resolveBrandId(string $brandName): int

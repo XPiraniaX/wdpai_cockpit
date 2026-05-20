@@ -8,7 +8,7 @@ Po uruchomieniu projektu z trwalym volume Postgresa:
 
 Przykladowe nazwy:
 - `001_add_vehicle_image_order.sql`
-- `002_expand_vehicle_images.sql`
+- `002_add_vehicle_database_primitives.sql`
 
 Sugerowany workflow:
 1. tworzysz nowy plik migracji,
@@ -20,6 +20,12 @@ Przykladowe uruchomienie migracji:
 
 ```bash
 docker compose exec db psql -U docker -d db -f /migrations/001_add_vehicle_images_display_order.sql
+```
+
+Aktualna kolejna migracja:
+
+```bash
+docker compose exec db psql -U docker -d db -f /migrations/002_add_vehicle_database_primitives.sql
 ```
 
 Wazne:
