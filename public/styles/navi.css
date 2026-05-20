@@ -1,5 +1,9 @@
+:root {
+    --sidebar-width: clamp(250px, 19vw, 320px);
+}
+
 .navi {
-    width: clamp(250px, 19vw, 320px);
+    width: var(--sidebar-width);
     min-height: 100vh;
     background: #020617;
     display: flex;
@@ -108,6 +112,10 @@
 }
 
 @media (min-width: 1600px) {
+    :root {
+        --sidebar-width: 320px;
+    }
+
     .navi {
         width: 320px;
     }
