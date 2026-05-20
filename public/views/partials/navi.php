@@ -15,7 +15,7 @@ $menuItems = [
 
         <nav class="menu" aria-label="Main navigation">
             <?php foreach ($menuItems as $item): ?>
-                <?php $isActive = $currentPath === $item['path']; ?>
+                <?php $isActive = $currentPath === $item['path'] || ($item['path'] === 'community' && str_starts_with($currentPath, 'community/')); ?>
                 <a href="<?= htmlspecialchars($item['href'], ENT_QUOTES, 'UTF-8'); ?>"
                    class="menu-item<?= $isActive ? ' active' : ''; ?>">
                     <span class="menu-icon"

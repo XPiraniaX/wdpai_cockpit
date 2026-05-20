@@ -5,7 +5,8 @@ $pageMap = [
     'my-cars' => ['title' => 'Moje samochody', 'subtitle' => 'Garaż'],
     'my-cars/details' => ['title' => 'Moje samochody', 'subtitle' => $vehicle['title'] ?? ($title ?? 'Szczegóły pojazdu')],
     'marketplace' => ['title' => 'Marketplace', 'subtitle' => 'Oferty'],
-    'community' => ['title' => 'Społeczność', 'subtitle' => 'Aktywność'],
+    'community' => ['title' => 'Społeczność', 'subtitle' => 'Feed'],
+    'community/profile' => ['title' => 'Społeczność', 'subtitle' => $profile['full_name'] ?? ($title ?? 'Profil użytkownika')],
     'settings' => ['title' => 'Ustawienia', 'subtitle' => 'Preferencje'],
 ];
 $pageMeta = $pageMap[$currentPath] ?? ['title' => 'Cockpit', 'subtitle' => 'Panel'];

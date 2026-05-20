@@ -9,6 +9,7 @@ Po uruchomieniu projektu z trwalym volume Postgresa:
 Przykladowe nazwy:
 - `001_add_vehicle_image_order.sql`
 - `002_add_vehicle_database_primitives.sql`
+- `003_add_community_foundation.sql`
 
 Sugerowany workflow:
 1. tworzysz nowy plik migracji,
@@ -26,6 +27,12 @@ Aktualna kolejna migracja:
 
 ```bash
 docker compose exec db psql -U docker -d db -f /migrations/002_add_vehicle_database_primitives.sql
+```
+
+Kolejna migracja dla modulu community:
+
+```bash
+docker compose exec db psql -U docker -d db -f /migrations/003_add_community_foundation.sql
 ```
 
 Wazne:
