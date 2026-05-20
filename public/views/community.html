@@ -7,6 +7,8 @@ $scopeLabels = [
     'commented' => 'Skomentowane',
 ];
 $currentUri = $_SERVER['REQUEST_URI'] ?? '/community';
+$composerUserName = $currentUser['full_name'] ?? 'Użytkownik';
+$composerFirstName = explode(' ', trim($composerUserName))[0] ?: $composerUserName;
 ?>
 <main class="community-page">
     <div class="community-shell">
@@ -16,56 +18,20 @@ $currentUri = $_SERVER['REQUEST_URI'] ?? '/community';
             </div>
         <?php endif; ?>
 
-        <section class="community-composer card">
-            <div class="community-section-head">
-                <div>
-                    <span class="community-kicker">Społeczność</span>
-                    <h1 class="community-title">Feed kierowców</h1>
+        <section class="community-composer-launcher card" data-community-launcher>
+            <div class="community-composer-launcher-head">
+                <div class="community-avatar" aria-hidden="true">
+                    <span class="community-avatar-ring"></span>
                 </div>
-                <p class="community-subtitle">Najnowsze posty, pytania i doświadczenia użytkowników w jednym miejscu.</p>
+
+                <button type="button" class="community-composer-launcher-button" data-open-community-modal>
+                    Co u Ciebie, <?= htmlspecialchars($composerFirstName, ENT_QUOTES, 'UTF-8'); ?>?
+                </button>
+
+                <button type="button" class="community-composer-photo-trigger" aria-label="Dodaj zdjęcie" data-open-community-modal>
+                    <img src="/public/assets/icons/photo_icon.svg" alt="" class="community-composer-photo-icon">
+                </button>
             </div>
-
-            <form method="post" class="community-composer-form">
-                <input type="hidden" name="action" value="create_post">
-                <input type="hidden" name="redirect_to" value="/community">
-
-                <textarea name="content"
-                          rows="5"
-                          class="community-textarea"
-                          placeholder="O czym chcesz dziś napisać?"
-                          required></textarea>
-
-                <div class="community-composer-grid">
-                    <label class="community-field">
-                        <span class="community-field-label">Marka</span>
-                        <select name="brand_id" class="community-select community-brand-select" data-target-model="composer-model">
-                            <option value="">Bez kategorii</option>
-                            <?php foreach ($brands as $brand): ?>
-                                <option value="<?= (int) $brand['id']; ?>"><?= htmlspecialchars($brand['name'], ENT_QUOTES, 'UTF-8'); ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </label>
-
-                    <label class="community-field">
-                        <span class="community-field-label">Model</span>
-                        <select name="model_id" class="community-select community-model-select" id="composer-model">
-                            <option value="">Bez modelu</option>
-                            <?php foreach ($brands as $brand): ?>
-                                <?php foreach ($brand['models'] as $model): ?>
-                                    <option value="<?= (int) $model['id']; ?>" data-brand-id="<?= (int) $brand['id']; ?>">
-                                        <?= htmlspecialchars($model['name'], ENT_QUOTES, 'UTF-8'); ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            <?php endforeach; ?>
-                        </select>
-                    </label>
-                </div>
-
-                <div class="community-composer-footer">
-                    <span class="community-helper">Kategoria może zostać pusta, ograniczona do marki albo do marki i modelu.</span>
-                    <button type="submit" class="community-button community-button-primary">Opublikuj post</button>
-                </div>
-            </form>
         </section>
 
         <section class="community-toolbar">
@@ -135,3 +101,70 @@ $currentUri = $_SERVER['REQUEST_URI'] ?? '/community';
         </section>
     </div>
 </main>
+
+<div class="community-modal-backdrop" hidden data-community-modal-backdrop></div>
+<section class="community-modal" hidden data-community-modal>
+    <form method="post" class="community-modal-panel">
+        <input type="hidden" name="action" value="create_post">
+        <input type="hidden" name="redirect_to" value="/community">
+
+        <header class="community-modal-header">
+            <h2 class="community-modal-title">Utwórz post</h2>
+            <button type="button" class="community-modal-close" aria-label="Zamknij" data-close-community-modal>
+                <img src="/public/assets/icons/close.svg" alt="">
+            </button>
+        </header>
+
+        <div class="community-modal-author">
+            <div class="community-avatar" aria-hidden="true">
+                <span class="community-avatar-ring"></span>
+            </div>
+            <div class="community-modal-author-meta">
+                <span class="community-modal-author-name"><?= htmlspecialchars($composerUserName, ENT_QUOTES, 'UTF-8'); ?></span>
+                <span class="community-modal-author-role"><?= htmlspecialchars(strtoupper((string) ($currentUser['membership_tier'] ?? 'free')) . ' MEMBER', ENT_QUOTES, 'UTF-8'); ?></span>
+            </div>
+        </div>
+
+        <textarea name="content"
+                  rows="8"
+                  class="community-modal-textarea"
+                  placeholder="O czym chcesz dziś napisać?"
+                  required></textarea>
+
+        <button type="button" class="community-modal-photo-button">
+            <img src="/public/assets/icons/photo_icon.svg" alt="" class="community-button-photo-icon">
+            Dodaj zdjęcie
+        </button>
+
+        <details class="community-modal-category">
+            <summary class="community-modal-category-summary">Kategoria</summary>
+            <div class="community-modal-category-body">
+                <label class="community-field">
+                    <span class="community-field-label">Marka</span>
+                    <select name="brand_id" class="community-select community-brand-select" data-target-model="composer-model-modal">
+                        <option value="">Bez kategorii</option>
+                        <?php foreach ($brands as $brand): ?>
+                            <option value="<?= (int) $brand['id']; ?>"><?= htmlspecialchars($brand['name'], ENT_QUOTES, 'UTF-8'); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+
+                <label class="community-field">
+                    <span class="community-field-label">Model</span>
+                    <select name="model_id" class="community-select community-model-select" id="composer-model-modal">
+                        <option value="">Bez modelu</option>
+                        <?php foreach ($brands as $brand): ?>
+                            <?php foreach ($brand['models'] as $model): ?>
+                                <option value="<?= (int) $model['id']; ?>" data-brand-id="<?= (int) $brand['id']; ?>">
+                                    <?= htmlspecialchars($model['name'], ENT_QUOTES, 'UTF-8'); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+            </div>
+        </details>
+
+        <button type="submit" class="community-button community-button-primary community-modal-submit">Opublikuj</button>
+    </form>
+</section>
