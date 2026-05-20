@@ -95,11 +95,20 @@ class CommunityController extends AppController
                     $this->redirect($redirectTo);
                 }
 
-                $repository->createPost($userId, [
-                    'brand_id' => $brandId,
-                    'model_id' => $modelId,
-                    'content' => $content,
-                ]);
+                $imagePaths = $this->handlePostImageUploads($userId);
+
+                try {
+                    $repository->createPost($userId, [
+                        'brand_id' => $brandId,
+                        'model_id' => $modelId,
+                        'content' => $content,
+                        'image_paths' => $imagePaths,
+                    ]);
+                } catch (Throwable $exception) {
+                    $this->deleteUploadedFiles($imagePaths);
+                    throw $exception;
+                }
+
                 $this->setFlash('success', 'Post został opublikowany.');
                 $this->redirect($redirectTo);
                 return;
@@ -178,5 +187,106 @@ class CommunityController extends AppController
         }
 
         return $redirectTo;
+    }
+
+    private function handlePostImageUploads(int $userId, string $fieldName = 'post_images'): array
+    {
+        if (empty($_FILES[$fieldName]) || !is_array($_FILES[$fieldName]['error'] ?? null)) {
+            return [];
+        }
+
+        $userRepository = new UserRepository(Database::getConnection());
+        $user = $userRepository->getById($userId);
+        $username = $user['username'] ?? ('user-' . $userId);
+        $uploadDirectory = getcwd() . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'posts';
+
+        if (!is_dir($uploadDirectory)) {
+            mkdir($uploadDirectory, 0775, true);
+        }
+
+        $files = $this->normalizeImageUploads($_FILES[$fieldName]);
+        if ($files === []) {
+            return [];
+        }
+
+        $uploadedPaths = [];
+        $slugBase = $this->slugify($username . '-community-post');
+        $timestamp = date('Ymd-His');
+        $requestToken = bin2hex(random_bytes(3));
+
+        foreach (array_slice($files, 0, 8) as $index => $file) {
+            if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                continue;
+            }
+
+            $extension = strtolower(pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
+            $safeExtension = in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true) ? $extension : 'jpg';
+            $filename = $slugBase . '-' . $timestamp . '-' . $requestToken . '-' . ($index + 1) . '.' . $safeExtension;
+            $targetPath = $uploadDirectory . DIRECTORY_SEPARATOR . $filename;
+
+            if (!move_uploaded_file((string) ($file['tmp_name'] ?? ''), $targetPath)) {
+                continue;
+            }
+
+            $uploadedPaths[] = '/public/uploads/posts/' . $filename;
+        }
+
+        return $uploadedPaths;
+    }
+
+    private function normalizeImageUploads(array $upload): array
+    {
+        $names = $upload['name'] ?? [];
+        $tmpNames = $upload['tmp_name'] ?? [];
+        $errors = $upload['error'] ?? [];
+
+        if (!is_array($names) || !is_array($tmpNames) || !is_array($errors)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($names as $index => $name) {
+            $normalized[] = [
+                'name' => $name,
+                'tmp_name' => $tmpNames[$index] ?? null,
+                'error' => $errors[$index] ?? UPLOAD_ERR_NO_FILE,
+            ];
+        }
+
+        return $normalized;
+    }
+
+    private function slugify(string $value): string
+    {
+        $normalized = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
+        $normalized = $normalized === false ? $value : $normalized;
+        $normalized = strtolower($normalized);
+        $normalized = preg_replace('/[^a-z0-9]+/', '-', $normalized) ?? '';
+
+        return trim($normalized, '-') ?: 'post';
+    }
+
+    private function deleteUploadedFiles(array $imagePaths): void
+    {
+        foreach ($imagePaths as $imagePath) {
+            if (!is_string($imagePath) || $imagePath === '') {
+                continue;
+            }
+
+            $localPath = $this->resolvePublicPathToFilesystem($imagePath);
+            if ($localPath !== null && is_file($localPath)) {
+                @unlink($localPath);
+            }
+        }
+    }
+
+    private function resolvePublicPathToFilesystem(string $publicPath): ?string
+    {
+        $normalized = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, ltrim($publicPath, '/\\'));
+        if ($normalized === '') {
+            return null;
+        }
+
+        return getcwd() . DIRECTORY_SEPARATOR . $normalized;
     }
 }

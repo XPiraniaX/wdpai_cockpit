@@ -78,9 +78,11 @@ class CommunityRepository
             return [];
         }
 
-        $commentsByPost = $this->getCommentsForPosts(array_column($posts, 'id'));
+        $postIds = array_column($posts, 'id');
+        $commentsByPost = $this->getCommentsForPosts($postIds);
+        $imagesByPost = $this->getImagesForPosts($postIds);
 
-        return array_map(function (array $post) use ($commentsByPost): array {
+        return array_map(function (array $post) use ($commentsByPost, $imagesByPost): array {
             $postId = (int) $post['id'];
             $brandName = $post['brand_name'] ?? null;
             $modelName = $post['model_name'] ?? null;
@@ -103,6 +105,7 @@ class CommunityRepository
                 'liked_by_current_user' => (bool) $post['liked_by_current_user'],
                 'saved_by_current_user' => (bool) $post['saved_by_current_user'],
                 'comments' => $commentsByPost[$postId] ?? [],
+                'images' => $imagesByPost[$postId] ?? [],
             ];
         }, $posts);
     }
@@ -146,29 +149,56 @@ class CommunityRepository
 
     public function createPost(int $userId, array $data): void
     {
-        $statement = $this->connection->prepare(
-            "INSERT INTO community_posts (
-                user_id,
-                brand_id,
-                model_id,
-                content,
-                created_at,
-                updated_at
-            ) VALUES (
-                :user_id,
-                :brand_id,
-                :model_id,
-                :content,
-                CURRENT_TIMESTAMP,
-                CURRENT_TIMESTAMP
-            )"
-        );
-        $statement->execute([
-            'user_id' => $userId,
-            'brand_id' => $data['brand_id'],
-            'model_id' => $data['model_id'],
-            'content' => $data['content'],
-        ]);
+        $this->connection->beginTransaction();
+
+        try {
+            $statement = $this->connection->prepare(
+                "INSERT INTO community_posts (
+                    user_id,
+                    brand_id,
+                    model_id,
+                    content,
+                    created_at,
+                    updated_at
+                ) VALUES (
+                    :user_id,
+                    :brand_id,
+                    :model_id,
+                    :content,
+                    CURRENT_TIMESTAMP,
+                    CURRENT_TIMESTAMP
+                )
+                RETURNING id"
+            );
+            $statement->execute([
+                'user_id' => $userId,
+                'brand_id' => $data['brand_id'],
+                'model_id' => $data['model_id'],
+                'content' => $data['content'],
+            ]);
+
+            $postId = (int) $statement->fetchColumn();
+
+            if (!empty($data['image_paths'])) {
+                $imageStatement = $this->connection->prepare(
+                    'INSERT INTO community_post_images (post_id, image_path, display_order)
+                    VALUES (:post_id, :image_path, :display_order)'
+                );
+
+                foreach ($data['image_paths'] as $index => $imagePath) {
+                    $imageStatement->execute([
+                        'post_id' => $postId,
+                        'image_path' => $imagePath,
+                        'display_order' => $index + 1,
+                    ]);
+                }
+            }
+
+            $this->connection->commit();
+        } catch (Throwable $exception) {
+            $this->connection->rollBack();
+            throw $exception;
+        }
     }
 
     public function modelBelongsToBrand(int $modelId, int $brandId): bool
@@ -340,6 +370,48 @@ class CommunityRepository
                 'content' => $row['content'],
                 'created_at' => $row['created_at'],
                 'profile_path' => '/community/profile?id=' . (int) $row['user_id'],
+            ];
+        }
+
+        return $grouped;
+    }
+
+    private function getImagesForPosts(array $postIds): array
+    {
+        $postIds = array_values(array_unique(array_map('intval', $postIds)));
+
+        if ($postIds === []) {
+            return [];
+        }
+
+        $placeholders = [];
+        $params = [];
+
+        foreach ($postIds as $index => $postId) {
+            $placeholder = ':image_post_id_' . $index;
+            $placeholders[] = $placeholder;
+            $params[$placeholder] = $postId;
+        }
+
+        $statement = $this->connection->prepare(
+            'SELECT
+                post_id,
+                image_path,
+                display_order
+            FROM community_post_images
+            WHERE post_id IN (' . implode(', ', $placeholders) . ')
+            ORDER BY post_id ASC, display_order ASC, id ASC'
+        );
+        $statement->execute($params);
+
+        $grouped = [];
+
+        foreach ($statement->fetchAll() as $row) {
+            $postId = (int) $row['post_id'];
+            $grouped[$postId] ??= [];
+            $grouped[$postId][] = [
+                'path' => (string) $row['image_path'],
+                'display_order' => (int) $row['display_order'],
             ];
         }
 

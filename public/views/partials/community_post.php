@@ -10,8 +10,6 @@
                 </a>
                 <div class="community-post-author-subline">
                     <span><?= htmlspecialchars($post['formatted_created_at'], ENT_QUOTES, 'UTF-8'); ?></span>
-                    <span class="community-dot">•</span>
-                    <span><?= htmlspecialchars($post['author_tier'], ENT_QUOTES, 'UTF-8'); ?></span>
                 </div>
             </div>
         </div>
@@ -19,6 +17,32 @@
     </div>
 
     <p class="community-post-content"><?= nl2br(htmlspecialchars($post['content'], ENT_QUOTES, 'UTF-8')); ?></p>
+
+    <?php if (!empty($post['images'])): ?>
+        <div class="community-post-carousel<?= count($post['images']) > 1 ? ' has-controls' : ''; ?>" data-community-carousel>
+            <?php if (count($post['images']) > 1): ?>
+                <button type="button" class="community-post-carousel-control is-prev" aria-label="Poprzednie zdjęcie" data-community-carousel-prev></button>
+            <?php endif; ?>
+
+            <div class="community-post-carousel-viewport">
+                <div class="community-post-carousel-track" data-community-carousel-track>
+                    <?php foreach ($post['images'] as $image): ?>
+                        <div class="community-post-carousel-slide">
+                            <img
+                                src="<?= htmlspecialchars($image['path'], ENT_QUOTES, 'UTF-8'); ?>"
+                                alt="Zdjęcie w poście"
+                                class="community-post-image"
+                            >
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
+            <?php if (count($post['images']) > 1): ?>
+                <button type="button" class="community-post-carousel-control is-next" aria-label="Następne zdjęcie" data-community-carousel-next></button>
+            <?php endif; ?>
+        </div>
+    <?php endif; ?>
 
     <div class="community-post-stats">
         <span><?= (int) $post['like_count']; ?> polubień</span>

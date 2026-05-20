@@ -1246,7 +1246,12 @@ body.vehicle-modal-open {
 }
 
 .vehicle-modal-history-list,
-.vehicle-modal-task-list,
+.vehicle-modal-task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
 @media (max-width: 1180px) {
     .vehicle-layout-grid {
         grid-template-columns: 1fr;

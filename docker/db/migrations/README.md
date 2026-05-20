@@ -10,6 +10,7 @@ Przykladowe nazwy:
 - `001_add_vehicle_image_order.sql`
 - `002_add_vehicle_database_primitives.sql`
 - `003_add_community_foundation.sql`
+- `004_add_community_post_images.sql`
 
 Sugerowany workflow:
 1. tworzysz nowy plik migracji,
@@ -33,6 +34,12 @@ Kolejna migracja dla modulu community:
 
 ```bash
 docker compose exec db psql -U docker -d db -f /migrations/003_add_community_foundation.sql
+```
+
+Migracja dodajaca zdjecia do postow community:
+
+```bash
+docker compose exec db psql -U docker -d db -f /migrations/004_add_community_post_images.sql
 ```
 
 Wazne:

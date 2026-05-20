@@ -104,7 +104,7 @@ $composerFirstName = explode(' ', trim($composerUserName))[0] ?: $composerUserNa
 
 <div class="community-modal-backdrop" hidden data-community-modal-backdrop></div>
 <section class="community-modal" hidden data-community-modal>
-    <form method="post" class="community-modal-panel">
+    <form method="post" enctype="multipart/form-data" class="community-modal-panel">
         <input type="hidden" name="action" value="create_post">
         <input type="hidden" name="redirect_to" value="/community">
 
@@ -121,7 +121,6 @@ $composerFirstName = explode(' ', trim($composerUserName))[0] ?: $composerUserNa
             </div>
             <div class="community-modal-author-meta">
                 <span class="community-modal-author-name"><?= htmlspecialchars($composerUserName, ENT_QUOTES, 'UTF-8'); ?></span>
-                <span class="community-modal-author-role"><?= htmlspecialchars(strtoupper((string) ($currentUser['membership_tier'] ?? 'free')) . ' MEMBER', ENT_QUOTES, 'UTF-8'); ?></span>
             </div>
         </div>
 
@@ -131,39 +130,48 @@ $composerFirstName = explode(' ', trim($composerUserName))[0] ?: $composerUserNa
                   placeholder="O czym chcesz dziś napisać?"
                   required></textarea>
 
-        <button type="button" class="community-modal-photo-button">
-            <img src="/public/assets/icons/photo_icon.svg" alt="" class="community-button-photo-icon">
-            Dodaj zdjęcie
-        </button>
+        <div class="community-modal-media-block">
+            <div class="community-post-images-edit-gallery" data-community-images-gallery></div>
+        </div>
+        <input type="file" name="post_images[]" accept="image/*" multiple class="community-post-images-input" data-community-images-input>
 
-        <details class="community-modal-category">
-            <summary class="community-modal-category-summary">Kategoria</summary>
-            <div class="community-modal-category-body">
-                <label class="community-field">
-                    <span class="community-field-label">Marka</span>
-                    <select name="brand_id" class="community-select community-brand-select" data-target-model="composer-model-modal">
-                        <option value="">Bez kategorii</option>
-                        <?php foreach ($brands as $brand): ?>
-                            <option value="<?= (int) $brand['id']; ?>"><?= htmlspecialchars($brand['name'], ENT_QUOTES, 'UTF-8'); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </label>
+        <div class="community-modal-photo-row">
+            <button type="button" class="community-modal-photo-button" data-community-images-trigger>
+                <img src="/public/assets/icons/photo_icon.svg" alt="" class="community-button-photo-icon">
+                Dodaj zdjęcie
+            </button>
+        </div>
 
-                <label class="community-field">
-                    <span class="community-field-label">Model</span>
-                    <select name="model_id" class="community-select community-model-select" id="composer-model-modal">
-                        <option value="">Bez modelu</option>
-                        <?php foreach ($brands as $brand): ?>
-                            <?php foreach ($brand['models'] as $model): ?>
-                                <option value="<?= (int) $model['id']; ?>" data-brand-id="<?= (int) $brand['id']; ?>">
-                                    <?= htmlspecialchars($model['name'], ENT_QUOTES, 'UTF-8'); ?>
-                                </option>
+        <div class="community-modal-category-wrap">
+            <details class="community-modal-category">
+                <summary class="community-modal-category-summary">Kategoria</summary>
+                <div class="community-modal-category-body">
+                    <label class="community-field">
+                        <span class="community-field-label">Marka</span>
+                        <select name="brand_id" class="community-select community-brand-select" data-target-model="composer-model-modal">
+                            <option value="">Bez kategorii</option>
+                            <?php foreach ($brands as $brand): ?>
+                                <option value="<?= (int) $brand['id']; ?>"><?= htmlspecialchars($brand['name'], ENT_QUOTES, 'UTF-8'); ?></option>
                             <?php endforeach; ?>
-                        <?php endforeach; ?>
-                    </select>
-                </label>
-            </div>
-        </details>
+                        </select>
+                    </label>
+
+                    <label class="community-field">
+                        <span class="community-field-label">Model</span>
+                        <select name="model_id" class="community-select community-model-select" id="composer-model-modal">
+                            <option value="">Bez modelu</option>
+                            <?php foreach ($brands as $brand): ?>
+                                <?php foreach ($brand['models'] as $model): ?>
+                                    <option value="<?= (int) $model['id']; ?>" data-brand-id="<?= (int) $brand['id']; ?>">
+                                        <?= htmlspecialchars($model['name'], ENT_QUOTES, 'UTF-8'); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                </div>
+            </details>
+        </div>
 
         <button type="submit" class="community-button community-button-primary community-modal-submit">Opublikuj</button>
     </form>
