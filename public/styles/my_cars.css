@@ -136,13 +136,6 @@
     text-decoration: none;
 }
 
-.cars-hero-meta {
-    color: rgba(148, 163, 184, 0.72);
-    font-size: clamp(12px, 0.9vw, 14px);
-    line-height: 1.4;
-    font-family: var(--font-sans);
-}
-
 .cars-side-panels {
     display: flex;
     flex-direction: column;
@@ -555,10 +548,6 @@
     z-index: 1;
 }
 
-.cars-add-image-preview-photo[hidden] {
-    display: none !important;
-}
-
 .cars-add-image-placeholder {
     position: absolute;
     inset: 0;
@@ -566,10 +555,6 @@
     align-items: center;
     justify-content: center;
     z-index: 2;
-}
-
-.cars-add-image-placeholder[hidden] {
-    display: none !important;
 }
 
 .cars-add-image-preview.is-placeholder {

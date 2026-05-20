@@ -386,12 +386,6 @@ body.vehicle-modal-open {
     gap: 14px;
 }
 
-.vehicle-detail-row-stack {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 6px;
-}
-
 .vehicle-detail-label {
     color: rgba(148, 163, 184, 0.72);
     font-size: 12px;
@@ -1253,21 +1247,6 @@ body.vehicle-modal-open {
 
 .vehicle-modal-history-list,
 .vehicle-modal-task-list,
-.vehicle-modal-inspection-list {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.vehicle-modal-inspection-item {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 16px 18px;
-    border-radius: 22px;
-    background: rgba(8, 15, 30, 0.48);
-}
-
 @media (max-width: 1180px) {
     .vehicle-layout-grid {
         grid-template-columns: 1fr;

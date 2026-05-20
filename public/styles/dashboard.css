@@ -145,19 +145,6 @@
     padding-bottom: clamp(10px, 1.5vw, 20px);
 }
 
-.section-head-action {
-    min-width: 123px;
-    height: 28px;
-    border: 0;
-    border-radius: 999px;
-    background: #38bdf8;
-    color: #06253c;
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-}
-
 .garage-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -276,14 +263,6 @@
 
 .car-silhouette::after {
     right: 18%;
-}
-
-.car-silhouette.is-blue {
-    background: linear-gradient(135deg, #46c4ec, #124758);
-}
-
-.car-silhouette.is-silver {
-    background: linear-gradient(135deg, #d8d9db, #656c77);
 }
 
 .car-card-body {
@@ -409,11 +388,6 @@
     display: block;
     background: url('/public/assets/icons/arrow_button.svg') center/contain no-repeat;
     text-decoration: none;
-}
-
-.car-card-arrow-muted {
-    opacity: 0.35;
-    filter: grayscale(1);
 }
 
 .car-card-placeholder-plus {

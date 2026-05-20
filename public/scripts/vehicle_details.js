@@ -13,7 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const heroMenu = document.querySelector('[data-hero-menu]');
     const heroMenuTrigger = document.querySelector('[data-hero-menu-trigger]');
     const heroMenuDropdown = document.querySelector('[data-hero-menu-dropdown]');
-    const imagesEditForm = modalRoot.querySelector('[data-vehicle-images-form]');
     const imagesEditGallery = modalRoot.querySelector('[data-vehicle-images-gallery]');
     const imagesEditInput = modalRoot.querySelector('[data-vehicle-images-input]');
     const heroCarousel = document.querySelector('[data-hero-carousel]');
