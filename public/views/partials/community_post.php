@@ -44,36 +44,50 @@
         </div>
     <?php endif; ?>
 
-    <div class="community-post-stats">
-        <span><?= (int) $post['like_count']; ?> polubień</span>
-        <span><?= (int) $post['comment_count']; ?> komentarzy</span>
-        <span><?= (int) $post['save_count']; ?> zapisów</span>
-    </div>
-
     <div class="community-post-actions">
         <form method="post" class="community-inline-form">
             <input type="hidden" name="action" value="toggle_like">
             <input type="hidden" name="post_id" value="<?= (int) $post['id']; ?>">
             <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/community', ENT_QUOTES, 'UTF-8'); ?>">
-            <button type="submit" class="community-post-action<?= $post['liked_by_current_user'] ? ' is-active' : ''; ?>">
-                Lubię to
+            <button
+                type="submit"
+                class="community-post-action-icon community-post-action-like<?= $post['liked_by_current_user'] ? ' is-active' : ''; ?>"
+                aria-label="Polub post"
+                title="Polub post"
+            >
+                <span class="community-post-action-like-icon"><?= $post['liked_by_current_user'] ? '&#9829;' : '&#9825;'; ?></span>
+                <span class="community-post-action-count"><?= (int) $post['like_count']; ?></span>
             </button>
         </form>
 
-        <a href="#comment-form-<?= (int) $post['id']; ?>" class="community-post-action">Komentuj</a>
+        <a
+            href="#comments-<?= (int) $post['id']; ?>"
+            class="community-post-action-icon community-post-action-media"
+            aria-label="Przejdź do komentarzy"
+            title="Komentarze"
+        >
+            <img src="/public/assets/icons/comment_icon.svg" alt="" class="community-post-action-media-icon">
+            <span class="community-post-action-count"><?= (int) $post['comment_count']; ?></span>
+        </a>
 
         <form method="post" class="community-inline-form">
             <input type="hidden" name="action" value="toggle_save">
             <input type="hidden" name="post_id" value="<?= (int) $post['id']; ?>">
             <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/community', ENT_QUOTES, 'UTF-8'); ?>">
-            <button type="submit" class="community-post-action<?= $post['saved_by_current_user'] ? ' is-active' : ''; ?>">
-                Zapisz
+            <button
+                type="submit"
+                class="community-post-action-icon community-post-action-media<?= $post['saved_by_current_user'] ? ' is-active' : ''; ?>"
+                aria-label="Zapisz post"
+                title="Zapisz post"
+            >
+                <img src="/public/assets/icons/save_icon.svg" alt="" class="community-post-action-media-icon">
+                <span class="community-post-action-count"><?= (int) $post['save_count']; ?></span>
             </button>
         </form>
     </div>
 
     <?php if ($post['comments'] !== []): ?>
-        <div class="community-comments">
+        <div class="community-comments" id="comments-<?= (int) $post['id']; ?>">
             <?php foreach ($post['comments'] as $comment): ?>
                 <article class="community-comment">
                     <div class="community-comment-meta">
@@ -87,16 +101,4 @@
             <?php endforeach; ?>
         </div>
     <?php endif; ?>
-
-    <form method="post" class="community-comment-form" id="comment-form-<?= (int) $post['id']; ?>">
-        <input type="hidden" name="action" value="add_comment">
-        <input type="hidden" name="post_id" value="<?= (int) $post['id']; ?>">
-        <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/community', ENT_QUOTES, 'UTF-8'); ?>">
-        <textarea name="comment_content"
-                  rows="2"
-                  class="community-textarea community-textarea-small"
-                  placeholder="Dodaj komentarz..."
-                  required></textarea>
-        <button type="submit" class="community-button community-button-primary">Dodaj komentarz</button>
-    </form>
 </article>
