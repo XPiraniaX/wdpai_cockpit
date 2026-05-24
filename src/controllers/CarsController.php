@@ -17,6 +17,7 @@ class CarsController extends AppController
         $remainingVehicles = $repository->getRemainingVehicles($userId);
         $serviceHistory = $primaryVehicle ? $repository->getServiceHistory((int) $primaryVehicle['id'], 3) : [];
         $addVehicleForm = $this->consumeAddVehicleFormDraft();
+        $brandCatalog = $repository->getBrandCatalog();
 
         $heroVehicle = $primaryVehicle ? [
             'id' => (int) $primaryVehicle['id'],
@@ -93,6 +94,7 @@ class CarsController extends AppController
                 'cng' => 'CNG',
                 'other' => 'Inne',
             ],
+            'brandCatalog' => $brandCatalog,
             'addVehicleForm' => $addVehicleForm,
             'scriptFiles' => ['my_cars.js'],
         ]);
@@ -971,6 +973,7 @@ class CarsController extends AppController
         return [
             'brand_name' => $this->sanitizeText($_POST['brand_name'] ?? null) ?? 'Brak danych',
             'model_name' => $this->sanitizeText($_POST['model_name'] ?? null) ?? 'Brak danych',
+            'catalog_requires_approval' => ($_POST['brand_name_select'] ?? '') === '__custom__',
             'trim_name' => $this->sanitizeText($_POST['trim_name'] ?? null) ?? 'Brak danych',
             'display_name' => $this->sanitizeText($_POST['display_name'] ?? null) ?? 'Brak danych',
             'production_year' => $this->sanitizeSmallInt($_POST['production_year'] ?? null) ?? (int) date('Y'),

@@ -517,6 +517,11 @@
     padding-top: 2px;
 }
 
+[data-cars-custom-brand-field][hidden],
+[data-cars-custom-model-field][hidden] {
+    display: none !important;
+}
+
 .cars-add-image-preview {
     position: relative;
     display: block;

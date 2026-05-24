@@ -87,6 +87,40 @@ class CarsRepository
         return $statement->fetchAll();
     }
 
+    public function getBrandCatalog(): array
+    {
+        $statement = $this->connection->query(
+            'SELECT
+                b.name AS brand_name,
+                m.name AS model_name
+            FROM car_brands b
+            LEFT JOIN car_models m ON m.brand_id = b.id
+                AND m.is_approved = TRUE
+            WHERE b.is_approved = TRUE
+            ORDER BY b.name ASC, m.name ASC'
+        );
+
+        $catalog = [];
+        foreach ($statement->fetchAll() as $row) {
+            $brandName = (string) ($row['brand_name'] ?? '');
+            $modelName = $row['model_name'] !== null ? (string) $row['model_name'] : null;
+
+            if ($brandName === '') {
+                continue;
+            }
+
+            if (!isset($catalog[$brandName])) {
+                $catalog[$brandName] = [];
+            }
+
+            if ($modelName !== null && $modelName !== '') {
+                $catalog[$brandName][] = $modelName;
+            }
+        }
+
+        return $catalog;
+    }
+
     public function getServiceHistory(int $vehicleId, int $limit = 3): array
     {
         $statement = $this->connection->prepare(
@@ -377,8 +411,8 @@ class CarsRepository
         $this->beginTransaction('READ COMMITTED');
 
         try {
-            $brandId = $this->resolveBrandId($data['brand_name']);
-            $modelId = $this->resolveModelId($brandId, $data['model_name']);
+            $brandId = $this->resolveBrandId($data['brand_name'], (bool) ($data['catalog_requires_approval'] ?? false));
+            $modelId = $this->resolveModelId($brandId, $data['model_name'], (bool) ($data['catalog_requires_approval'] ?? false));
 
             $statement = $this->connection->prepare(
                 'UPDATE vehicles
@@ -860,7 +894,7 @@ class CarsRepository
         $this->connection->exec('SET TRANSACTION ISOLATION LEVEL ' . $isolationLevel);
     }
 
-    private function resolveBrandId(string $brandName): int
+    private function resolveBrandId(string $brandName, bool $requiresApproval = false): int
     {
         $select = $this->connection->prepare('SELECT id FROM car_brands WHERE LOWER(name) = LOWER(:name) LIMIT 1');
         $select->execute(['name' => $brandName]);
@@ -870,13 +904,16 @@ class CarsRepository
             return (int) $existingId;
         }
 
-        $insert = $this->connection->prepare('INSERT INTO car_brands (name) VALUES (:name)');
-        $insert->execute(['name' => $brandName]);
+        $insert = $this->connection->prepare('INSERT INTO car_brands (name, is_approved) VALUES (:name, :is_approved)');
+        $insert->execute([
+            'name' => $brandName,
+            'is_approved' => $requiresApproval ? 'false' : 'true',
+        ]);
 
         return (int) $this->connection->lastInsertId();
     }
 
-    private function resolveModelId(int $brandId, string $modelName): int
+    private function resolveModelId(int $brandId, string $modelName, bool $requiresApproval = false): int
     {
         $select = $this->connection->prepare(
             'SELECT id
@@ -895,10 +932,13 @@ class CarsRepository
             return (int) $existingId;
         }
 
-        $insert = $this->connection->prepare('INSERT INTO car_models (brand_id, name) VALUES (:brand_id, :name)');
+        $insert = $this->connection->prepare(
+            'INSERT INTO car_models (brand_id, name, is_approved) VALUES (:brand_id, :name, :is_approved)'
+        );
         $insert->execute([
             'brand_id' => $brandId,
             'name' => $modelName,
+            'is_approved' => $requiresApproval ? 'false' : 'true',
         ]);
 
         return (int) $this->connection->lastInsertId();
