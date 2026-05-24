@@ -344,6 +344,23 @@
     gap: 16px;
 }
 
+.community-feed-loader {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    color: rgba(203, 213, 225, 0.64);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.community-feed-sentinel {
+    width: 100%;
+    height: 1px;
+}
+
 .community-post {
     display: flex;
     flex-direction: column;

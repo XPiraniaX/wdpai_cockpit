@@ -15,13 +15,35 @@ class CommunityController extends AppController
         }
 
         $filters = $this->resolveFilters();
+        $feedPage = $repository->getFeedPage(
+            $userId,
+            $filters,
+            CommunityRepository::DEFAULT_FEED_PAGE_SIZE,
+            $this->resolveCursorCreatedAt(),
+            $this->resolveCursorId()
+        );
+        $mappedPosts = $this->mapPosts($feedPage['posts']);
+
+        if ($this->isAjaxRequest() && $this->isFeedPageRequest()) {
+            $this->jsonResponse([
+                'success' => true,
+                'html' => $this->renderCommunityPostsHtml($mappedPosts),
+                'has_more' => $feedPage['has_more'],
+                'next_cursor_created_at' => $feedPage['next_cursor_created_at'],
+                'next_cursor_id' => $feedPage['next_cursor_id'],
+            ]);
+        }
+
         $this->render('community', [
             'title' => 'Społeczność',
             'scope' => $filters['scope'],
             'brandId' => $filters['brand_id'],
             'modelId' => $filters['model_id'],
             'brands' => $repository->getAvailableCategories(),
-            'posts' => $this->mapPosts($repository->getFeed($userId, $filters)),
+            'posts' => $mappedPosts,
+            'hasMorePosts' => $feedPage['has_more'],
+            'nextCursorCreatedAt' => $feedPage['next_cursor_created_at'],
+            'nextCursorId' => $feedPage['next_cursor_id'],
             'scriptFiles' => ['community.js'],
         ]);
     }
@@ -235,6 +257,23 @@ class CommunityController extends AppController
         ];
     }
 
+    private function resolveCursorCreatedAt(): ?string
+    {
+        $cursorCreatedAt = trim((string) ($_GET['cursor_created_at'] ?? ''));
+
+        return $cursorCreatedAt !== '' ? $cursorCreatedAt : null;
+    }
+
+    private function resolveCursorId(): ?int
+    {
+        return $this->normalizeNullableInt($_GET['cursor_id'] ?? null);
+    }
+
+    private function isFeedPageRequest(): bool
+    {
+        return (string) ($_GET['feed_page'] ?? '') === '1';
+    }
+
     private function mapPosts(array $posts): array
     {
         return array_map(function (array $post): array {
@@ -246,6 +285,22 @@ class CommunityController extends AppController
 
             return $post;
         }, $posts);
+    }
+
+    private function renderCommunityPostsHtml(array $posts): string
+    {
+        if ($posts === []) {
+            return '';
+        }
+
+        $currentUser = $this->resolveCommunityRenderUser($this->getCurrentUserId());
+
+        ob_start();
+        foreach ($posts as $post) {
+            include 'public/views/partials/community_post.php';
+        }
+
+        return (string) ob_get_clean();
     }
 
     private function formatDateTime(string $value): string
@@ -370,5 +425,23 @@ class CommunityController extends AppController
         }
 
         return getcwd() . DIRECTORY_SEPARATOR . $normalized;
+    }
+
+    private function resolveCommunityRenderUser(int $userId): array
+    {
+        $fallbackUser = [
+            'id' => $userId,
+            'full_name' => 'Użytkownik testowy',
+            'membership_tier' => 'free',
+        ];
+
+        try {
+            $repository = new UserRepository(Database::getConnection());
+            $user = $repository->getById($userId);
+
+            return $user ?: $fallbackUser;
+        } catch (Throwable) {
+            return $fallbackUser;
+        }
     }
 }

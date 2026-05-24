@@ -2,11 +2,18 @@
 
 class CommunityRepository
 {
+    public const DEFAULT_FEED_PAGE_SIZE = 10;
+
     public function __construct(private PDO $connection)
     {
     }
 
     public function getFeed(int $currentUserId, array $filters): array
+    {
+        return $this->getFeedPage($currentUserId, $filters)['posts'];
+    }
+
+    public function getFeedPage(int $currentUserId, array $filters, int $limit = self::DEFAULT_FEED_PAGE_SIZE, ?string $cursorCreatedAt = null, ?int $cursorId = null): array
     {
         $scope = $this->normalizeScope($filters['scope'] ?? 'all');
         $conditions = [];
@@ -34,6 +41,12 @@ class CommunityRepository
 
         if ($scopeCondition) {
             $conditions[] = $scopeCondition;
+        }
+
+        if ($cursorCreatedAt !== null && $cursorId !== null && $cursorId > 0) {
+            $conditions[] = '(feed.created_at < :cursor_created_at OR (feed.created_at = :cursor_created_at AND feed.id < :cursor_id))';
+            $params['cursor_created_at'] = $cursorCreatedAt;
+            $params['cursor_id'] = $cursorId;
         }
 
         $whereSql = $conditions === [] ? '' : 'WHERE ' . implode(' AND ', $conditions);
@@ -68,21 +81,36 @@ class CommunityRepository
                 LIMIT 1
             ) AS comment_ref ON TRUE
             {$whereSql}
-            ORDER BY feed.created_at DESC, feed.id DESC"
+            ORDER BY feed.created_at DESC, feed.id DESC
+            LIMIT :limit_plus_one"
         );
-        $statement->execute($params);
+        $statement->bindValue(':limit_plus_one', $limit + 1, PDO::PARAM_INT);
+        foreach ($params as $name => $value) {
+            $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $statement->bindValue(':' . $name, $value, $type);
+        }
+        $statement->execute();
 
-        $posts = $statement->fetchAll();
+        $posts = $statement->fetchAll(PDO::FETCH_ASSOC);
+        $hasMore = count($posts) > $limit;
+        if ($hasMore) {
+            $posts = array_slice($posts, 0, $limit);
+        }
 
         if ($posts === []) {
-            return [];
+            return [
+                'posts' => [],
+                'has_more' => false,
+                'next_cursor_created_at' => null,
+                'next_cursor_id' => null,
+            ];
         }
 
         $postIds = array_column($posts, 'id');
         $commentsByPost = $this->getCommentsForPosts($postIds);
         $imagesByPost = $this->getImagesForPosts($postIds);
 
-        return array_map(function (array $post) use ($commentsByPost, $imagesByPost): array {
+        $mappedPosts = array_map(function (array $post) use ($commentsByPost, $imagesByPost): array {
             $postId = (int) $post['id'];
             $brandName = $post['brand_name'] ?? null;
             $modelName = $post['model_name'] ?? null;
@@ -109,6 +137,15 @@ class CommunityRepository
                 'images' => $imagesByPost[$postId] ?? [],
             ];
         }, $posts);
+
+        $lastPost = end($mappedPosts) ?: null;
+
+        return [
+            'posts' => $mappedPosts,
+            'has_more' => $hasMore,
+            'next_cursor_created_at' => $hasMore && $lastPost ? (string) $lastPost['created_at'] : null,
+            'next_cursor_id' => $hasMore && $lastPost ? (int) $lastPost['id'] : null,
+        ];
     }
 
     public function getAvailableCategories(): array

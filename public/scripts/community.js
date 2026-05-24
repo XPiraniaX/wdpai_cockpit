@@ -651,6 +651,313 @@ const closeCommunityPostMenu = (menu) => {
     dropdown.hidden = true;
 };
 
+const bindCommunityCarousels = (root) => {
+    root.querySelectorAll('[data-community-carousel]').forEach((carousel) => {
+        initializeCommunityCarousel(carousel);
+    });
+};
+
+const bindCommunityCommentModals = (root) => {
+    root.querySelectorAll('[data-community-comments-modal]').forEach((commentsModal) => {
+        if (commentsModal.parentElement !== document.body) {
+            document.body.appendChild(commentsModal);
+        }
+
+        if (commentsModal.dataset.boundClose === 'true') {
+            return;
+        }
+
+        commentsModal.querySelectorAll('[data-close-comments-modal]').forEach((closeButton) => {
+            closeButton.addEventListener('click', () => closeCommentsModal(commentsModal));
+        });
+
+        commentsModal.dataset.boundClose = 'true';
+    });
+};
+
+const bindCommunityCommentOpeners = (root) => {
+    root.querySelectorAll('[data-open-comments-modal]').forEach((button) => {
+        if (button.dataset.boundOpen === 'true') {
+            return;
+        }
+
+        button.addEventListener('click', () => {
+            const modalId = button.getAttribute('data-comments-modal-id');
+            if (!modalId) {
+                return;
+            }
+
+            const commentsModal = document.getElementById(modalId);
+            if (!commentsModal) {
+                return;
+            }
+
+            commentsModal.querySelectorAll('[data-community-carousel]').forEach((carousel) => {
+                initializeCommunityCarousel(carousel);
+            });
+            openCommentsModal(commentsModal);
+        });
+
+        button.dataset.boundOpen = 'true';
+    });
+};
+
+const bindCommunityLikeForms = (root) => {
+    root.querySelectorAll('[data-community-like-form]').forEach((form) => {
+        if (form.dataset.boundLike === 'true') {
+            return;
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const button = form.querySelector('[data-community-like-button]');
+            const icon = form.querySelector('[data-community-like-icon]');
+            const count = form.querySelector('[data-community-like-count]');
+
+            if (!button || !icon || !count) {
+                form.submit();
+                return;
+            }
+
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch(window.location.pathname + window.location.search, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+
+                const payload = await response.json();
+                if (!payload.success) {
+                    throw new Error('Invalid payload');
+                }
+
+                button.classList.toggle('is-active', Boolean(payload.liked_by_current_user));
+                icon.innerHTML = renderCommunityLikeIcon(Boolean(payload.liked_by_current_user));
+                count.textContent = String(payload.like_count ?? 0);
+            } catch (error) {
+                form.submit();
+            }
+        });
+
+        form.dataset.boundLike = 'true';
+    });
+};
+
+const bindCommunitySaveForms = (root) => {
+    root.querySelectorAll('[data-community-save-form]').forEach((form) => {
+        if (form.dataset.boundSave === 'true') {
+            return;
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const button = form.querySelector('[data-community-save-button]');
+            const icon = form.querySelector('[data-community-save-icon]');
+            const count = form.querySelector('[data-community-save-count]');
+
+            if (!button || !icon || !count) {
+                form.submit();
+                return;
+            }
+
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch(window.location.pathname + window.location.search, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+
+                const payload = await response.json();
+                if (!payload.success) {
+                    throw new Error('Invalid payload');
+                }
+
+                button.classList.toggle('is-active', Boolean(payload.saved_by_current_user));
+                icon.src = payload.saved_by_current_user
+                    ? '/public/assets/icons/save_icon_full.svg'
+                    : '/public/assets/icons/save_icon.svg';
+                count.textContent = String(payload.save_count ?? 0);
+            } catch (error) {
+                form.submit();
+            }
+        });
+
+        form.dataset.boundSave = 'true';
+    });
+};
+
+const bindCommunityReportForms = (root) => {
+    root.querySelectorAll('[data-community-report-form]').forEach((form) => {
+        if (form.dataset.boundReport === 'true') {
+            return;
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch(window.location.pathname + window.location.search, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+
+                const payload = await response.json();
+                if (!payload.success) {
+                    throw new Error('Invalid payload');
+                }
+
+                showAppToast(payload.message || 'Zgłoszenie zostało przyjęte.', 'success');
+
+                const menu = form.closest('[data-community-post-menu]');
+                if (menu) {
+                    closeCommunityPostMenu(menu);
+                }
+            } catch (error) {
+                form.submit();
+            }
+        });
+
+        form.dataset.boundReport = 'true';
+    });
+};
+
+const bindCommunityCommentForms = (root) => {
+    root.querySelectorAll('[data-community-comment-form]').forEach((form) => {
+        if (form.dataset.boundComment === 'true') {
+            return;
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const commentsModal = form.closest('[data-community-comments-modal]');
+            const commentsList = commentsModal?.querySelector('[data-community-comments-list]') ?? null;
+            const textarea = form.querySelector('textarea[name="comment_content"]');
+            const submitButton = form.querySelector('button[type="submit"]');
+            const postId = form.querySelector('input[name="post_id"]')?.value ?? '';
+            const commentButton = document.querySelector(`[data-open-comments-modal][data-comments-modal-id="community-comments-modal-${postId}"]`);
+
+            if (!commentsList || !textarea || !submitButton || !postId || !commentButton) {
+                form.submit();
+                return;
+            }
+
+            const formData = new FormData(form);
+            submitButton.disabled = true;
+
+            try {
+                const response = await fetch(window.location.pathname + window.location.search, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+
+                const payload = await response.json();
+                if (!payload.success || !payload.comment) {
+                    throw new Error('Invalid payload');
+                }
+
+                commentsList.querySelector('[data-community-comments-empty]')?.remove();
+                commentsList.insertAdjacentHTML('afterbegin', buildCommunityCommentMarkup(payload.comment));
+                textarea.value = '';
+
+                const count = commentButton.querySelector('[data-community-comment-count]');
+                const icon = commentButton.querySelector('[data-community-comment-icon]');
+                commentButton.classList.toggle('is-active', Boolean(payload.commented_by_current_user));
+
+                if (count) {
+                    count.textContent = String(payload.comment_count ?? 0);
+                }
+
+                if (icon) {
+                    icon.src = payload.commented_by_current_user
+                        ? '/public/assets/icons/comment_icon_full.svg'
+                        : '/public/assets/icons/comment_icon.svg';
+                }
+            } catch (error) {
+                form.submit();
+            } finally {
+                submitButton.disabled = false;
+            }
+        });
+
+        form.dataset.boundComment = 'true';
+    });
+};
+
+const bindCommunityPostMenus = (root) => {
+    root.querySelectorAll('[data-community-post-menu]').forEach((menu) => {
+        const trigger = menu.querySelector('[data-community-post-menu-trigger]');
+        const dropdown = menu.querySelector('[data-community-post-menu-dropdown]');
+
+        if (!trigger || !dropdown || trigger.dataset.boundMenu === 'true') {
+            return;
+        }
+
+        trigger.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const isOpen = trigger.getAttribute('aria-expanded') === 'true';
+
+            document.querySelectorAll('[data-community-post-menu]').forEach((otherMenu) => {
+                if (otherMenu !== menu) {
+                    closeCommunityPostMenu(otherMenu);
+                }
+            });
+
+            trigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+            dropdown.hidden = isOpen;
+        });
+
+        trigger.dataset.boundMenu = 'true';
+    });
+};
+
+const initializeCommunityFeedChunk = (root) => {
+    bindCommunityCarousels(root);
+    bindCommunityCommentModals(root);
+    bindCommunityCommentOpeners(root);
+    bindCommunityLikeForms(root);
+    bindCommunitySaveForms(root);
+    bindCommunityReportForms(root);
+    bindCommunityCommentForms(root);
+    bindCommunityPostMenus(root);
+};
+
 document.querySelectorAll('[data-community-post-menu]').forEach((menu) => {
     const trigger = menu.querySelector('[data-community-post-menu-trigger]');
     const dropdown = menu.querySelector('[data-community-post-menu-dropdown]');
@@ -683,5 +990,103 @@ document.addEventListener('click', (event) => {
         }
     });
 });
+
+const feed = document.querySelector('[data-community-feed]');
+const feedSentinel = document.querySelector('[data-community-feed-sentinel]');
+const feedLoader = document.querySelector('[data-community-feed-loader]');
+let isLoadingNextFeedPage = false;
+
+const setFeedPaginationState = (hasMore, nextCreatedAt, nextId) => {
+    if (!feed) {
+        return;
+    }
+
+    feed.dataset.hasMore = hasMore ? '1' : '0';
+    feed.dataset.nextCursorCreatedAt = nextCreatedAt || '';
+    feed.dataset.nextCursorId = nextId ? String(nextId) : '';
+};
+
+const buildCommunityFeedPageUrl = () => {
+    const url = new URL(window.location.href);
+    url.searchParams.set('feed_page', '1');
+    url.searchParams.set('cursor_created_at', feed?.dataset.nextCursorCreatedAt ?? '');
+    url.searchParams.set('cursor_id', feed?.dataset.nextCursorId ?? '');
+    return url.toString();
+};
+
+const loadNextCommunityFeedPage = async () => {
+    if (!feed || !feedSentinel || !feedLoader) {
+        return;
+    }
+
+    if (isLoadingNextFeedPage || feed.dataset.hasMore !== '1') {
+        return;
+    }
+
+    const cursorCreatedAt = feed.dataset.nextCursorCreatedAt ?? '';
+    const cursorId = feed.dataset.nextCursorId ?? '';
+
+    if (!cursorCreatedAt || !cursorId) {
+        setFeedPaginationState(false, '', '');
+        return;
+    }
+
+    isLoadingNextFeedPage = true;
+    feedLoader.hidden = false;
+
+    try {
+        const response = await fetch(buildCommunityFeedPageUrl(), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Request failed');
+        }
+
+        const payload = await response.json();
+        if (!payload.success) {
+            throw new Error('Invalid payload');
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = payload.html || '';
+        initializeCommunityFeedChunk(wrapper);
+
+        const fragment = document.createDocumentFragment();
+        while (wrapper.firstChild) {
+            fragment.appendChild(wrapper.firstChild);
+        }
+
+        feed.insertBefore(fragment, feedLoader);
+        setFeedPaginationState(
+            Boolean(payload.has_more),
+            payload.next_cursor_created_at || '',
+            payload.next_cursor_id || ''
+        );
+    } catch (error) {
+        setFeedPaginationState(false, '', '');
+    } finally {
+        feedLoader.hidden = true;
+        isLoadingNextFeedPage = false;
+    }
+};
+
+if (feed && feedSentinel) {
+    const feedObserver = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+                loadNextCommunityFeedPage();
+            }
+        });
+    }, {
+        root: null,
+        rootMargin: '600px 0px 600px 0px',
+        threshold: 0.01,
+    });
+
+    feedObserver.observe(feedSentinel);
+}
 
 resetPostImagesGallery();
