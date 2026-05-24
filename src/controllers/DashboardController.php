@@ -16,6 +16,7 @@ class DashboardController extends AppController
         $nextInsurance = $repository->getNextInsurance($userId);
         $lastFuelLog = $repository->getLastFuelLog($userId);
         $garageCars = $repository->getGarageCars($userId, 12);
+        $communitySneakPeeks = $repository->getCommunitySneakPeeks($userId, 2);
 
         $stats = [
             'nextInspectionDate' => $this->formatDate($nextInspection['valid_until'] ?? null),
@@ -56,6 +57,7 @@ class DashboardController extends AppController
             'cars' => $cars,
             'garagePlaceholderCount' => $placeholderCount,
             'currentUserId' => $userId,
+            'communitySneakPeeks' => $communitySneakPeeks,
             'fuelChooserCars' => array_map(function (array $car): array {
                 return [
                     'id' => (int) $car['id'],

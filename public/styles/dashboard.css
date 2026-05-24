@@ -423,6 +423,8 @@
 .feature-panel {
     min-height: 280px;
     aspect-ratio: 464 / 280;
+    display: flex;
+    flex-direction: column;
     padding: 32px 32px 60px;
     border-radius: 48px;
     background: #0F1930;
@@ -586,6 +588,195 @@
     border: 1px solid rgba(148, 163, 184, 0.04);
 }
 
+.feature-panel-body-community {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0;
+    box-sizing: border-box;
+    height: auto;
+    background: transparent;
+    border: 0;
+}
+
+.dashboard-community-peek-list {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 18px 0 0;
+}
+
+.dashboard-community-peek {
+    display: grid;
+    flex: 1 1 0;
+    gap: 12px;
+    min-height: 0;
+    color: inherit;
+    text-decoration: none;
+    align-items: stretch;
+    padding: 10px 12px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.025);
+    border: 1px solid rgba(148, 163, 184, 0.05);
+    box-sizing: border-box;
+}
+
+.dashboard-community-peek.has-image {
+    grid-template-columns: 82px minmax(0, 1fr);
+}
+
+.dashboard-community-peek.no-image {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.dashboard-community-peek-photo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 16px;
+    background: rgba(15, 23, 42, 0.55);
+}
+
+.dashboard-community-peek-copy {
+    min-width: 0;
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 8px;
+    height: 100%;
+}
+
+.dashboard-community-peek-topline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+}
+
+.dashboard-community-peek-author-group {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.dashboard-community-peek-avatar {
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    border: 1px solid rgba(119, 216, 255, 0.45);
+    background:
+        radial-gradient(circle at center, rgba(119, 216, 255, 0.95) 0 36%, transparent 40%),
+        rgba(15, 25, 48, 0.9);
+    flex-shrink: 0;
+}
+
+.dashboard-community-peek-author {
+    min-width: 0;
+    color: #eef4ff;
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dashboard-community-peek-category {
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(56, 189, 248, 0.14);
+    color: #67d2ff;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    max-width: 46%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+}
+
+.dashboard-community-peek-content {
+    min-height: 0;
+    color: rgba(235, 242, 255, 0.88);
+    font-size: 13px;
+    line-height: 1.35;
+    max-height: calc(1.35em * 2);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dashboard-community-peek-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    color: rgba(148, 163, 184, 0.92);
+    font-size: 11px;
+    align-self: end;
+}
+
+.dashboard-community-peek-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.dashboard-community-peek-stat-icon {
+    width: 14px;
+    height: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(148, 163, 184, 0.9);
+    flex-shrink: 0;
+}
+
+.dashboard-community-peek-stat-icon.is-like {
+    background-color: transparent;
+}
+
+.dashboard-community-peek-stat-icon.is-comment {
+    -webkit-mask: url('/public/assets/icons/comment_icon.svg') center/contain no-repeat;
+    mask: url('/public/assets/icons/comment_icon.svg') center/contain no-repeat;
+}
+
+.dashboard-community-peek-stat-icon.is-save {
+    -webkit-mask: url('/public/assets/icons/save_icon.svg') center/contain no-repeat;
+    mask: url('/public/assets/icons/save_icon.svg') center/contain no-repeat;
+}
+
+.dashboard-community-peek-like-svg {
+    width: 14px;
+    height: 14px;
+    fill: rgba(148, 163, 184, 0.9);
+    display: block;
+}
+
+.dashboard-community-empty {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(148, 163, 184, 0.92);
+    font-size: 14px;
+    text-align: center;
+}
+
+@media (max-width: 1500px) {
+    .feature-panel-community {
+        aspect-ratio: auto;
+        min-height: 408px;
+    }
+}
+
 @media (max-width: 1200px) {
     .garage-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -597,6 +788,53 @@
 
     .feature-panel {
         aspect-ratio: auto;
+    }
+}
+
+@media (max-width: 1100px) {
+    .dashboard-community-peek-photo {
+        display: none;
+    }
+
+    .feature-panel-community {
+        min-height: 392px;
+    }
+
+    .dashboard-community-peek.has-image {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .dashboard-community-peek {
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .dashboard-community-peek-topline {
+        gap: 8px;
+    }
+
+    .dashboard-community-peek-author-group {
+        gap: 8px;
+    }
+
+    .dashboard-community-peek-category {
+        max-width: 42%;
+        padding: 4px 8px;
+        font-size: 9px;
+    }
+
+    .dashboard-community-peek-content {
+        font-size: 12px;
+        line-height: 1.3;
+    }
+
+    .dashboard-community-peek-stats {
+        gap: 6px 8px;
+        font-size: 10px;
+    }
+
+    .dashboard-community-peek-stat {
+        gap: 5px;
     }
 }
 
@@ -617,5 +855,31 @@
     .stat-card,
     .car-card {
         aspect-ratio: auto;
+    }
+
+    .feature-panel-body-community {
+        padding-top: 0;
+    }
+
+    .feature-panel-community {
+        min-height: 320px;
+    }
+
+    .dashboard-community-peek-list {
+        gap: 10px;
+        padding-top: 16px;
+    }
+
+    .dashboard-community-peek {
+        padding: 10px;
+    }
+
+    .dashboard-community-peek-topline {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .dashboard-community-peek-category {
+        max-width: 100%;
     }
 }

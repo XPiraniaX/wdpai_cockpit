@@ -176,4 +176,85 @@ class DashboardRepository
             throw $exception;
         }
     }
+
+    public function getCommunitySneakPeeks(int $userId, int $limit = 2): array
+    {
+        $statement = $this->connection->prepare(
+            "SELECT
+                feed.*,
+                CASE
+                    WHEN feed.model_id IS NOT NULL AND EXISTS (
+                        SELECT 1
+                        FROM vehicles v
+                        WHERE v.user_id = :user_id
+                            AND v.status = :status
+                            AND v.model_id = feed.model_id
+                    ) THEN 1
+                    WHEN feed.brand_id IS NOT NULL AND EXISTS (
+                        SELECT 1
+                        FROM vehicles v
+                        WHERE v.user_id = :user_id
+                            AND v.status = :status
+                            AND v.brand_id = feed.brand_id
+                    ) THEN 2
+                    ELSE 3
+                END AS match_priority
+            FROM vw_community_feed feed
+            ORDER BY match_priority ASC, feed.created_at DESC, feed.id DESC
+            LIMIT :limit"
+        );
+        $statement->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        $statement->bindValue(':status', 'active', PDO::PARAM_STR);
+        $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $statement->execute();
+
+        $posts = $statement->fetchAll(PDO::FETCH_ASSOC);
+        if ($posts === []) {
+            return [];
+        }
+
+        $imageStatement = $this->connection->prepare(
+            'SELECT image_path
+            FROM community_post_images
+            WHERE post_id = :post_id
+            ORDER BY display_order ASC, id ASC
+            LIMIT 1'
+        );
+        return array_map(function (array $post) use ($imageStatement): array {
+            $imageStatement->execute([
+                'post_id' => (int) $post['id'],
+            ]);
+
+            $imagePath = $imageStatement->fetchColumn() ?: null;
+            $brandName = $post['brand_name'] ?? null;
+            $modelName = $post['model_name'] ?? null;
+
+            return [
+                'id' => (int) $post['id'],
+                'authorName' => (string) $post['full_name'],
+                'authorUsername' => (string) $post['username'],
+                'content' => (string) $post['content'],
+                'categoryLabel' => $this->buildCommunityCategoryLabel($brandName, $modelName),
+                'likeCount' => (int) $post['like_count'],
+                'commentCount' => (int) $post['comment_count'],
+                'saveCount' => (int) $post['save_count'],
+                'imagePath' => $imagePath ? (string) $imagePath : null,
+                'profilePath' => '/community/profile?id=' . (int) $post['user_id'],
+                'communityPath' => '/community#post-' . (int) $post['id'],
+            ];
+        }, $posts);
+    }
+
+    private function buildCommunityCategoryLabel(?string $brandName, ?string $modelName): string
+    {
+        if ($brandName && $modelName) {
+            return $brandName . ' / ' . $modelName;
+        }
+
+        if ($brandName) {
+            return $brandName;
+        }
+
+        return 'Ogólne';
+    }
 }
