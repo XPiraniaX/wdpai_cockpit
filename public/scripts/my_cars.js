@@ -1,6 +1,59 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const modalRoot = document.querySelector('[data-cars-modal-root]');
+const showAppToast = (message, type = 'info') => {
+    const existingToast = document.querySelector('[data-app-toast]');
+    existingToast?.remove();
 
+    const toast = document.createElement('div');
+    toast.className = `app-toast app-toast-${type}`;
+    toast.setAttribute('data-app-toast', '');
+
+    const messageNode = document.createElement('div');
+    messageNode.className = 'app-toast-message';
+    messageNode.textContent = message;
+
+    toast.appendChild(messageNode);
+    document.body.appendChild(toast);
+
+    window.setTimeout(() => {
+        toast.classList.add('is-hiding');
+        window.setTimeout(() => toast.remove(), 260);
+    }, 5000);
+};
+
+const refreshMyCarsContent = async (refreshUrl) => {
+    const scrollY = window.scrollY;
+    const response = await fetch(refreshUrl, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error('Nie udało się odświeżyć garażu.');
+    }
+
+    const html = await response.text();
+    const parser = new DOMParser();
+    const documentFragment = parser.parseFromString(html, 'text/html');
+    const nextPage = documentFragment.querySelector('.cars-page');
+    const currentPage = document.querySelector('.cars-page');
+
+    if (!nextPage || !currentPage) {
+        throw new Error('Nie udało się odświeżyć zawartości garażu.');
+    }
+
+    currentPage.replaceWith(nextPage);
+    window.scrollTo(0, scrollY);
+    window.initMyCarsPage();
+};
+
+window.initMyCarsPage = () => {
+    const pendingToast = sessionStorage.getItem('myCarsToast');
+    if (pendingToast) {
+        sessionStorage.removeItem('myCarsToast');
+        showAppToast(pendingToast, 'success');
+    }
+
+    const modalRoot = document.querySelector('[data-cars-modal-root]');
     if (!modalRoot) {
         return;
     }
@@ -17,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const feedbackModal = modalRoot.querySelector('[data-cars-feedback]');
     const feedbackMessage = modalRoot.querySelector('[data-cars-feedback-message]');
     const feedbackCloseButton = modalRoot.querySelector('[data-cars-feedback-close]');
+
     let activePanel = null;
     let selectedFiles = [];
     let isSubmittingAddVehicle = false;
@@ -50,12 +104,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const image = document.createElement('img');
             image.className = 'cars-add-image-preview-photo';
-            image.alt = `Podglad pojazdu ${index + 1}`;
+            image.alt = `Podgląd pojazdu ${index + 1}`;
 
             const removeButton = document.createElement('button');
             removeButton.type = 'button';
             removeButton.className = 'cars-add-image-remove';
-            removeButton.setAttribute('aria-label', `Usun zdjecie ${index + 1}`);
+            removeButton.setAttribute('aria-label', `Usuń zdjęcie ${index + 1}`);
             removeButton.addEventListener('click', () => {
                 selectedFiles = selectedFiles.filter((_, fileIndex) => fileIndex !== index);
                 syncImageInput();
@@ -176,13 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
         button.addEventListener('click', closeModal);
     });
 
-    if (feedbackCloseButton) {
-        feedbackCloseButton.addEventListener('click', hideFeedback);
-    }
-
-    if (scrim) {
-        scrim.addEventListener('click', closeModal);
-    }
+    feedbackCloseButton?.addEventListener('click', hideFeedback);
+    scrim?.addEventListener('click', closeModal);
 
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && feedbackModal && !feedbackModal.hidden) {
@@ -193,29 +242,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.key === 'Escape' && !modalRoot.hidden) {
             closeModal();
         }
-    });
+    }, { once: false });
 
-    if (imageInput) {
-        imageInput.addEventListener('change', () => {
-            const incomingFiles = Array.from(imageInput.files ?? []);
+    imageInput?.addEventListener('change', () => {
+        const incomingFiles = Array.from(imageInput.files ?? []);
 
-            if (incomingFiles.length === 0) {
-                syncImageInput();
-                return;
-            }
+        if (incomingFiles.length === 0) {
+            syncImageInput();
+            return;
+        }
 
-            const remainingSlots = MAX_VEHICLE_IMAGES - selectedFiles.length;
-            if (remainingSlots <= 0) {
-                syncImageInput();
-                renderImageGallery();
-                return;
-            }
-
-            selectedFiles = selectedFiles.concat(incomingFiles.slice(0, remainingSlots));
+        const remainingSlots = MAX_VEHICLE_IMAGES - selectedFiles.length;
+        if (remainingSlots <= 0) {
             syncImageInput();
             renderImageGallery();
-        });
-    }
+            return;
+        }
+
+        selectedFiles = selectedFiles.concat(incomingFiles.slice(0, remainingSlots));
+        syncImageInput();
+        renderImageGallery();
+    });
 
     if (addVehicleForm) {
         addVehicleForm.addEventListener('submit', async (event) => {
@@ -246,7 +293,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let payload = null;
                 try {
                     payload = await response.json();
-                } catch (jsonError) {
+                } catch {
                     payload = null;
                 }
 
@@ -255,8 +302,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
+                if (payload.message) {
+                    sessionStorage.setItem('myCarsToast', payload.message);
+                }
+
                 window.location.href = payload.redirect || '/my-cars';
-            } catch (error) {
+            } catch {
                 showFeedback('Nie udało się połączyć z serwerem. Spróbuj ponownie.');
             } finally {
                 isSubmittingAddVehicle = false;
@@ -267,10 +318,42 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    document.querySelectorAll('.car-card-favorite-form').forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    },
+                });
+
+                const payload = await response.json();
+                if (!response.ok || !payload?.success) {
+                    showAppToast(payload?.message || 'Nie udało się zmienić pojazdu głównego.', 'error');
+                    return;
+                }
+
+                showAppToast(payload.message || 'Pojazd główny został zmieniony.', 'success');
+                await refreshMyCarsContent(payload.refresh_url || '/my-cars');
+            } catch {
+                showAppToast('Nie udało się zmienić pojazdu głównego.', 'error');
+            }
+        });
+    });
+
     renderImageGallery();
 
     const params = new URLSearchParams(window.location.search);
     if (params.get('open_modal') === 'cars-add-vehicle') {
         openModal('cars-add-vehicle');
     }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    window.initMyCarsPage();
 });

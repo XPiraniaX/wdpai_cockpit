@@ -196,13 +196,14 @@ class CarsController extends AppController
             case 'spec_update':
                 $payload = $this->buildSpecificationPayload($vehicle);
                 if ($message = $this->validateVehicleSpecificationUniqueness($repository, $vehicleId, $payload)) {
-                    $this->setFlash('error', $message);
-                    $this->redirect('/my-cars/details?id=' . $vehicleId . '&open_modal=modal-spec-edit');
+                    $this->respondVehicleDetailsError($vehicleId, $message, 'modal-spec-edit');
                 }
                 $repository->updateVehicleSpecification($userId, $vehicleId, $payload);
+                $this->respondVehicleDetailsSuccess($vehicleId, 'Specyfikacja techniczna została zaktualizowana.');
                 break;
             case 'fuel_add':
                 $repository->addFuelLog($userId, $vehicleId, $this->buildFuelLogPayload($vehicle));
+                $this->respondVehicleDetailsSuccess($vehicleId, 'Tankowanie zostało dodane.');
                 break;
             case 'service_add':
                 $servicePayload = $this->buildServiceRecordPayload();
@@ -211,27 +212,39 @@ class CarsController extends AppController
                 if ($sourceTaskId !== null) {
                     $repository->deleteMaintenanceTask($userId, $vehicleId, $sourceTaskId);
                 }
+                $this->respondVehicleDetailsSuccess($vehicleId, 'Wpis serwisowy został dodany.');
                 break;
             case 'task_add':
                 $repository->addMaintenanceTask($userId, $vehicleId, $this->buildMaintenanceTaskPayload());
+                $this->respondVehicleDetailsSuccess($vehicleId, 'Zadanie zostało dodane.');
                 break;
             case 'task_delete':
                 $taskId = $this->sanitizeNullableInt($_POST['task_id'] ?? null);
                 if ($taskId !== null) {
                     $repository->deleteMaintenanceTask($userId, $vehicleId, $taskId);
                 }
+                $this->respondVehicleDetailsSuccess($vehicleId, 'Zadanie zostało usunięte.');
                 break;
             case 'inspection_update':
                 $repository->upsertInspection($userId, $vehicleId, $this->buildInspectionPayload());
+                $this->respondVehicleDetailsSuccess($vehicleId, 'Przegląd techniczny został zaktualizowany.');
                 break;
             case 'insurance_update':
                 $repository->upsertInsurance($userId, $vehicleId, $this->buildInsurancePayload());
+                $this->respondVehicleDetailsSuccess($vehicleId, 'Ubezpieczenie zostało zaktualizowane.');
                 break;
             case 'vehicle_images_update':
                 $this->updateVehicleImages($repository, $userId, $vehicleId, $vehicle);
                 break;
             case 'vehicle_delete':
                 $this->deleteVehicleWithImages($repository, $userId, $vehicleId);
+                if ($this->isAjaxRequest()) {
+                    $this->jsonResponse([
+                        'success' => true,
+                        'message' => 'Pojazd został usunięty.',
+                        'redirect' => '/my-cars',
+                    ]);
+                }
                 $this->setFlash('success', 'Pojazd został usunięty.');
                 $this->redirect('/my-cars');
                 break;
@@ -240,6 +253,39 @@ class CarsController extends AppController
         }
 
         $this->redirect('/my-cars/details?id=' . $vehicleId);
+    }
+
+    private function respondVehicleDetailsSuccess(int $vehicleId, string $message): void
+    {
+        if ($this->isAjaxRequest()) {
+            $this->jsonResponse([
+                'success' => true,
+                'message' => $message,
+                'refresh_url' => '/my-cars/details?id=' . $vehicleId,
+            ]);
+        }
+
+        $this->setFlash('success', $message);
+        $this->redirect('/my-cars/details?id=' . $vehicleId);
+    }
+
+    private function respondVehicleDetailsError(int $vehicleId, string $message, ?string $modalName = null): void
+    {
+        if ($this->isAjaxRequest()) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => $message,
+                'open_modal' => $modalName,
+            ], 422);
+        }
+
+        $this->setFlash('error', $message);
+        $path = '/my-cars/details?id=' . $vehicleId;
+        if ($modalName !== null && $modalName !== '') {
+            $path .= '&open_modal=' . urlencode($modalName);
+        }
+
+        $this->redirect($path);
     }
 
     private function calculateGaragePlaceholderCount(int $carCount): int
@@ -838,6 +884,7 @@ class CarsController extends AppController
         if ($this->isAjaxRequest()) {
             $this->jsonResponse([
                 'success' => true,
+                'message' => 'Pojazd został dodany.',
                 'redirect' => '/my-cars',
             ]);
         }
@@ -867,12 +914,26 @@ class CarsController extends AppController
 
         $totalImagesAfterSave = count($keptImageIds) + count($newImagePaths);
         if ($totalImagesAfterSave <= 0) {
+            if ($this->isAjaxRequest()) {
+                $this->jsonResponse([
+                    'success' => false,
+                    'message' => 'Pojazd musi mieć co najmniej jedno zdjęcie.',
+                    'open_modal' => 'modal-images-edit',
+                ], 422);
+            }
             $this->setFlash('error', 'Pojazd musi mieć co najmniej jedno zdjęcie.');
             $this->redirect('/my-cars/details?id=' . $vehicleId . '&open_modal=modal-images-edit');
         }
 
         if ($totalImagesAfterSave > 10) {
             $this->deleteUploadedFiles($newImagePaths);
+            if ($this->isAjaxRequest()) {
+                $this->jsonResponse([
+                    'success' => false,
+                    'message' => 'Możesz zapisać maksymalnie 10 zdjęć pojazdu.',
+                    'open_modal' => 'modal-images-edit',
+                ], 422);
+            }
             $this->setFlash('error', 'Możesz zapisać maksymalnie 10 zdjęć pojazdu.');
             $this->redirect('/my-cars/details?id=' . $vehicleId . '&open_modal=modal-images-edit');
         }
@@ -894,6 +955,13 @@ class CarsController extends AppController
         }
 
         $this->deleteUploadedFiles($deletedImagePaths);
+        if ($this->isAjaxRequest()) {
+            $this->jsonResponse([
+                'success' => true,
+                'message' => 'Zdjęcia pojazdu zostały zaktualizowane.',
+                'refresh_url' => '/my-cars/details?id=' . $vehicleId,
+            ]);
+        }
         $this->setFlash('success', 'Zdjęcia pojazdu zostały zaktualizowane.');
         $this->redirect('/my-cars/details?id=' . $vehicleId);
     }

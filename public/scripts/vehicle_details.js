@@ -1,4 +1,56 @@
-document.addEventListener('DOMContentLoaded', () => {
+let vehicleDetailsAbortController = null;
+
+const showAppToast = (message, type = 'info') => {
+    const existingToast = document.querySelector('[data-app-toast]');
+    existingToast?.remove();
+
+    const toast = document.createElement('div');
+    toast.className = `app-toast app-toast-${type}`;
+    toast.setAttribute('data-app-toast', '');
+
+    const messageNode = document.createElement('div');
+    messageNode.className = 'app-toast-message';
+    messageNode.textContent = message;
+
+    toast.appendChild(messageNode);
+    document.body.appendChild(toast);
+
+    window.setTimeout(() => {
+        toast.classList.add('is-hiding');
+        window.setTimeout(() => toast.remove(), 260);
+    }, 5000);
+};
+
+const refreshVehicleDetailsContent = async (refreshUrl) => {
+    const response = await fetch(refreshUrl, {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error('Nie udało się odświeżyć widoku pojazdu.');
+    }
+
+    const html = await response.text();
+    const parser = new DOMParser();
+    const documentFragment = parser.parseFromString(html, 'text/html');
+    const nextContent = documentFragment.querySelector('.content');
+    const currentContent = document.querySelector('.content');
+
+    if (!nextContent || !currentContent) {
+        throw new Error('Nie udało się odświeżyć zawartości pojazdu.');
+    }
+
+    currentContent.replaceWith(nextContent);
+    window.initVehicleDetailsPage();
+};
+
+window.initVehicleDetailsPage = () => {
+    vehicleDetailsAbortController?.abort();
+    vehicleDetailsAbortController = new AbortController();
+    const { signal } = vehicleDetailsAbortController;
+
     const modalRoot = document.querySelector('[data-vehicle-modal-root]');
 
     if (!modalRoot) {
@@ -19,6 +71,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const heroCarouselTrack = document.querySelector('[data-hero-carousel-track]');
     const heroCarouselPrev = document.querySelector('[data-hero-carousel-prev]');
     const heroCarouselNext = document.querySelector('[data-hero-carousel-next]');
+
     let activePanel = null;
     let initialEditableExistingImages = [];
     let editableExistingImages = [];
@@ -42,12 +95,63 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const closeHeroMenu = () => {
+        if (!heroMenuTrigger || !heroMenuDropdown) {
+            return;
+        }
+
+        heroMenuTrigger.setAttribute('aria-expanded', 'false');
+        heroMenuDropdown.hidden = true;
+    };
+
+    const toggleHeroMenu = () => {
+        if (!heroMenuTrigger || !heroMenuDropdown) {
+            return;
+        }
+
+        const isOpen = heroMenuTrigger.getAttribute('aria-expanded') === 'true';
+        heroMenuTrigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+        heroMenuDropdown.hidden = isOpen;
+    };
+
+    const closeModal = () => {
+        modalRoot.hidden = true;
+        document.body.classList.remove('vehicle-modal-open');
+
+        if (activePanel) {
+            activePanel.hidden = true;
+            activePanel = null;
+        }
+    };
+
+    const openModal = (panelName) => {
+        const nextPanel = panels.find((panel) => panel.dataset.modalPanel === panelName);
+
+        if (!nextPanel) {
+            return;
+        }
+
+        if (panelName === 'modal-images-edit') {
+            initializeImagesEditState();
+        }
+
+        closeHeroMenu();
+        panels.forEach((panel) => {
+            panel.hidden = true;
+        });
+
+        activePanel = nextPanel;
+        activePanel.hidden = false;
+        modalRoot.hidden = false;
+        document.body.classList.add('vehicle-modal-open');
+    };
+
     const buildImagePlaceholder = () => {
         const placeholderButton = document.createElement('button');
         placeholderButton.type = 'button';
         placeholderButton.className = 'vehicle-images-edit-card vehicle-images-edit-card-placeholder';
         placeholderButton.setAttribute('aria-label', 'Dodaj zdjęcie pojazdu');
-        placeholderButton.addEventListener('click', openImagesEditPicker);
+        placeholderButton.addEventListener('click', openImagesEditPicker, { signal });
 
         const placeholder = document.createElement('div');
         placeholder.className = 'vehicle-images-edit-placeholder';
@@ -94,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
             removeButton.addEventListener('click', () => {
                 editableExistingImages = editableExistingImages.filter((_, imageIndex) => imageIndex !== index);
                 renderImagesEditGallery();
-            });
+            }, { signal });
 
             card.appendChild(input);
             card.appendChild(photo);
@@ -119,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 editableNewFiles = editableNewFiles.filter((_, fileIndex) => fileIndex !== index);
                 syncImagesEditInput();
                 renderImagesEditGallery();
-            });
+            }, { signal });
 
             const reader = new FileReader();
             reader.onload = () => {
@@ -157,25 +261,6 @@ document.addEventListener('DOMContentLoaded', () => {
             id: Number(card.dataset.imageId || 0),
             path: String(card.dataset.imagePath || ''),
         })).filter((image) => image.id > 0 && image.path !== '');
-    };
-
-    const closeHeroMenu = () => {
-        if (!heroMenuTrigger || !heroMenuDropdown) {
-            return;
-        }
-
-        heroMenuTrigger.setAttribute('aria-expanded', 'false');
-        heroMenuDropdown.hidden = true;
-    };
-
-    const toggleHeroMenu = () => {
-        if (!heroMenuTrigger || !heroMenuDropdown) {
-            return;
-        }
-
-        const isOpen = heroMenuTrigger.getAttribute('aria-expanded') === 'true';
-        heroMenuTrigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-        heroMenuDropdown.hidden = isOpen;
     };
 
     const initializeHeroCarousel = () => {
@@ -242,19 +327,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             isAnimating = false;
-        });
+        }, { signal });
 
-        if (heroCarouselPrev) {
-            heroCarouselPrev.addEventListener('click', () => {
-                moveToIndex(currentIndex - 1);
-            });
-        }
-
-        if (heroCarouselNext) {
-            heroCarouselNext.addEventListener('click', () => {
-                moveToIndex(currentIndex + 1);
-            });
-        }
+        heroCarouselPrev?.addEventListener('click', () => moveToIndex(currentIndex - 1), { signal });
+        heroCarouselNext?.addEventListener('click', () => moveToIndex(currentIndex + 1), { signal });
 
         window.addEventListener('resize', () => {
             applySlideWidths();
@@ -262,7 +338,7 @@ document.addEventListener('DOMContentLoaded', () => {
             syncPosition();
             heroCarouselTrack.offsetHeight;
             heroCarouselTrack.classList.remove('is-no-transition');
-        });
+        }, { signal });
 
         requestAnimationFrame(() => {
             applySlideWidths();
@@ -289,13 +365,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const increaseButton = document.createElement('button');
             increaseButton.type = 'button';
             increaseButton.className = 'vehicle-number-stepper-button';
-            increaseButton.setAttribute('aria-label', 'Zwieksz wartosc');
+            increaseButton.setAttribute('aria-label', 'Zwiększ wartość');
             increaseButton.textContent = '+';
 
             const decreaseButton = document.createElement('button');
             decreaseButton.type = 'button';
             decreaseButton.className = 'vehicle-number-stepper-button';
-            decreaseButton.setAttribute('aria-label', 'Zmniejsz wartosc');
+            decreaseButton.setAttribute('aria-label', 'Zmniejsz wartość');
             decreaseButton.textContent = '-';
 
             const dispatchInputEvents = () => {
@@ -306,12 +382,12 @@ document.addEventListener('DOMContentLoaded', () => {
             increaseButton.addEventListener('click', () => {
                 input.stepUp();
                 dispatchInputEvents();
-            });
+            }, { signal });
 
             decreaseButton.addEventListener('click', () => {
                 input.stepDown();
                 dispatchInputEvents();
-            });
+            }, { signal });
 
             stepper.appendChild(increaseButton);
             stepper.appendChild(decreaseButton);
@@ -319,37 +395,51 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-    const closeModal = () => {
-        modalRoot.hidden = true;
-        document.body.classList.remove('vehicle-modal-open');
-
-        if (activePanel) {
-            activePanel.hidden = true;
-            activePanel = null;
-        }
-    };
-
-    const openModal = (panelName) => {
-        const nextPanel = panels.find((panel) => panel.dataset.modalPanel === panelName);
-
-        if (!nextPanel) {
+    const handleVehicleAjaxSuccess = async (payload) => {
+        if (payload.redirect) {
+            showAppToast(payload.message || 'Zapisano.', 'success');
+            window.setTimeout(() => {
+                window.location.href = payload.redirect;
+            }, 180);
             return;
         }
 
-        if (panelName === 'modal-images-edit') {
-            initializeImagesEditState();
+        closeModal();
+        if (payload.message) {
+            showAppToast(payload.message, 'success');
         }
 
-        closeHeroMenu();
+        await refreshVehicleDetailsContent(payload.refresh_url || window.location.pathname + window.location.search);
+    };
 
-        panels.forEach((panel) => {
-            panel.hidden = true;
+    const bindVehicleAjaxForms = () => {
+        const forms = modalRoot.querySelectorAll('form[method="post"], form:not([method])');
+
+        forms.forEach((form) => {
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                try {
+                    const response = await fetch(form.action || (window.location.pathname + window.location.search), {
+                        method: 'POST',
+                        body: new FormData(form),
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+                    const payload = await response.json();
+
+                    if (!response.ok || payload.success === false) {
+                        showAppToast(payload.message || 'Nie udało się zapisać zmian.', 'error');
+                        return;
+                    }
+
+                    await handleVehicleAjaxSuccess(payload);
+                } catch (error) {
+                    showAppToast('Nie udało się zapisać zmian. Spróbuj ponownie.', 'error');
+                }
+            }, { signal });
         });
-
-        activePanel = nextPanel;
-        activePanel.hidden = false;
-        modalRoot.hidden = false;
-        document.body.classList.add('vehicle-modal-open');
     };
 
     openButtons.forEach((button) => {
@@ -370,21 +460,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             openModal(button.dataset.modalOpen);
-        });
+        }, { signal });
     });
 
-    if (heroMenuTrigger) {
-        heroMenuTrigger.addEventListener('click', (event) => {
-            event.stopPropagation();
-            toggleHeroMenu();
-        });
-    }
+    heroMenuTrigger?.addEventListener('click', (event) => {
+        event.stopPropagation();
+        toggleHeroMenu();
+    }, { signal });
 
-    if (heroMenuDropdown) {
-        heroMenuDropdown.addEventListener('click', (event) => {
-            event.stopPropagation();
-        });
-    }
+    heroMenuDropdown?.addEventListener('click', (event) => {
+        event.stopPropagation();
+    }, { signal });
 
     modalRoot.querySelectorAll('[data-task-realize]').forEach((button) => {
         button.addEventListener('click', () => {
@@ -401,34 +487,28 @@ document.addEventListener('DOMContentLoaded', () => {
             if (titleInput) {
                 titleInput.value = button.dataset.taskTitle ?? '';
             }
-
             if (descriptionInput) {
                 descriptionInput.value = button.dataset.taskDescription ?? '';
             }
-
             if (costInput) {
                 costInput.value = button.dataset.taskCost ?? '';
             }
-
             if (dateInput) {
                 dateInput.value = new Date().toISOString().slice(0, 10);
             }
-
             if (sourceTaskInput) {
                 sourceTaskInput.value = button.dataset.taskId ?? '';
             }
 
             openModal('modal-service-add');
-        });
+        }, { signal });
     });
 
     closeButtons.forEach((button) => {
-        button.addEventListener('click', closeModal);
+        button.addEventListener('click', closeModal, { signal });
     });
 
-    if (scrim) {
-        scrim.addEventListener('click', closeModal);
-    }
+    scrim?.addEventListener('click', closeModal, { signal });
 
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && !modalRoot.hidden) {
@@ -440,7 +520,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (event.key === 'Escape') {
             closeHeroMenu();
         }
-    });
+    }, { signal });
 
     document.addEventListener('click', (event) => {
         if (!heroMenu || heroMenu.contains(event.target)) {
@@ -448,12 +528,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         closeHeroMenu();
-    });
-
-    enhanceNumberInputs();
-    captureInitialImagesEditState();
-    initializeImagesEditState();
-    initializeHeroCarousel();
+    }, { signal });
 
     if (imagesEditInput) {
         imagesEditInput.addEventListener('change', () => {
@@ -474,7 +549,7 @@ document.addEventListener('DOMContentLoaded', () => {
             editableNewFiles = editableNewFiles.concat(incomingFiles.slice(0, remainingSlots));
             syncImagesEditInput();
             renderImagesEditGallery();
-        });
+        }, { signal });
     }
 
     const openModalFromQuery = () => {
@@ -492,5 +567,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    enhanceNumberInputs();
+    captureInitialImagesEditState();
+    initializeImagesEditState();
+    initializeHeroCarousel();
+    bindVehicleAjaxForms();
     openModalFromQuery();
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    window.initVehicleDetailsPage();
 });

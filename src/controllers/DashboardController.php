@@ -86,6 +86,14 @@ class DashboardController extends AppController
         $repository = new DashboardRepository(Database::getConnection());
         $repository->setPrimaryVehicle($this->getCurrentUserId(), $vehicleId);
 
+        if ($this->isAjaxRequest()) {
+            $this->jsonResponse([
+                'success' => true,
+                'message' => 'Pojazd główny został zmieniony.',
+                'refresh_url' => $this->sanitizeRedirectPath($redirectTo),
+            ]);
+        }
+
         $this->redirect($this->sanitizeRedirectPath($redirectTo));
     }
 
