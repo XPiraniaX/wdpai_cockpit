@@ -104,6 +104,7 @@ class CommunityRepository
                 'comment_count' => (int) $post['comment_count'],
                 'liked_by_current_user' => (bool) $post['liked_by_current_user'],
                 'saved_by_current_user' => (bool) $post['saved_by_current_user'],
+                'commented_by_current_user' => (bool) $post['commented_by_current_user'],
                 'comments' => $commentsByPost[$postId] ?? [],
                 'images' => $imagesByPost[$postId] ?? [],
             ];
@@ -241,6 +242,34 @@ class CommunityRepository
         ]);
     }
 
+    public function getLikeState(int $userId, int $postId): array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT
+                EXISTS(
+                    SELECT 1
+                    FROM community_post_likes
+                    WHERE post_id = :post_id AND user_id = :user_id
+                ) AS liked_by_current_user,
+                (
+                    SELECT COUNT(*)
+                    FROM community_post_likes
+                    WHERE post_id = :post_id
+                ) AS like_count'
+        );
+        $statement->execute([
+            'post_id' => $postId,
+            'user_id' => $userId,
+        ]);
+
+        $state = $statement->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        return [
+            'liked_by_current_user' => (bool) ($state['liked_by_current_user'] ?? false),
+            'like_count' => (int) ($state['like_count'] ?? 0),
+        ];
+    }
+
     public function toggleSave(int $userId, int $postId): void
     {
         if ($this->pivotExists('community_post_saves', $userId, $postId)) {
@@ -264,16 +293,134 @@ class CommunityRepository
         ]);
     }
 
-    public function addComment(int $userId, int $postId, string $content): void
+    public function getSaveState(int $userId, int $postId): array
     {
         $statement = $this->connection->prepare(
-            'INSERT INTO community_comments (post_id, user_id, content) VALUES (:post_id, :user_id, :content)'
+            'SELECT
+                EXISTS(
+                    SELECT 1
+                    FROM community_post_saves
+                    WHERE post_id = :post_id AND user_id = :user_id
+                ) AS saved_by_current_user,
+                (
+                    SELECT COUNT(*)
+                    FROM community_post_saves
+                    WHERE post_id = :post_id
+                ) AS save_count'
+        );
+        $statement->execute([
+            'post_id' => $postId,
+            'user_id' => $userId,
+        ]);
+
+        $state = $statement->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        return [
+            'saved_by_current_user' => (bool) ($state['saved_by_current_user'] ?? false),
+            'save_count' => (int) ($state['save_count'] ?? 0),
+        ];
+    }
+
+    public function addComment(int $userId, int $postId, string $content): array
+    {
+        $statement = $this->connection->prepare(
+            'INSERT INTO community_comments (post_id, user_id, content)
+            VALUES (:post_id, :user_id, :content)
+            RETURNING id, created_at'
         );
         $statement->execute([
             'post_id' => $postId,
             'user_id' => $userId,
             'content' => $content,
         ]);
+
+        $inserted = $statement->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        $authorStatement = $this->connection->prepare(
+            'SELECT username, CONCAT(first_name, \' \', last_name) AS full_name
+            FROM users
+            WHERE id = :user_id
+            LIMIT 1'
+        );
+        $authorStatement->execute([
+            'user_id' => $userId,
+        ]);
+        $author = $authorStatement->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        return [
+            'id' => (int) ($inserted['id'] ?? 0),
+            'user_id' => $userId,
+            'author_name' => (string) ($author['full_name'] ?? ''),
+            'author_username' => (string) ($author['username'] ?? ''),
+            'content' => $content,
+            'created_at' => (string) ($inserted['created_at'] ?? ''),
+            'profile_path' => '/community/profile?id=' . $userId,
+        ];
+    }
+
+    public function getCommentState(int $userId, int $postId): array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT
+                EXISTS(
+                    SELECT 1
+                    FROM community_comments
+                    WHERE post_id = :post_id
+                        AND user_id = :user_id
+                        AND is_active = TRUE
+                ) AS commented_by_current_user,
+                (
+                    SELECT COUNT(*)
+                    FROM community_comments
+                    WHERE post_id = :post_id
+                        AND is_active = TRUE
+                ) AS comment_count'
+        );
+        $statement->execute([
+            'post_id' => $postId,
+            'user_id' => $userId,
+        ]);
+
+        $state = $statement->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        return [
+            'commented_by_current_user' => (bool) ($state['commented_by_current_user'] ?? false),
+            'comment_count' => (int) ($state['comment_count'] ?? 0),
+        ];
+    }
+
+    public function deletePostByOwner(int $userId, int $postId): array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT image_path
+            FROM community_post_images
+            WHERE post_id = :post_id
+            ORDER BY display_order ASC, id ASC'
+        );
+        $statement->execute([
+            'post_id' => $postId,
+        ]);
+        $imagePaths = array_map(
+            static fn (array $row): string => (string) $row['image_path'],
+            $statement->fetchAll(PDO::FETCH_ASSOC) ?: []
+        );
+
+        $deleteStatement = $this->connection->prepare(
+            'DELETE FROM community_posts
+            WHERE id = :post_id
+                AND user_id = :user_id
+                AND is_active = TRUE'
+        );
+        $deleteStatement->execute([
+            'post_id' => $postId,
+            'user_id' => $userId,
+        ]);
+
+        if ($deleteStatement->rowCount() < 1) {
+            return [];
+        }
+
+        return $imagePaths;
     }
 
     public function getProfile(int $profileUserId): ?array
@@ -353,7 +500,7 @@ class CommunityRepository
             INNER JOIN users u ON u.id = c.user_id
             WHERE c.is_active = TRUE
                 AND c.post_id IN (' . implode(', ', $placeholders) . ')
-            ORDER BY c.created_at ASC, c.id ASC'
+            ORDER BY c.created_at DESC, c.id DESC'
         );
         $statement->execute($params);
 

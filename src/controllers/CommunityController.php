@@ -117,6 +117,16 @@ class CommunityController extends AppController
                 $postId = (int) ($_POST['post_id'] ?? 0);
                 if ($postId > 0) {
                     $repository->toggleLike($userId, $postId);
+
+                    if ($this->isAjaxRequest()) {
+                        $state = $repository->getLikeState($userId, $postId);
+                        $this->jsonResponse([
+                            'success' => true,
+                            'post_id' => $postId,
+                            'liked_by_current_user' => $state['liked_by_current_user'],
+                            'like_count' => $state['like_count'],
+                        ]);
+                    }
                 }
                 $this->redirect($redirectTo);
                 return;
@@ -125,6 +135,16 @@ class CommunityController extends AppController
                 $postId = (int) ($_POST['post_id'] ?? 0);
                 if ($postId > 0) {
                     $repository->toggleSave($userId, $postId);
+
+                    if ($this->isAjaxRequest()) {
+                        $state = $repository->getSaveState($userId, $postId);
+                        $this->jsonResponse([
+                            'success' => true,
+                            'post_id' => $postId,
+                            'saved_by_current_user' => $state['saved_by_current_user'],
+                            'save_count' => $state['save_count'],
+                        ]);
+                    }
                 }
                 $this->redirect($redirectTo);
                 return;
@@ -134,10 +154,72 @@ class CommunityController extends AppController
                 $content = trim((string) ($_POST['comment_content'] ?? ''));
 
                 if ($postId > 0 && $content !== '') {
-                    $repository->addComment($userId, $postId, $content);
+                    $comment = $repository->addComment($userId, $postId, $content);
+
+                    if ($this->isAjaxRequest()) {
+                        $state = $repository->getCommentState($userId, $postId);
+                        $comment['formatted_created_at'] = $this->formatDateTime($comment['created_at']);
+                        $this->jsonResponse([
+                            'success' => true,
+                            'post_id' => $postId,
+                            'commented_by_current_user' => $state['commented_by_current_user'],
+                            'comment_count' => $state['comment_count'],
+                            'comment' => $comment,
+                        ]);
+                    }
                 }
 
                 $this->redirect($redirectTo . '#post-' . $postId);
+                return;
+
+            case 'delete_post':
+                $postId = (int) ($_POST['post_id'] ?? 0);
+
+                if ($postId > 0) {
+                    $imagePaths = $repository->deletePostByOwner($userId, $postId);
+                    if ($imagePaths !== []) {
+                        $this->deleteUploadedFiles($imagePaths);
+                        $this->setFlash('success', 'Post został usunięty.');
+                    } else {
+                        $this->setFlash('error', 'Nie udało się usunąć posta.');
+                    }
+                }
+
+                $this->redirect($redirectTo);
+                return;
+
+            case 'report_post':
+                $postId = (int) ($_POST['post_id'] ?? 0);
+
+                if ($postId > 0) {
+                    if ($this->isAjaxRequest()) {
+                        $this->jsonResponse([
+                            'success' => true,
+                            'message' => 'Post został zgłoszony.',
+                        ]);
+                    }
+
+                    $this->setFlash('success', 'Post został zgłoszony.');
+                }
+
+                $this->redirect($redirectTo);
+                return;
+
+            case 'report_comment':
+                $commentId = (int) ($_POST['comment_id'] ?? 0);
+
+                if ($commentId > 0) {
+                    if ($this->isAjaxRequest()) {
+                        $this->jsonResponse([
+                            'success' => true,
+                            'message' => 'Komentarz został zgłoszony.',
+                        ]);
+                    }
+
+                    $this->setFlash('success', 'Komentarz został zgłoszony.');
+                }
+
+                $this->redirect($redirectTo);
                 return;
         }
 
