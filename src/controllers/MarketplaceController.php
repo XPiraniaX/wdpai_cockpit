@@ -81,6 +81,12 @@ class MarketplaceController extends AppController
         switch ($action) {
             case 'create_listing':
                 $payload = $this->buildListingPayload();
+                $missingFields = $this->resolveMissingRequiredListingFields($payload);
+
+                if ($missingFields !== []) {
+                    $this->setFlash('error', 'Uzupełnij wszystkie wymagane pola ogłoszenia.');
+                    $this->redirect($redirectTo);
+                }
 
                 if ($payload['brand_id'] === null || $payload['model_id'] === null) {
                     $this->setFlash('error', 'Wybierz markę i model pojazdu.');
@@ -89,6 +95,11 @@ class MarketplaceController extends AppController
 
                 if (!$repository->modelBelongsToBrand($payload['model_id'], $payload['brand_id'])) {
                     $this->setFlash('error', 'Wybrany model nie pasuje do wskazanej marki.');
+                    $this->redirect($redirectTo);
+                }
+
+                if (!filter_var((string) $payload['contact_email'], FILTER_VALIDATE_EMAIL)) {
+                    $this->setFlash('error', 'Podaj poprawny adres e-mail.');
                     $this->redirect($redirectTo);
                 }
 
@@ -232,6 +243,46 @@ class MarketplaceController extends AppController
         ];
     }
 
+    private function resolveMissingRequiredListingFields(array $payload): array
+    {
+        $missing = [];
+
+        foreach ([
+            'brand_id',
+            'model_id',
+            'title',
+            'trim_name',
+            'description',
+            'production_year',
+            'mileage_km',
+            'fuel_type',
+            'transmission',
+            'body_type',
+            'drivetrain',
+            'steering_side',
+            'technical_condition',
+            'engine_capacity_cc',
+            'power_hp',
+            'exterior_color',
+            'city',
+            'contact_name',
+            'contact_phone',
+            'contact_email',
+        ] as $field) {
+            $value = $payload[$field] ?? null;
+
+            if ($value === null || $value === '') {
+                $missing[] = $field;
+            }
+        }
+
+        if (!isset($payload['price_amount']) || (float) $payload['price_amount'] <= 0) {
+            $missing[] = 'price_amount';
+        }
+
+        return $missing;
+    }
+
     private function handleListingImageUploads(int $userId, string $title, string $fieldName = 'listing_images'): array
     {
         if (empty($_FILES[$fieldName]) || !is_array($_FILES[$fieldName]['error'] ?? null)) {
@@ -257,7 +308,7 @@ class MarketplaceController extends AppController
         $timestamp = date('Ymd-His');
         $requestToken = bin2hex(random_bytes(3));
 
-        foreach (array_slice($files, 0, 10) as $index => $file) {
+        foreach (array_slice($files, 0, 12) as $index => $file) {
             if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
                 continue;
             }
@@ -314,6 +365,10 @@ class MarketplaceController extends AppController
             return null;
         }
 
+        if (is_string($value)) {
+            $value = str_replace([' ', "\xc2\xa0"], '', $value);
+        }
+
         return filter_var($value, FILTER_VALIDATE_INT) !== false ? (int) $value : null;
     }
 
@@ -324,6 +379,7 @@ class MarketplaceController extends AppController
         }
 
         if (is_string($value)) {
+            $value = str_replace([' ', "\xc2\xa0"], '', $value);
             $value = str_replace(',', '.', $value);
         }
 

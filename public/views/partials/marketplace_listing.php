@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 $detailsModalId = 'marketplace-details-modal-' . (int) $listing['id'];
 $hasImages = !empty($listing['images']);
 $isOwnListing = ((int) ($currentUser['id'] ?? 0)) === (int) $listing['user_id'];
@@ -29,13 +29,17 @@ $isOwnListing = ((int) ($currentUser['id'] ?? 0)) === (int) $listing['user_id'];
                 <input type="hidden" name="listing_id" value="<?= (int) $listing['id']; ?>">
                 <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/marketplace', ENT_QUOTES, 'UTF-8'); ?>">
                 <button type="submit" class="marketplace-save-button<?= $listing['saved_by_current_user'] ? ' is-active' : ''; ?>" data-marketplace-save-button aria-label="Zapisz ogłoszenie">
-                    <img
-                        src="<?= $listing['saved_by_current_user'] ? '/public/assets/icons/save_icon_full.svg' : '/public/assets/icons/save_icon.svg'; ?>"
-                        alt=""
-                        class="marketplace-save-icon"
-                        data-marketplace-save-icon
-                    >
-                    <span class="marketplace-save-count" data-marketplace-save-count><?= (int) $listing['save_count']; ?></span>
+                    <span class="marketplace-save-heart" aria-hidden="true" data-marketplace-save-icon>
+                        <?php if ($listing['saved_by_current_user']): ?>
+                            <svg viewBox="0 0 24 24" class="marketplace-save-heart-svg is-filled">
+                                <path d="M12 21.35 10.55 20.03C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54Z"/>
+                            </svg>
+                        <?php else: ?>
+                            <svg viewBox="0 0 24 24" class="marketplace-save-heart-svg is-outline">
+                                <path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09A5.964 5.964 0 0 0 7.5 3C4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.31C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3Zm-4.4 15.55-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5 18.5 5 20 6.5 20 8.5c0 2.89-3.14 5.74-7.9 10.05Z"/>
+                            </svg>
+                        <?php endif; ?>
+                    </span>
                 </button>
             </form>
         </div>
@@ -80,7 +84,6 @@ $isOwnListing = ((int) ($currentUser['id'] ?? 0)) === (int) $listing['user_id'];
                 <span>•</span>
                 <span><?= htmlspecialchars($listing['formatted_fuel_type'], ENT_QUOTES, 'UTF-8'); ?></span>
             </div>
-            <p class="marketplace-listing-description"><?= nl2br(htmlspecialchars($listing['description'], ENT_QUOTES, 'UTF-8')); ?></p>
         </div>
     </div>
 </article>
@@ -156,3 +159,4 @@ $isOwnListing = ((int) ($currentUser['id'] ?? 0)) === (int) $listing['user_id'];
         </div>
     </div>
 </section>
+

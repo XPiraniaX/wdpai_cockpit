@@ -34,8 +34,14 @@ const marketplaceOpenDetailedButtons = document.querySelectorAll('[data-open-mar
 const marketplaceCloseDetailedButtons = document.querySelectorAll('[data-close-marketplace-detailed-filters]');
 const marketplaceImageInput = document.querySelector('[data-marketplace-image-input]');
 const marketplaceGallery = document.querySelector('[data-marketplace-gallery]');
+const marketplaceCreateForm = document.querySelector('[data-marketplace-create-form]');
+const marketplaceCreateSteps = Array.from(document.querySelectorAll('[data-marketplace-create-step]'));
+const marketplaceCreateNextButtons = document.querySelectorAll('[data-marketplace-step-next]');
+const marketplaceCreatePrevButtons = document.querySelectorAll('[data-marketplace-step-prev]');
+const marketplaceSummaryFields = document.querySelectorAll('[data-marketplace-summary]');
 
 let editableMarketplaceFiles = [];
+let marketplaceCurrentStep = 1;
 
 const syncMarketplaceScrollLock = () => {
     const createOpen = marketplaceCreateModal ? !marketplaceCreateModal.hidden : false;
@@ -202,9 +208,216 @@ const renderMarketplaceGallery = () => {
     if (editableMarketplaceFiles.length === 0) {
         marketplaceGallery.appendChild(buildMarketplaceImagePlaceholder());
         marketplaceGallery.appendChild(buildMarketplaceImagePlaceholder());
-    } else if (editableMarketplaceFiles.length < 10) {
+    } else if (editableMarketplaceFiles.length < 12) {
         marketplaceGallery.appendChild(buildMarketplaceImagePlaceholder());
     }
+};
+
+const initializeMarketplaceNumberInputs = (root = document) => {
+    const numberInputs = root.querySelectorAll('input[data-marketplace-number]:not([readonly])');
+
+    const parseNumericValue = (value) => {
+        const digits = String(value ?? '').replace(/\s+/g, '').replace(/[^\d]/g, '');
+        return digits === '' ? 0 : Number.parseInt(digits, 10);
+    };
+
+    const formatNumericValue = (value) => {
+        const digits = String(value ?? '').replace(/\s+/g, '').replace(/[^\d]/g, '');
+        if (digits === '') {
+            return '';
+        }
+
+        return Number.parseInt(digits, 10).toLocaleString('pl-PL');
+    };
+
+    numberInputs.forEach((input) => {
+        if (input.parentElement?.classList.contains('vehicle-number-input')) {
+            input.value = formatNumericValue(input.value);
+            return;
+        }
+
+        input.value = formatNumericValue(input.value);
+
+        input.addEventListener('input', () => {
+            const cursorFromEnd = input.value.length - input.selectionStart;
+            input.value = formatNumericValue(input.value);
+            const nextPosition = Math.max(0, input.value.length - cursorFromEnd);
+            input.setSelectionRange(nextPosition, nextPosition);
+        });
+
+        input.addEventListener('blur', () => {
+            input.value = formatNumericValue(input.value);
+        });
+
+        if (input.form && input.dataset.boundMarketplaceSubmit !== 'true') {
+            input.form.addEventListener('submit', () => {
+                input.value = String(parseNumericValue(input.value));
+            });
+            input.dataset.boundMarketplaceSubmit = 'true';
+        }
+
+        if (input.parentElement?.classList.contains('vehicle-currency-field')) {
+            const currencyWrapper = input.parentElement;
+            const numberWrapper = document.createElement('div');
+            numberWrapper.className = 'vehicle-number-input';
+            currencyWrapper.insertBefore(numberWrapper, input);
+            numberWrapper.appendChild(input);
+        } else {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'vehicle-number-input';
+            input.parentNode.insertBefore(wrapper, input);
+            wrapper.appendChild(input);
+        }
+
+        const stepValue = Number.parseInt(String(input.getAttribute('step') || '1'), 10) || 1;
+        const minValue = Number.parseInt(String(input.getAttribute('min') || '0'), 10) || 0;
+        const wrapper = input.parentElement;
+        if (!wrapper) {
+            return;
+        }
+
+        const stepper = document.createElement('div');
+        stepper.className = 'vehicle-number-stepper';
+
+        const increaseButton = document.createElement('button');
+        increaseButton.type = 'button';
+        increaseButton.className = 'vehicle-number-stepper-button';
+        increaseButton.setAttribute('aria-label', 'Zwiększ wartość');
+        increaseButton.textContent = '+';
+
+        const decreaseButton = document.createElement('button');
+        decreaseButton.type = 'button';
+        decreaseButton.className = 'vehicle-number-stepper-button';
+        decreaseButton.setAttribute('aria-label', 'Zmniejsz wartość');
+        decreaseButton.textContent = '-';
+
+        const dispatchInputEvents = () => {
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+
+        increaseButton.addEventListener('click', () => {
+            const nextValue = parseNumericValue(input.value) + stepValue;
+            input.value = formatNumericValue(nextValue);
+            dispatchInputEvents();
+        });
+
+        decreaseButton.addEventListener('click', () => {
+            const nextValue = Math.max(minValue, parseNumericValue(input.value) - stepValue);
+            input.value = formatNumericValue(nextValue);
+            dispatchInputEvents();
+        });
+
+        stepper.appendChild(increaseButton);
+        stepper.appendChild(decreaseButton);
+        wrapper.appendChild(stepper);
+    });
+};
+
+const getMarketplaceCreateStepElement = (stepNumber) => marketplaceCreateSteps.find(
+    (step) => Number(step.getAttribute('data-marketplace-create-step')) === stepNumber
+);
+
+const setMarketplaceCreateStep = (stepNumber) => {
+    marketplaceCurrentStep = stepNumber;
+
+    marketplaceCreateSteps.forEach((step) => {
+        const isActive = Number(step.getAttribute('data-marketplace-create-step')) === stepNumber;
+        step.hidden = !isActive;
+    });
+
+    const activeStep = getMarketplaceCreateStepElement(stepNumber);
+    const activeGrid = activeStep?.querySelector('.marketplace-create-step-grid');
+    if (activeGrid) {
+        activeGrid.scrollTop = 0;
+    }
+    if (marketplaceCreateModal) {
+        marketplaceCreateModal.scrollTop = 0;
+    }
+    activeStep?.querySelector('input, select, textarea, button')?.focus({preventScroll: true});
+};
+
+const getMarketplaceFieldLabel = (field) => {
+    const wrapper = field.closest('label, .vehicle-modal-field');
+    const label = wrapper?.querySelector('span');
+    return label?.textContent?.trim() || field.name || 'Pole';
+};
+
+const validateMarketplaceCreateStep = (stepNumber) => {
+    const step = getMarketplaceCreateStepElement(stepNumber);
+    if (!step) {
+        return true;
+    }
+
+    if (stepNumber === 1 && editableMarketplaceFiles.length === 0) {
+        showAppToast('Dodaj przynajmniej jedno zdjęcie ogłoszenia.', 'error');
+        marketplaceImageInput?.click();
+        return false;
+    }
+
+    const fields = step.querySelectorAll('input, select, textarea');
+    for (const field of fields) {
+        const input = field;
+
+        if (input.disabled || input.type === 'hidden') {
+            continue;
+        }
+
+        if (!input.checkValidity()) {
+            const message = input.validationMessage || `Uzupełnij pole: ${getMarketplaceFieldLabel(input)}.`;
+            input.reportValidity();
+            showAppToast(message, 'error');
+            return false;
+        }
+    }
+
+    return true;
+};
+
+const formatMarketplaceSummaryValue = (fieldName) => {
+    const field = marketplaceCreateForm?.elements.namedItem(fieldName);
+    if (!(field instanceof HTMLElement)) {
+        return '—';
+    }
+
+    if (field instanceof HTMLSelectElement) {
+        const selectedOption = field.options[field.selectedIndex];
+        return selectedOption?.textContent?.trim() || '—';
+    }
+
+    const rawValue = 'value' in field ? String(field.value || '').trim() : '';
+    if (rawValue === '') {
+        return '—';
+    }
+
+    if (fieldName === 'price_amount') {
+        return `${rawValue} PLN`;
+    }
+
+    if (fieldName === 'mileage_km') {
+        return `${rawValue} km`;
+    }
+
+    if (fieldName === 'engine_capacity_cc') {
+        return `${rawValue} cm3`;
+    }
+
+    if (fieldName === 'power_hp') {
+        return `${rawValue} KM`;
+    }
+
+    return rawValue;
+};
+
+const syncMarketplaceCreateSummary = () => {
+    marketplaceSummaryFields.forEach((field) => {
+        const key = field.getAttribute('data-marketplace-summary');
+        if (!key) {
+            return;
+        }
+
+        field.textContent = formatMarketplaceSummaryValue(key);
+    });
 };
 
 const openMarketplaceCreateModal = () => {
@@ -212,6 +425,7 @@ const openMarketplaceCreateModal = () => {
         return;
     }
 
+    setMarketplaceCreateStep(1);
     marketplaceCreateBackdrop.hidden = false;
     marketplaceCreateModal.hidden = false;
     syncMarketplaceScrollLock();
@@ -224,6 +438,7 @@ const closeMarketplaceCreateModal = () => {
 
     marketplaceCreateBackdrop.hidden = true;
     marketplaceCreateModal.hidden = true;
+    setMarketplaceCreateStep(1);
     syncMarketplaceScrollLock();
 };
 
@@ -249,15 +464,36 @@ const closeMarketplaceDetailedModal = () => {
 
 marketplaceOpenCreateButtons.forEach((button) => {
     button.addEventListener('click', () => {
-        const form = marketplaceCreateModal?.querySelector('form');
-        form?.reset();
+        marketplaceCreateForm?.reset();
         editableMarketplaceFiles = [];
         syncMarketplaceImagesInput();
         renderMarketplaceGallery();
+        initializeMarketplaceNumberInputs(marketplaceCreateModal);
         marketplaceCreateModal?.querySelectorAll('.marketplace-brand-select').forEach((brandSelect) => {
             brandSelect.dispatchEvent(new Event('change'));
         });
         openMarketplaceCreateModal();
+    });
+});
+
+marketplaceCreateNextButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        if (!validateMarketplaceCreateStep(marketplaceCurrentStep)) {
+            return;
+        }
+
+        const nextStep = marketplaceCurrentStep + 1;
+        if (nextStep === 5) {
+            syncMarketplaceCreateSummary();
+        }
+
+        setMarketplaceCreateStep(nextStep);
+    });
+});
+
+marketplaceCreatePrevButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        setMarketplaceCreateStep(Math.max(1, marketplaceCurrentStep - 1));
     });
 });
 
@@ -281,7 +517,7 @@ marketplaceImageInput?.addEventListener('change', () => {
         return;
     }
 
-    const remainingSlots = 10 - editableMarketplaceFiles.length;
+    const remainingSlots = 12 - editableMarketplaceFiles.length;
     if (remainingSlots <= 0) {
         syncMarketplaceImagesInput();
         renderMarketplaceGallery();
@@ -291,6 +527,16 @@ marketplaceImageInput?.addEventListener('change', () => {
     editableMarketplaceFiles = editableMarketplaceFiles.concat(incomingFiles.slice(0, remainingSlots));
     syncMarketplaceImagesInput();
     renderMarketplaceGallery();
+});
+
+marketplaceCreateForm?.addEventListener('submit', (event) => {
+    for (let step = 1; step <= 4; step += 1) {
+        if (!validateMarketplaceCreateStep(step)) {
+            event.preventDefault();
+            setMarketplaceCreateStep(step);
+            return;
+        }
+    }
 });
 
 const initializeMarketplaceCarousel = (carousel) => {
@@ -416,8 +662,8 @@ const closeMarketplaceDetailsModal = (modalElement = activeMarketplaceDetailsMod
 };
 
 const renderMarketplaceSaveIcon = (saved) => saved
-    ? '/public/assets/icons/save_icon_full.svg'
-    : '/public/assets/icons/save_icon.svg';
+    ? `<svg viewBox="0 0 24 24" class="marketplace-save-heart-svg is-filled"><path d="M12 21.35 10.55 20.03C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54Z"/></svg>`
+    : `<svg viewBox="0 0 24 24" class="marketplace-save-heart-svg is-outline"><path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09A5.964 5.964 0 0 0 7.5 3C4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.31C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3Zm-4.4 15.55-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5 18.5 5 20 6.5 20 8.5c0 2.89-3.14 5.74-7.9 10.05Z"/></svg>`;
 
 const bindMarketplaceSaveForms = (root) => {
     root.querySelectorAll('[data-marketplace-save-form]').forEach((form) => {
@@ -430,9 +676,8 @@ const bindMarketplaceSaveForms = (root) => {
 
             const button = form.querySelector('[data-marketplace-save-button]');
             const icon = form.querySelector('[data-marketplace-save-icon]');
-            const count = form.querySelector('[data-marketplace-save-count]');
 
-            if (!button || !icon || !count) {
+            if (!button || !icon) {
                 form.submit();
                 return;
             }
@@ -458,8 +703,7 @@ const bindMarketplaceSaveForms = (root) => {
                 }
 
                 button.classList.toggle('is-active', Boolean(payload.saved_by_current_user));
-                icon.src = renderMarketplaceSaveIcon(Boolean(payload.saved_by_current_user));
-                count.textContent = String(payload.save_count ?? 0);
+                icon.innerHTML = renderMarketplaceSaveIcon(Boolean(payload.saved_by_current_user));
             } catch {
                 form.submit();
             }
@@ -504,10 +748,12 @@ const bindMarketplaceDetailOpeners = (root) => {
                 return;
             }
 
-            modal.querySelectorAll('[data-marketplace-carousel]').forEach((carousel) => {
-                initializeMarketplaceCarousel(carousel);
-            });
             openMarketplaceDetailsModal(modal);
+            requestAnimationFrame(() => {
+                modal.querySelectorAll('[data-marketplace-carousel]').forEach((carousel) => {
+                    initializeMarketplaceCarousel(carousel);
+                });
+            });
         });
 
         button.addEventListener('keydown', (event) => {
@@ -672,4 +918,6 @@ if (feed && feedSentinel) {
 }
 
 renderMarketplaceGallery();
+setMarketplaceCreateStep(1);
+initializeMarketplaceNumberInputs(document);
 initializeMarketplaceChunk(document);

@@ -562,7 +562,10 @@ $inspectionResultOptions = [
                     </label>
                     <label class="vehicle-modal-field">
                         <span>Kwota</span>
-                        <input type="number" name="total_cost" step="0.01" min="0" placeholder="Brak danych" required>
+                        <div class="vehicle-currency-field">
+                            <input type="number" name="total_cost" step="0.01" min="0" placeholder="Brak danych" required>
+                            <span class="vehicle-currency-suffix">PLN</span>
+                        </div>
                     </label>
                     <label class="vehicle-modal-field">
                         <span>Przebieg</span>
@@ -603,7 +606,10 @@ $inspectionResultOptions = [
                     </label>
                     <label class="vehicle-modal-field">
                         <span>Kwota</span>
-                        <input type="number" name="cost_amount" step="0.01" min="0" placeholder="Brak danych">
+                        <div class="vehicle-currency-field">
+                            <input type="number" name="cost_amount" step="0.01" min="0" placeholder="Brak danych">
+                            <span class="vehicle-currency-suffix">PLN</span>
+                        </div>
                     </label>
                     <label class="vehicle-modal-field vehicle-modal-field-full">
                         <span>Opis szczegółowy</span>
@@ -633,7 +639,10 @@ $inspectionResultOptions = [
                     </label>
                     <label class="vehicle-modal-field">
                         <span>Przewidywany koszt</span>
-                        <input type="number" name="estimated_cost_amount" step="0.01" min="0" placeholder="Brak danych">
+                        <div class="vehicle-currency-field">
+                            <input type="number" name="estimated_cost_amount" step="0.01" min="0" placeholder="Brak danych">
+                            <span class="vehicle-currency-suffix">PLN</span>
+                        </div>
                     </label>
                     <label class="vehicle-modal-field vehicle-modal-field-full">
                         <span>Opis szczegółowy</span>
