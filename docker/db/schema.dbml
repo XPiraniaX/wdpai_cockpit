@@ -185,6 +185,8 @@ Table marketplace_listings {
   transmission varchar(30) [note: 'manual | automatic | semi_automatic']
   body_type varchar(50)
   drivetrain varchar(50)
+  steering_side varchar(10) [note: 'left | right']
+  technical_condition varchar(20) [note: 'undamaged | damaged']
   engine_capacity_cc int
   power_hp int
   exterior_color varchar(50)

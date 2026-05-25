@@ -82,6 +82,66 @@ class MarketplaceRepository
             $params['price_max'] = (float) $filters['price_max'];
         }
 
+        if (($filters['mileage_min'] ?? null) !== null) {
+            $conditions[] = 'feed.mileage_km >= :mileage_min';
+            $params['mileage_min'] = (int) $filters['mileage_min'];
+        }
+
+        if (($filters['mileage_max'] ?? null) !== null) {
+            $conditions[] = 'feed.mileage_km <= :mileage_max';
+            $params['mileage_max'] = (int) $filters['mileage_max'];
+        }
+
+        if (($filters['year_min'] ?? null) !== null) {
+            $conditions[] = 'feed.production_year >= :year_min';
+            $params['year_min'] = (int) $filters['year_min'];
+        }
+
+        if (($filters['year_max'] ?? null) !== null) {
+            $conditions[] = 'feed.production_year <= :year_max';
+            $params['year_max'] = (int) $filters['year_max'];
+        }
+
+        if (!empty($filters['body_type'])) {
+            $conditions[] = 'LOWER(COALESCE(feed.body_type, \'\')) = LOWER(:body_type)';
+            $params['body_type'] = (string) $filters['body_type'];
+        }
+
+        if (($filters['engine_capacity_min'] ?? null) !== null) {
+            $conditions[] = 'feed.engine_capacity_cc >= :engine_capacity_min';
+            $params['engine_capacity_min'] = (int) $filters['engine_capacity_min'];
+        }
+
+        if (($filters['engine_capacity_max'] ?? null) !== null) {
+            $conditions[] = 'feed.engine_capacity_cc <= :engine_capacity_max';
+            $params['engine_capacity_max'] = (int) $filters['engine_capacity_max'];
+        }
+
+        if (!empty($filters['fuel_type'])) {
+            $conditions[] = 'feed.fuel_type = :fuel_type';
+            $params['fuel_type'] = (string) $filters['fuel_type'];
+        }
+
+        if (!empty($filters['transmission'])) {
+            $conditions[] = 'feed.transmission = :transmission';
+            $params['transmission'] = (string) $filters['transmission'];
+        }
+
+        if (!empty($filters['drivetrain'])) {
+            $conditions[] = 'LOWER(COALESCE(feed.drivetrain, \'\')) = LOWER(:drivetrain)';
+            $params['drivetrain'] = (string) $filters['drivetrain'];
+        }
+
+        if (!empty($filters['steering_side'])) {
+            $conditions[] = 'feed.steering_side = :steering_side';
+            $params['steering_side'] = (string) $filters['steering_side'];
+        }
+
+        if (!empty($filters['technical_condition'])) {
+            $conditions[] = 'feed.technical_condition = :technical_condition';
+            $params['technical_condition'] = (string) $filters['technical_condition'];
+        }
+
         $scopeCondition = match ($scope) {
             'mine' => 'feed.user_id = :current_user_id',
             'saved' => 'save_ref.is_saved = TRUE',
@@ -160,6 +220,8 @@ class MarketplaceRepository
                 'transmission' => $listing['transmission'] !== null ? (string) $listing['transmission'] : null,
                 'body_type' => $listing['body_type'] !== null ? (string) $listing['body_type'] : null,
                 'drivetrain' => $listing['drivetrain'] !== null ? (string) $listing['drivetrain'] : null,
+                'steering_side' => $listing['steering_side'] !== null ? (string) $listing['steering_side'] : null,
+                'technical_condition' => $listing['technical_condition'] !== null ? (string) $listing['technical_condition'] : null,
                 'engine_capacity_cc' => $listing['engine_capacity_cc'] !== null ? (int) $listing['engine_capacity_cc'] : null,
                 'power_hp' => $listing['power_hp'] !== null ? (int) $listing['power_hp'] : null,
                 'exterior_color' => $listing['exterior_color'] !== null ? (string) $listing['exterior_color'] : null,
@@ -206,6 +268,8 @@ class MarketplaceRepository
                     transmission,
                     body_type,
                     drivetrain,
+                    steering_side,
+                    technical_condition,
                     engine_capacity_cc,
                     power_hp,
                     exterior_color,
@@ -229,6 +293,8 @@ class MarketplaceRepository
                     :transmission,
                     :body_type,
                     :drivetrain,
+                    :steering_side,
+                    :technical_condition,
                     :engine_capacity_cc,
                     :power_hp,
                     :exterior_color,
@@ -255,6 +321,8 @@ class MarketplaceRepository
                 'transmission' => $data['transmission'],
                 'body_type' => $data['body_type'],
                 'drivetrain' => $data['drivetrain'],
+                'steering_side' => $data['steering_side'],
+                'technical_condition' => $data['technical_condition'],
                 'engine_capacity_cc' => $data['engine_capacity_cc'],
                 'power_hp' => $data['power_hp'],
                 'exterior_color' => $data['exterior_color'],

@@ -1,9 +1,4 @@
 <?php
-$scopeLabels = [
-    'all' => 'Wszystkie',
-    'mine' => 'Moje ogłoszenia',
-    'saved' => 'Zapisane',
-];
 $sortLabels = [
     'newest' => 'Najnowsze',
     'price_asc' => 'Cena rosnąco',
@@ -11,9 +6,127 @@ $sortLabels = [
     'year_desc' => 'Rocznik malejąco',
     'mileage_asc' => 'Przebieg rosnąco',
 ];
+
+$bodyTypeLabels = [
+    'hatchback' => 'Hatchback',
+    'sedan' => 'Sedan',
+    'kombi' => 'Kombi',
+    'suv' => 'SUV',
+    'coupe' => 'Coupe',
+    'cabrio' => 'Cabrio',
+    'liftback' => 'Liftback',
+    'van' => 'Van',
+    'pickup' => 'Pickup',
+];
+
+$fuelTypeLabels = [
+    'petrol' => 'Benzyna',
+    'diesel' => 'Diesel',
+    'hybrid' => 'Hybryda',
+    'plug_in_hybrid' => 'Plug-in Hybrid',
+    'electric' => 'Elektryczny',
+    'lpg' => 'LPG',
+    'cng' => 'CNG',
+    'other' => 'Inne',
+];
+
+$transmissionLabels = [
+    'manual' => 'Manualna',
+    'automatic' => 'Automatyczna',
+    'semi_automatic' => 'Półautomatyczna',
+];
+
+$drivetrainLabels = [
+    'fwd' => 'FWD',
+    'rwd' => 'RWD',
+    'awd' => 'AWD',
+    '4x4' => '4x4',
+];
+
+$steeringSideLabels = [
+    'left' => 'Lewa',
+    'right' => 'Prawa',
+];
+
+$technicalConditionLabels = [
+    'undamaged' => 'Nieuszkodzony',
+    'damaged' => 'Uszkodzony',
+];
+
+$selectedBrandName = null;
+$selectedModelName = null;
+foreach ($brands as $brand) {
+    if ($brandId === (int) $brand['id']) {
+        $selectedBrandName = $brand['name'];
+
+        foreach ($brand['models'] as $model) {
+            if ($modelId === (int) $model['id']) {
+                $selectedModelName = $model['name'];
+                break;
+            }
+        }
+
+        break;
+    }
+}
+
+$hasSelectedBrand = $selectedBrandName !== null;
+$categoryBreadcrumb = 'Samochody';
+if ($selectedBrandName !== null) {
+    $categoryBreadcrumb .= ' > ' . $selectedBrandName;
+}
+if ($selectedModelName !== null) {
+    $categoryBreadcrumb .= ' > ' . $selectedModelName;
+}
+
+$baseQuery = [
+    'scope' => $scope,
+    'brand_id' => $brandId ?: null,
+    'model_id' => $modelId ?: null,
+    'price_min' => $priceMin ?: null,
+    'price_max' => $priceMax ?: null,
+    'mileage_min' => $mileageMin ?: null,
+    'mileage_max' => $mileageMax ?: null,
+    'year_min' => $yearMin ?: null,
+    'year_max' => $yearMax ?: null,
+    'body_type' => $bodyType ?: null,
+    'engine_capacity_min' => $engineCapacityMin ?: null,
+    'engine_capacity_max' => $engineCapacityMax ?: null,
+    'fuel_type' => $fuelType ?: null,
+    'transmission' => $transmission ?: null,
+    'drivetrain' => $drivetrain ?: null,
+    'steering_side' => $steeringSide ?: null,
+    'technical_condition' => $technicalCondition ?: null,
+];
 ?>
 <main class="marketplace-page">
     <div class="marketplace-shell">
+        <?php if ($hasSelectedBrand): ?>
+            <section class="marketplace-feed-toolbar">
+                <div class="marketplace-feed-toolbar-path"><?= htmlspecialchars($categoryBreadcrumb, ENT_QUOTES, 'UTF-8'); ?></div>
+
+                <form method="get" class="marketplace-sort-form">
+                    <?php foreach ($baseQuery as $queryKey => $queryValue): ?>
+                        <?php if ($queryValue !== null && $queryValue !== ''): ?>
+                            <input type="hidden" name="<?= htmlspecialchars((string) $queryKey, ENT_QUOTES, 'UTF-8'); ?>" value="<?= htmlspecialchars((string) $queryValue, ENT_QUOTES, 'UTF-8'); ?>">
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                    <input type="hidden" name="scope" value="<?= htmlspecialchars($scope, ENT_QUOTES, 'UTF-8'); ?>">
+
+                    <label class="marketplace-sort-label">
+                        <span>Sortowanie</span>
+                        <select name="sort" class="marketplace-select marketplace-sort-select" onchange="this.form.submit()">
+                            <?php foreach ($sortLabels as $sortKey => $sortLabel): ?>
+                                <option value="<?= htmlspecialchars($sortKey, ENT_QUOTES, 'UTF-8'); ?>"<?= $sort === $sortKey ? ' selected' : ''; ?>>
+                                    <?= htmlspecialchars($sortLabel, ENT_QUOTES, 'UTF-8'); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </label>
+                </form>
+            </section>
+        <?php endif; ?>
+
         <section
             class="marketplace-feed"
             data-marketplace-feed
@@ -40,83 +153,216 @@ $sortLabels = [
             Dodaj ogłoszenie
         </button>
 
-        <div class="marketplace-scope-list is-vertical">
-            <?php foreach ($scopeLabels as $scopeKey => $scopeLabel): ?>
-                <?php
-                $scopeQuery = http_build_query([
-                    'scope' => $scopeKey,
-                    'brand_id' => $brandId,
-                    'model_id' => $modelId,
-                    'sort' => $sort,
-                    'price_min' => $priceMin,
-                    'price_max' => $priceMax,
-                ]);
-                ?>
-                <a href="/marketplace?<?= htmlspecialchars($scopeQuery, ENT_QUOTES, 'UTF-8'); ?>"
-                   class="marketplace-chip<?= $scope === $scopeKey ? ' is-active' : ''; ?>">
-                    <?= htmlspecialchars($scopeLabel, ENT_QUOTES, 'UTF-8'); ?>
-                </a>
-            <?php endforeach; ?>
-        </div>
-
-        <form method="get" class="marketplace-filter-form">
+        <form method="get" class="marketplace-filter-stack">
             <input type="hidden" name="scope" value="<?= htmlspecialchars($scope, ENT_QUOTES, 'UTF-8'); ?>">
+            <?php if ($hasSelectedBrand): ?>
+                <input type="hidden" name="sort" value="<?= htmlspecialchars($sort, ENT_QUOTES, 'UTF-8'); ?>">
+            <?php endif; ?>
 
-            <label class="marketplace-field">
-                <span class="marketplace-field-label">Marka</span>
-                <select name="brand_id" class="marketplace-select marketplace-brand-select" data-target-model="marketplace-filter-model">
-                    <option value="">Wszystkie marki</option>
-                    <?php foreach ($brands as $brand): ?>
-                        <option value="<?= (int) $brand['id']; ?>"<?= $brandId === (int) $brand['id'] ? ' selected' : ''; ?>>
-                            <?= htmlspecialchars($brand['name'], ENT_QUOTES, 'UTF-8'); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
+            <section class="marketplace-filter-card">
+                <div class="marketplace-side-heading">KATEGORIE</div>
 
-            <label class="marketplace-field">
-                <span class="marketplace-field-label">Model</span>
-                <select name="model_id" class="marketplace-select marketplace-model-select" id="marketplace-filter-model">
-                    <option value="">Wszystkie modele</option>
-                    <?php foreach ($brands as $brand): ?>
-                        <?php foreach ($brand['models'] as $model): ?>
-                            <option value="<?= (int) $model['id']; ?>"
-                                    data-brand-id="<?= (int) $brand['id']; ?>"<?= $modelId === (int) $model['id'] ? ' selected' : ''; ?>>
-                                <?= htmlspecialchars($model['name'], ENT_QUOTES, 'UTF-8'); ?>
+                <label class="marketplace-field">
+                    <span class="marketplace-field-label">Kategoria</span>
+                    <select class="marketplace-select" disabled>
+                        <option selected>Samochody</option>
+                    </select>
+                </label>
+
+                <label class="marketplace-field">
+                    <span class="marketplace-field-label">Marka</span>
+                    <select name="brand_id" class="marketplace-select marketplace-brand-select" data-target-model="marketplace-filter-model" data-marketplace-filter-brand>
+                        <option value="">Wszystkie marki</option>
+                        <?php foreach ($brands as $brand): ?>
+                            <option value="<?= (int) $brand['id']; ?>"<?= $brandId === (int) $brand['id'] ? ' selected' : ''; ?>>
+                                <?= htmlspecialchars($brand['name'], ENT_QUOTES, 'UTF-8'); ?>
                             </option>
                         <?php endforeach; ?>
-                    <?php endforeach; ?>
-                </select>
-            </label>
+                    </select>
+                </label>
 
-            <label class="marketplace-field">
-                <span class="marketplace-field-label">Cena od</span>
-                <input type="number" name="price_min" min="0" value="<?= htmlspecialchars((string) ($priceMin ?? ''), ENT_QUOTES, 'UTF-8'); ?>" class="marketplace-input">
-            </label>
+                <label class="marketplace-field" data-marketplace-filter-model-field<?= $hasSelectedBrand ? '' : ' hidden'; ?>>
+                    <span class="marketplace-field-label">Model</span>
+                    <select name="model_id" class="marketplace-select marketplace-model-select" id="marketplace-filter-model">
+                        <option value="">Wszystkie modele</option>
+                        <?php foreach ($brands as $brand): ?>
+                            <?php foreach ($brand['models'] as $model): ?>
+                                <option value="<?= (int) $model['id']; ?>"
+                                        data-brand-id="<?= (int) $brand['id']; ?>"<?= $modelId === (int) $model['id'] ? ' selected' : ''; ?>>
+                                    <?= htmlspecialchars($model['name'], ENT_QUOTES, 'UTF-8'); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        <?php endforeach; ?>
+                    </select>
+                </label>
+            </section>
 
-            <label class="marketplace-field">
-                <span class="marketplace-field-label">Cena do</span>
-                <input type="number" name="price_max" min="0" value="<?= htmlspecialchars((string) ($priceMax ?? ''), ENT_QUOTES, 'UTF-8'); ?>" class="marketplace-input">
-            </label>
+            <section class="marketplace-filter-card">
+                <div class="marketplace-side-heading">FILTRY</div>
 
-            <label class="marketplace-field">
-                <span class="marketplace-field-label">Sortowanie</span>
-                <select name="sort" class="marketplace-select">
-                    <?php foreach ($sortLabels as $sortKey => $sortLabel): ?>
-                        <option value="<?= htmlspecialchars($sortKey, ENT_QUOTES, 'UTF-8'); ?>"<?= $sort === $sortKey ? ' selected' : ''; ?>>
-                            <?= htmlspecialchars($sortLabel, ENT_QUOTES, 'UTF-8'); ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
-            </label>
+                <label class="marketplace-field">
+                    <span class="marketplace-field-label">Cena od</span>
+                    <input type="number" name="price_min" min="0" value="<?= htmlspecialchars((string) ($priceMin ?? ''), ENT_QUOTES, 'UTF-8'); ?>" class="marketplace-input">
+                </label>
 
-            <div class="marketplace-filter-actions">
-                <button type="submit" class="marketplace-button marketplace-button-secondary">Filtruj</button>
-                <a href="/marketplace?scope=<?= htmlspecialchars($scope, ENT_QUOTES, 'UTF-8'); ?>" class="marketplace-button marketplace-button-muted">Reset</a>
-            </div>
+                <label class="marketplace-field">
+                    <span class="marketplace-field-label">Cena do</span>
+                    <input type="number" name="price_max" min="0" value="<?= htmlspecialchars((string) ($priceMax ?? ''), ENT_QUOTES, 'UTF-8'); ?>" class="marketplace-input">
+                </label>
+
+                <?php if ($hasSelectedBrand): ?>
+                    <button type="button" class="marketplace-button marketplace-button-secondary marketplace-detailed-trigger" data-open-marketplace-detailed-filters>
+                        Filtry szczegółowe
+                    </button>
+                <?php endif; ?>
+
+                <div class="marketplace-filter-actions">
+                    <button type="submit" class="marketplace-button marketplace-button-secondary">Filtruj</button>
+                    <a href="/marketplace" class="marketplace-button marketplace-button-muted">Reset</a>
+                </div>
+            </section>
         </form>
     </aside>
 </main>
+
+<?php if ($hasSelectedBrand): ?>
+    <div class="vehicle-modal-backdrop marketplace-detailed-backdrop" data-marketplace-detailed-backdrop hidden>
+        <div class="vehicle-modal-scrim" data-close-marketplace-detailed-filters></div>
+        <div class="vehicle-modal-shell">
+            <section class="vehicle-modal-panel marketplace-detailed-modal" hidden data-marketplace-detailed-modal>
+                <div class="vehicle-modal-head">
+                    <div class="vehicle-modal-title-wrap">
+                        <div class="vehicle-modal-kicker">Marketplace</div>
+                        <h3 class="vehicle-modal-title">Filtry szczegółowe</h3>
+                    </div>
+                    <button type="button" class="vehicle-modal-close" aria-label="Zamknij" data-close-marketplace-detailed-filters><span class="vehicle-modal-close-icon" aria-hidden="true"></span></button>
+                </div>
+
+                <form method="get" class="vehicle-modal-form marketplace-detailed-form">
+                    <input type="hidden" name="scope" value="<?= htmlspecialchars($scope, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="brand_id" value="<?= htmlspecialchars((string) $brandId, ENT_QUOTES, 'UTF-8'); ?>">
+                    <?php if ($modelId !== null): ?>
+                        <input type="hidden" name="model_id" value="<?= htmlspecialchars((string) $modelId, ENT_QUOTES, 'UTF-8'); ?>">
+                    <?php endif; ?>
+                    <?php if ($priceMin !== null): ?>
+                        <input type="hidden" name="price_min" value="<?= htmlspecialchars((string) $priceMin, ENT_QUOTES, 'UTF-8'); ?>">
+                    <?php endif; ?>
+                    <?php if ($priceMax !== null): ?>
+                        <input type="hidden" name="price_max" value="<?= htmlspecialchars((string) $priceMax, ENT_QUOTES, 'UTF-8'); ?>">
+                    <?php endif; ?>
+                    <input type="hidden" name="sort" value="<?= htmlspecialchars($sort, ENT_QUOTES, 'UTF-8'); ?>">
+
+                    <div class="vehicle-modal-section">
+                        <div class="vehicle-modal-grid vehicle-modal-grid-single marketplace-detailed-grid">
+                            <label class="vehicle-modal-field">
+                                <span>Przebieg od</span>
+                                <input type="number" name="mileage_min" min="0" value="<?= htmlspecialchars((string) ($mileageMin ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                            </label>
+                            <label class="vehicle-modal-field">
+                                <span>Przebieg do</span>
+                                <input type="number" name="mileage_max" min="0" value="<?= htmlspecialchars((string) ($mileageMax ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                            </label>
+
+                            <label class="vehicle-modal-field">
+                                <span>Rocznik od</span>
+                                <input type="number" name="year_min" min="1886" max="2100" value="<?= htmlspecialchars((string) ($yearMin ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                            </label>
+                            <label class="vehicle-modal-field">
+                                <span>Rocznik do</span>
+                                <input type="number" name="year_max" min="1886" max="2100" value="<?= htmlspecialchars((string) ($yearMax ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                            </label>
+
+                            <label class="vehicle-modal-field">
+                                <span>Rodzaj nadwozia</span>
+                                <select name="body_type" class="marketplace-select">
+                                    <option value="">Dowolny</option>
+                                    <?php foreach ($bodyTypeLabels as $value => $label): ?>
+                                        <option value="<?= htmlspecialchars($value, ENT_QUOTES, 'UTF-8'); ?>"<?= $bodyType === $value ? ' selected' : ''; ?>>
+                                            <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+
+                            <label class="vehicle-modal-field">
+                                <span>Pojemność silnika od</span>
+                                <input type="number" name="engine_capacity_min" min="0" value="<?= htmlspecialchars((string) ($engineCapacityMin ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                            </label>
+                            <label class="vehicle-modal-field">
+                                <span>Pojemność silnika do</span>
+                                <input type="number" name="engine_capacity_max" min="0" value="<?= htmlspecialchars((string) ($engineCapacityMax ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                            </label>
+
+                            <label class="vehicle-modal-field">
+                                <span>Rodzaj paliwa</span>
+                                <select name="fuel_type" class="marketplace-select">
+                                    <option value="">Dowolny</option>
+                                    <?php foreach ($fuelTypeLabels as $value => $label): ?>
+                                        <option value="<?= htmlspecialchars($value, ENT_QUOTES, 'UTF-8'); ?>"<?= $fuelType === $value ? ' selected' : ''; ?>>
+                                            <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+
+                            <label class="vehicle-modal-field">
+                                <span>Skrzynia biegów</span>
+                                <select name="transmission" class="marketplace-select">
+                                    <option value="">Dowolna</option>
+                                    <?php foreach ($transmissionLabels as $value => $label): ?>
+                                        <option value="<?= htmlspecialchars($value, ENT_QUOTES, 'UTF-8'); ?>"<?= $transmission === $value ? ' selected' : ''; ?>>
+                                            <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+
+                            <label class="vehicle-modal-field">
+                                <span>Rodzaj napędu</span>
+                                <select name="drivetrain" class="marketplace-select">
+                                    <option value="">Dowolny</option>
+                                    <?php foreach ($drivetrainLabels as $value => $label): ?>
+                                        <option value="<?= htmlspecialchars($value, ENT_QUOTES, 'UTF-8'); ?>"<?= $drivetrain === $value ? ' selected' : ''; ?>>
+                                            <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+
+                            <label class="vehicle-modal-field">
+                                <span>Kierownica</span>
+                                <select name="steering_side" class="marketplace-select">
+                                    <option value="">Dowolna</option>
+                                    <?php foreach ($steeringSideLabels as $value => $label): ?>
+                                        <option value="<?= htmlspecialchars($value, ENT_QUOTES, 'UTF-8'); ?>"<?= $steeringSide === $value ? ' selected' : ''; ?>>
+                                            <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+
+                            <label class="vehicle-modal-field">
+                                <span>Stan techniczny</span>
+                                <select name="technical_condition" class="marketplace-select">
+                                    <option value="">Dowolny</option>
+                                    <?php foreach ($technicalConditionLabels as $value => $label): ?>
+                                        <option value="<?= htmlspecialchars($value, ENT_QUOTES, 'UTF-8'); ?>"<?= $technicalCondition === $value ? ' selected' : ''; ?>>
+                                            <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="vehicle-modal-footer">
+                        <button type="submit" class="vehicle-modal-submit">Zastosuj filtry</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    </div>
+<?php endif; ?>
 
 <div class="vehicle-modal-backdrop marketplace-create-backdrop" data-marketplace-create-backdrop hidden>
     <div class="vehicle-modal-scrim" data-close-marketplace-create></div>
@@ -274,6 +520,22 @@ $sortLabels = [
                                                 <option value="manual">Manualna</option>
                                                 <option value="automatic">Automatyczna</option>
                                                 <option value="semi_automatic">Półautomatyczna</option>
+                                            </select>
+                                        </label>
+                                        <label class="vehicle-modal-field">
+                                            <span>Kierownica</span>
+                                            <select name="steering_side" class="marketplace-select">
+                                                <option value="">Brak danych</option>
+                                                <option value="left">Lewa</option>
+                                                <option value="right">Prawa</option>
+                                            </select>
+                                        </label>
+                                        <label class="vehicle-modal-field">
+                                            <span>Stan techniczny</span>
+                                            <select name="technical_condition" class="marketplace-select">
+                                                <option value="">Brak danych</option>
+                                                <option value="undamaged">Nieuszkodzony</option>
+                                                <option value="damaged">Uszkodzony</option>
                                             </select>
                                         </label>
                                     </div>

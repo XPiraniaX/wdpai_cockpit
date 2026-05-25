@@ -28,6 +28,10 @@ const marketplaceCreateBackdrop = document.querySelector('[data-marketplace-crea
 const marketplaceCreateModal = document.querySelector('[data-marketplace-create-modal]');
 const marketplaceOpenCreateButtons = document.querySelectorAll('[data-open-marketplace-create]');
 const marketplaceCloseCreateButtons = document.querySelectorAll('[data-close-marketplace-create]');
+const marketplaceDetailedBackdrop = document.querySelector('[data-marketplace-detailed-backdrop]');
+const marketplaceDetailedModal = document.querySelector('[data-marketplace-detailed-modal]');
+const marketplaceOpenDetailedButtons = document.querySelectorAll('[data-open-marketplace-detailed-filters]');
+const marketplaceCloseDetailedButtons = document.querySelectorAll('[data-close-marketplace-detailed-filters]');
 const marketplaceImageInput = document.querySelector('[data-marketplace-image-input]');
 const marketplaceGallery = document.querySelector('[data-marketplace-gallery]');
 
@@ -35,7 +39,8 @@ let editableMarketplaceFiles = [];
 
 const syncMarketplaceScrollLock = () => {
     const createOpen = marketplaceCreateModal ? !marketplaceCreateModal.hidden : false;
-    const shouldLock = createOpen || Boolean(activeMarketplaceDetailsModal);
+    const detailedOpen = marketplaceDetailedModal ? !marketplaceDetailedModal.hidden : false;
+    const shouldLock = createOpen || detailedOpen || Boolean(activeMarketplaceDetailsModal);
     const root = document.documentElement;
 
     if (shouldLock) {
@@ -70,6 +75,8 @@ const syncMarketplaceScrollLock = () => {
 document.querySelectorAll('.marketplace-brand-select').forEach((brandSelect) => {
     const targetModelId = brandSelect.getAttribute('data-target-model');
     const modelSelect = targetModelId ? document.getElementById(targetModelId) : null;
+    const modelField = modelSelect?.closest('[data-marketplace-filter-model-field]');
+    const filterForm = brandSelect.closest('.marketplace-filter-stack');
 
     if (!modelSelect) {
         return;
@@ -100,9 +107,25 @@ document.querySelectorAll('.marketplace-brand-select').forEach((brandSelect) => 
         }
 
         modelSelect.disabled = !selectedBrandId;
+
+        if (modelField) {
+            modelField.hidden = !selectedBrandId;
+        }
     };
 
     brandSelect.addEventListener('change', syncModelOptions);
+    brandSelect.addEventListener('change', () => {
+        if (filterForm && brandSelect.name === 'brand_id') {
+            filterForm.requestSubmit();
+        }
+    });
+
+    modelSelect.addEventListener('change', () => {
+        if (filterForm && modelSelect.name === 'model_id') {
+            filterForm.requestSubmit();
+        }
+    });
+
     syncModelOptions();
 });
 
@@ -204,6 +227,26 @@ const closeMarketplaceCreateModal = () => {
     syncMarketplaceScrollLock();
 };
 
+const openMarketplaceDetailedModal = () => {
+    if (!marketplaceDetailedBackdrop || !marketplaceDetailedModal) {
+        return;
+    }
+
+    marketplaceDetailedBackdrop.hidden = false;
+    marketplaceDetailedModal.hidden = false;
+    syncMarketplaceScrollLock();
+};
+
+const closeMarketplaceDetailedModal = () => {
+    if (!marketplaceDetailedBackdrop || !marketplaceDetailedModal) {
+        return;
+    }
+
+    marketplaceDetailedBackdrop.hidden = true;
+    marketplaceDetailedModal.hidden = true;
+    syncMarketplaceScrollLock();
+};
+
 marketplaceOpenCreateButtons.forEach((button) => {
     button.addEventListener('click', () => {
         const form = marketplaceCreateModal?.querySelector('form');
@@ -211,7 +254,7 @@ marketplaceOpenCreateButtons.forEach((button) => {
         editableMarketplaceFiles = [];
         syncMarketplaceImagesInput();
         renderMarketplaceGallery();
-        document.querySelectorAll('.marketplace-brand-select').forEach((brandSelect) => {
+        marketplaceCreateModal?.querySelectorAll('.marketplace-brand-select').forEach((brandSelect) => {
             brandSelect.dispatchEvent(new Event('change'));
         });
         openMarketplaceCreateModal();
@@ -220,6 +263,14 @@ marketplaceOpenCreateButtons.forEach((button) => {
 
 marketplaceCloseCreateButtons.forEach((button) => {
     button.addEventListener('click', closeMarketplaceCreateModal);
+});
+
+marketplaceOpenDetailedButtons.forEach((button) => {
+    button.addEventListener('click', openMarketplaceDetailedModal);
+});
+
+marketplaceCloseDetailedButtons.forEach((button) => {
+    button.addEventListener('click', closeMarketplaceDetailedModal);
 });
 
 marketplaceImageInput?.addEventListener('change', () => {
@@ -509,11 +560,19 @@ document.addEventListener('click', (event) => {
     if (marketplaceCreateBackdrop && event.target === marketplaceCreateBackdrop) {
         closeMarketplaceCreateModal();
     }
+
+    if (marketplaceDetailedBackdrop && event.target === marketplaceDetailedBackdrop) {
+        closeMarketplaceDetailedModal();
+    }
 });
 
 document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && marketplaceCreateModal && !marketplaceCreateModal.hidden) {
         closeMarketplaceCreateModal();
+    }
+
+    if (event.key === 'Escape' && marketplaceDetailedModal && !marketplaceDetailedModal.hidden) {
+        closeMarketplaceDetailedModal();
     }
 
     if (event.key === 'Escape' && activeMarketplaceDetailsModal) {

@@ -41,6 +41,18 @@ class MarketplaceController extends AppController
             'sort' => $filters['sort'],
             'priceMin' => $filters['price_min'],
             'priceMax' => $filters['price_max'],
+            'mileageMin' => $filters['mileage_min'],
+            'mileageMax' => $filters['mileage_max'],
+            'yearMin' => $filters['year_min'],
+            'yearMax' => $filters['year_max'],
+            'bodyType' => $filters['body_type'],
+            'engineCapacityMin' => $filters['engine_capacity_min'],
+            'engineCapacityMax' => $filters['engine_capacity_max'],
+            'fuelType' => $filters['fuel_type'],
+            'transmission' => $filters['transmission'],
+            'drivetrain' => $filters['drivetrain'],
+            'steeringSide' => $filters['steering_side'],
+            'technicalCondition' => $filters['technical_condition'],
             'brands' => $repository->getAvailableCategories(),
             'listings' => $mappedListings,
             'hasMoreListings' => $feedPage['has_more'],
@@ -122,13 +134,31 @@ class MarketplaceController extends AppController
 
     private function resolveFilters(): array
     {
+        $brandId = $this->normalizeNullableInt($_GET['brand_id'] ?? null);
+        $sort = (string) ($_GET['sort'] ?? 'newest');
+        if ($brandId === null) {
+            $sort = 'newest';
+        }
+
         return [
             'scope' => (string) ($_GET['scope'] ?? 'all'),
-            'brand_id' => $this->normalizeNullableInt($_GET['brand_id'] ?? null),
+            'brand_id' => $brandId,
             'model_id' => $this->normalizeNullableInt($_GET['model_id'] ?? null),
-            'sort' => (string) ($_GET['sort'] ?? 'newest'),
+            'sort' => $sort,
             'price_min' => $this->normalizeNullableFloat($_GET['price_min'] ?? null),
             'price_max' => $this->normalizeNullableFloat($_GET['price_max'] ?? null),
+            'mileage_min' => $this->normalizeNullableInt($_GET['mileage_min'] ?? null),
+            'mileage_max' => $this->normalizeNullableInt($_GET['mileage_max'] ?? null),
+            'year_min' => $this->normalizeNullableInt($_GET['year_min'] ?? null),
+            'year_max' => $this->normalizeNullableInt($_GET['year_max'] ?? null),
+            'body_type' => $this->sanitizeNullableDisplayText($_GET['body_type'] ?? null),
+            'engine_capacity_min' => $this->normalizeNullableInt($_GET['engine_capacity_min'] ?? null),
+            'engine_capacity_max' => $this->normalizeNullableInt($_GET['engine_capacity_max'] ?? null),
+            'fuel_type' => $this->sanitizeOptionalFuelType($_GET['fuel_type'] ?? null),
+            'transmission' => $this->sanitizeNullableEnum($_GET['transmission'] ?? null, ['manual', 'automatic', 'semi_automatic']),
+            'drivetrain' => $this->sanitizeNullableDisplayText($_GET['drivetrain'] ?? null),
+            'steering_side' => $this->sanitizeNullableEnum($_GET['steering_side'] ?? null, ['left', 'right']),
+            'technical_condition' => $this->sanitizeNullableEnum($_GET['technical_condition'] ?? null, ['undamaged', 'damaged']),
         ];
     }
 
@@ -190,6 +220,8 @@ class MarketplaceController extends AppController
             'transmission' => $this->sanitizeNullableEnum($_POST['transmission'] ?? null, ['manual', 'automatic', 'semi_automatic']),
             'body_type' => $this->sanitizeNullableDisplayText($_POST['body_type'] ?? null),
             'drivetrain' => $this->sanitizeNullableDisplayText($_POST['drivetrain'] ?? null),
+            'steering_side' => $this->sanitizeNullableEnum($_POST['steering_side'] ?? null, ['left', 'right']),
+            'technical_condition' => $this->sanitizeNullableEnum($_POST['technical_condition'] ?? null, ['undamaged', 'damaged']),
             'engine_capacity_cc' => $this->sanitizeNullablePositiveInt($_POST['engine_capacity_cc'] ?? null),
             'power_hp' => $this->sanitizeNullablePositiveInt($_POST['power_hp'] ?? null),
             'exterior_color' => $this->sanitizeNullableDisplayText($_POST['exterior_color'] ?? null),

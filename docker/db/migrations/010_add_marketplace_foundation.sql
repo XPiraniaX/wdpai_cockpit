@@ -15,6 +15,10 @@ CREATE TABLE IF NOT EXISTS marketplace_listings (
         CHECK (transmission IN ('manual', 'automatic', 'semi_automatic')),
     body_type VARCHAR(50),
     drivetrain VARCHAR(50),
+    steering_side VARCHAR(10)
+        CHECK (steering_side IN ('left', 'right')),
+    technical_condition VARCHAR(20)
+        CHECK (technical_condition IN ('undamaged', 'damaged')),
     engine_capacity_cc INTEGER CHECK (engine_capacity_cc > 0),
     power_hp INTEGER CHECK (power_hp > 0),
     exterior_color VARCHAR(50),
@@ -89,7 +93,9 @@ SELECT
     u.membership_tier,
     cb.name AS brand_name,
     cm.name AS model_name,
-    COALESCE(saved.save_count, 0) AS save_count
+    COALESCE(saved.save_count, 0) AS save_count,
+    l.steering_side,
+    l.technical_condition
 FROM marketplace_listings l
 INNER JOIN users u
     ON u.id = l.user_id
