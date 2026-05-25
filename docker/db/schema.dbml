@@ -170,6 +170,62 @@ Table maintenance_tasks {
   }
 }
 
+Table marketplace_listings {
+  id serial [pk]
+  user_id int [not null]
+  brand_id int [not null]
+  model_id int [not null]
+  title varchar(180) [not null]
+  trim_name varchar(150)
+  description text [not null]
+  price_amount numeric(12,2) [not null]
+  production_year smallint [not null]
+  mileage_km int [not null]
+  fuel_type varchar(30) [note: 'petrol | diesel | hybrid | plug_in_hybrid | electric | lpg | cng | other']
+  transmission varchar(30) [note: 'manual | automatic | semi_automatic']
+  body_type varchar(50)
+  drivetrain varchar(50)
+  engine_capacity_cc int
+  power_hp int
+  exterior_color varchar(50)
+  city varchar(100) [not null]
+  contact_name varchar(150) [not null]
+  contact_phone varchar(50) [not null]
+  contact_email varchar(255) [not null]
+  is_active boolean [not null, default: true]
+  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (created_at, id) [name: 'idx_marketplace_listings_created_at']
+    (brand_id, model_id) [name: 'idx_marketplace_listings_brand_model']
+    price_amount [name: 'idx_marketplace_listings_price']
+    user_id [name: 'idx_marketplace_listings_user_id']
+  }
+}
+
+Table marketplace_listing_images {
+  id serial [pk]
+  listing_id int [not null]
+  image_path text [not null]
+  display_order int [not null, default: 1]
+
+  indexes {
+    (listing_id, display_order, id) [name: 'idx_marketplace_listing_images_listing_id']
+  }
+}
+
+Table marketplace_listing_saves {
+  listing_id int [not null]
+  user_id int [not null]
+  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (listing_id, user_id) [pk]
+    user_id [name: 'idx_marketplace_listing_saves_user_id']
+  }
+}
+
 Ref: user_settings.user_id > users.id
 Ref: car_models.brand_id > car_brands.id
 Ref: vehicles.user_id > users.id
@@ -181,3 +237,9 @@ Ref: insurance_policies.vehicle_id > vehicles.id
 Ref: fuel_logs.vehicle_id > vehicles.id
 Ref: service_records.vehicle_id > vehicles.id
 Ref: maintenance_tasks.vehicle_id > vehicles.id
+Ref: marketplace_listings.user_id > users.id
+Ref: marketplace_listings.brand_id > car_brands.id
+Ref: marketplace_listings.model_id > car_models.id
+Ref: marketplace_listing_images.listing_id > marketplace_listings.id
+Ref: marketplace_listing_saves.listing_id > marketplace_listings.id
+Ref: marketplace_listing_saves.user_id > users.id
