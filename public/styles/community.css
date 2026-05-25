@@ -291,6 +291,16 @@
     padding: 18px;
 }
 
+.community-side-heading {
+    text-align: center;
+    color: #38bdf8;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    padding: 0 4px;
+}
+
 .community-scope-list {
     display: flex;
     flex-wrap: wrap;
@@ -300,6 +310,10 @@
 .community-scope-list.is-vertical {
     flex-direction: column;
     flex-wrap: nowrap;
+}
+
+.community-scope-list.is-vertical .community-side-heading {
+    margin-bottom: 2px;
 }
 
 .community-chip {
