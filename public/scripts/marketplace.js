@@ -1,3 +1,4 @@
+document.documentElement.classList.add('is-marketplace-page-root');
 document.body.classList.add('is-marketplace-page');
 
 const showAppToast = (message, type = 'info') => {
@@ -39,8 +40,18 @@ const marketplaceCreateSteps = Array.from(document.querySelectorAll('[data-marke
 const marketplaceCreateNextButtons = document.querySelectorAll('[data-marketplace-step-next]');
 const marketplaceCreatePrevButtons = document.querySelectorAll('[data-marketplace-step-prev]');
 const marketplaceSummaryFields = document.querySelectorAll('[data-marketplace-summary]');
+const marketplaceCreateKicker = document.querySelector('[data-marketplace-create-kicker]');
+const marketplaceCreateTitle = document.querySelector('[data-marketplace-create-title]');
+const marketplaceCreateActionInput = document.querySelector('[data-marketplace-create-action]');
+const marketplaceEditIdInput = document.querySelector('[data-marketplace-edit-id]');
+const marketplaceCreateSubmit = document.querySelector('[data-marketplace-create-submit]');
+const marketplaceExistingImagesNote = document.querySelector('[data-marketplace-existing-images-note]');
+const marketplacePhoneInput = marketplaceCreateForm?.elements.namedItem('contact_phone');
+const marketplaceRemovedImagesInputs = document.querySelector('[data-marketplace-removed-images-inputs]');
 
 let editableMarketplaceFiles = [];
+let existingMarketplaceImages = [];
+let removedMarketplaceImages = [];
 let marketplaceCurrentStep = 1;
 
 const syncMarketplaceScrollLock = () => {
@@ -76,6 +87,40 @@ const syncMarketplaceScrollLock = () => {
     document.body.style.width = '';
     document.body.style.overflow = '';
     window.scrollTo(0, marketplaceLockedScrollY);
+};
+
+const formatMarketplacePhoneValue = (value) => {
+    const digits = String(value || '').replace(/\D+/g, '').slice(0, 9);
+    return digits.replace(/(\d{3})(?=\d)/g, '$1 ').trim();
+};
+
+const syncMarketplacePhoneInput = () => {
+    if (!(marketplacePhoneInput instanceof HTMLInputElement)) {
+        return;
+    }
+
+    marketplacePhoneInput.value = formatMarketplacePhoneValue(marketplacePhoneInput.value);
+};
+
+if (marketplacePhoneInput instanceof HTMLInputElement) {
+    marketplacePhoneInput.addEventListener('input', syncMarketplacePhoneInput);
+    marketplacePhoneInput.addEventListener('blur', syncMarketplacePhoneInput);
+}
+
+const syncRemovedMarketplaceImagesInputs = () => {
+    if (!marketplaceRemovedImagesInputs) {
+        return;
+    }
+
+    marketplaceRemovedImagesInputs.innerHTML = '';
+
+    removedMarketplaceImages.forEach((imagePath) => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'removed_image_paths[]';
+        input.value = imagePath;
+        marketplaceRemovedImagesInputs.appendChild(input);
+    });
 };
 
 document.querySelectorAll('.marketplace-brand-select').forEach((brandSelect) => {
@@ -176,6 +221,31 @@ const renderMarketplaceGallery = () => {
 
     marketplaceGallery.innerHTML = '';
 
+    existingMarketplaceImages.forEach((imagePath, index) => {
+        const card = document.createElement('div');
+        card.className = 'cars-add-image-preview';
+
+        const image = document.createElement('img');
+        image.className = 'cars-add-image-preview-photo';
+        image.alt = `Obecne zdjęcie ${index + 1}`;
+        image.src = imagePath;
+
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'cars-add-image-remove';
+        removeButton.setAttribute('aria-label', `Usuń zdjęcie ${index + 1}`);
+        removeButton.addEventListener('click', () => {
+            existingMarketplaceImages = existingMarketplaceImages.filter((_, imageIndex) => imageIndex !== index);
+            removedMarketplaceImages.push(imagePath);
+            syncRemovedMarketplaceImagesInputs();
+            renderMarketplaceGallery();
+        });
+
+        card.appendChild(image);
+        card.appendChild(removeButton);
+        marketplaceGallery.appendChild(card);
+    });
+
     editableMarketplaceFiles.forEach((file, index) => {
         const card = document.createElement('div');
         card.className = 'cars-add-image-preview';
@@ -205,10 +275,16 @@ const renderMarketplaceGallery = () => {
         marketplaceGallery.appendChild(card);
     });
 
-    if (editableMarketplaceFiles.length === 0) {
+    const totalImages = existingMarketplaceImages.length + editableMarketplaceFiles.length;
+
+    if (marketplaceExistingImagesNote) {
+        marketplaceExistingImagesNote.hidden = existingMarketplaceImages.length === 0;
+    }
+
+    if (totalImages === 0) {
         marketplaceGallery.appendChild(buildMarketplaceImagePlaceholder());
         marketplaceGallery.appendChild(buildMarketplaceImagePlaceholder());
-    } else if (editableMarketplaceFiles.length < 12) {
+    } else if (totalImages < 12) {
         marketplaceGallery.appendChild(buildMarketplaceImagePlaceholder());
     }
 };
@@ -221,58 +297,40 @@ const initializeMarketplaceNumberInputs = (root = document) => {
         return digits === '' ? 0 : Number.parseInt(digits, 10);
     };
 
-    const formatNumericValue = (value) => {
+    const normalizeNumericValueForSubmit = (value) => {
         const digits = String(value ?? '').replace(/\s+/g, '').replace(/[^\d]/g, '');
-        if (digits === '') {
-            return '';
-        }
+        return digits === '' ? '' : String(Number.parseInt(digits, 10));
+    };
 
-        return Number.parseInt(digits, 10).toLocaleString('pl-PL');
+    const formatNumericValue = (value) => {
+        const digits = String(value ?? '').replace(/\D+/g, '');
+        return digits === '' ? '' : Number.parseInt(digits, 10).toLocaleString('pl-PL');
     };
 
     numberInputs.forEach((input) => {
-        if (input.parentElement?.classList.contains('vehicle-number-input')) {
-            input.value = formatNumericValue(input.value);
+        if (!(input instanceof HTMLInputElement)) {
             return;
         }
 
         input.value = formatNumericValue(input.value);
 
         input.addEventListener('input', () => {
-            const cursorFromEnd = input.value.length - input.selectionStart;
-            input.value = formatNumericValue(input.value);
-            const nextPosition = Math.max(0, input.value.length - cursorFromEnd);
-            input.setSelectionRange(nextPosition, nextPosition);
-        });
-
-        input.addEventListener('blur', () => {
             input.value = formatNumericValue(input.value);
         });
 
-        if (input.form && input.dataset.boundMarketplaceSubmit !== 'true') {
-            input.form.addEventListener('submit', () => {
-                input.value = String(parseNumericValue(input.value));
-            });
-            input.dataset.boundMarketplaceSubmit = 'true';
+        const currencyField = input.closest('.vehicle-currency-field');
+        let numberField = input.closest('.vehicle-number-input');
+
+        if (!currencyField && !numberField) {
+            numberField = document.createElement('div');
+            numberField.className = 'vehicle-number-input';
+            input.parentNode?.insertBefore(numberField, input);
+            numberField.appendChild(input);
         }
 
-        if (input.parentElement?.classList.contains('vehicle-currency-field')) {
-            const currencyWrapper = input.parentElement;
-            const numberWrapper = document.createElement('div');
-            numberWrapper.className = 'vehicle-number-input';
-            currencyWrapper.insertBefore(numberWrapper, input);
-            numberWrapper.appendChild(input);
-        } else {
-            const wrapper = document.createElement('div');
-            wrapper.className = 'vehicle-number-input';
-            input.parentNode.insertBefore(wrapper, input);
-            wrapper.appendChild(input);
-        }
+        const stepperHost = currencyField || numberField || input.parentElement;
 
-        const stepValue = Number.parseInt(String(input.getAttribute('step') || '1'), 10) || 1;
-        const minValue = Number.parseInt(String(input.getAttribute('min') || '0'), 10) || 0;
-        const wrapper = input.parentElement;
-        if (!wrapper) {
+        if (!stepperHost || stepperHost.querySelector('.vehicle-number-stepper')) {
             return;
         }
 
@@ -297,25 +355,32 @@ const initializeMarketplaceNumberInputs = (root = document) => {
         };
 
         increaseButton.addEventListener('click', () => {
-            const nextValue = parseNumericValue(input.value) + stepValue;
-            input.value = formatNumericValue(nextValue);
+            const nextValue = parseNumericValue(input.value) + 1;
+            input.value = formatNumericValue(String(nextValue));
             dispatchInputEvents();
         });
 
         decreaseButton.addEventListener('click', () => {
-            const nextValue = Math.max(minValue, parseNumericValue(input.value) - stepValue);
-            input.value = formatNumericValue(nextValue);
+            const nextValue = Math.max(0, parseNumericValue(input.value) - 1);
+            input.value = formatNumericValue(String(nextValue));
             dispatchInputEvents();
         });
 
         stepper.appendChild(increaseButton);
         stepper.appendChild(decreaseButton);
-        wrapper.appendChild(stepper);
+        stepperHost.appendChild(stepper);
+
+        if (input.form && input.dataset.boundMarketplaceSubmit !== 'true') {
+            input.form.addEventListener('submit', () => {
+                input.value = normalizeNumericValueForSubmit(input.value);
+            });
+            input.dataset.boundMarketplaceSubmit = 'true';
+        }
     });
 };
 
 const getMarketplaceCreateStepElement = (stepNumber) => marketplaceCreateSteps.find(
-    (step) => Number(step.getAttribute('data-marketplace-create-step')) === stepNumber
+    (step) => Number(step.getAttribute('data-marketplace-create-step')) === stepNumber,
 );
 
 const setMarketplaceCreateStep = (stepNumber) => {
@@ -334,7 +399,7 @@ const setMarketplaceCreateStep = (stepNumber) => {
     if (marketplaceCreateModal) {
         marketplaceCreateModal.scrollTop = 0;
     }
-    activeStep?.querySelector('input, select, textarea, button')?.focus({preventScroll: true});
+    activeStep?.querySelector('input, select, textarea, button')?.focus({ preventScroll: true });
 };
 
 const getMarketplaceFieldLabel = (field) => {
@@ -349,7 +414,8 @@ const validateMarketplaceCreateStep = (stepNumber) => {
         return true;
     }
 
-    if (stepNumber === 1 && editableMarketplaceFiles.length === 0) {
+    const totalImages = editableMarketplaceFiles.length + existingMarketplaceImages.length;
+    if (stepNumber === 1 && totalImages === 0) {
         showAppToast('Dodaj przynajmniej jedno zdjęcie ogłoszenia.', 'error');
         marketplaceImageInput?.click();
         return false;
@@ -420,6 +486,92 @@ const syncMarketplaceCreateSummary = () => {
     });
 };
 
+const resetMarketplaceCreateMode = () => {
+    if (marketplaceCreateKicker) {
+        marketplaceCreateKicker.textContent = 'Nowe ogłoszenie';
+    }
+    if (marketplaceCreateTitle) {
+        marketplaceCreateTitle.textContent = 'Dodaj ogłoszenie';
+    }
+    if (marketplaceCreateActionInput) {
+        marketplaceCreateActionInput.value = 'create_listing';
+    }
+    if (marketplaceEditIdInput) {
+        marketplaceEditIdInput.value = '';
+    }
+    if (marketplaceCreateSubmit) {
+        marketplaceCreateSubmit.textContent = 'Dodaj ogłoszenie';
+    }
+    if (marketplaceImageInput) {
+        marketplaceImageInput.required = true;
+    }
+    removedMarketplaceImages = [];
+    syncRemovedMarketplaceImagesInputs();
+};
+const fillMarketplaceCreateForm = (payload) => {
+    if (!marketplaceCreateForm || !payload) {
+        return;
+    }
+
+    Object.entries(payload).forEach(([key, value]) => {
+        if (key === 'id' || key === 'images') {
+            return;
+        }
+
+        const field = marketplaceCreateForm.elements.namedItem(key);
+        if (!(field instanceof HTMLElement) || !('value' in field)) {
+            return;
+        }
+
+        field.value = value ?? '';
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+        field.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    initializeMarketplaceNumberInputs(marketplaceCreateModal);
+    marketplaceCreateModal?.querySelectorAll('.marketplace-brand-select').forEach((brandSelect) => {
+        brandSelect.dispatchEvent(new Event('change'));
+    });
+    syncMarketplacePhoneInput();
+};
+
+const openMarketplaceEditModal = (payload) => {
+    if (!marketplaceCreateForm || !payload) {
+        return;
+    }
+
+    marketplaceCreateForm.reset();
+    editableMarketplaceFiles = [];
+    existingMarketplaceImages = Array.isArray(payload.images) ? payload.images.slice(0, 12) : [];
+    removedMarketplaceImages = [];
+    syncMarketplaceImagesInput();
+    syncRemovedMarketplaceImagesInputs();
+    renderMarketplaceGallery();
+    resetMarketplaceCreateMode();
+
+    if (marketplaceCreateKicker) {
+        marketplaceCreateKicker.textContent = 'Edycja ogłoszenia';
+    }
+    if (marketplaceCreateTitle) {
+        marketplaceCreateTitle.textContent = 'Edytuj ogłoszenie';
+    }
+    if (marketplaceCreateActionInput) {
+        marketplaceCreateActionInput.value = 'update_listing';
+    }
+    if (marketplaceEditIdInput) {
+        marketplaceEditIdInput.value = String(payload.id ?? '');
+    }
+    if (marketplaceCreateSubmit) {
+        marketplaceCreateSubmit.textContent = 'Zapisz ogłoszenie';
+    }
+    if (marketplaceImageInput) {
+        marketplaceImageInput.required = false;
+    }
+
+    fillMarketplaceCreateForm(payload);
+    openMarketplaceCreateModal();
+};
+
 const openMarketplaceCreateModal = () => {
     if (!marketplaceCreateBackdrop || !marketplaceCreateModal) {
         return;
@@ -466,8 +618,12 @@ marketplaceOpenCreateButtons.forEach((button) => {
     button.addEventListener('click', () => {
         marketplaceCreateForm?.reset();
         editableMarketplaceFiles = [];
+        existingMarketplaceImages = [];
+        removedMarketplaceImages = [];
         syncMarketplaceImagesInput();
+        syncRemovedMarketplaceImagesInputs();
         renderMarketplaceGallery();
+        resetMarketplaceCreateMode();
         initializeMarketplaceNumberInputs(marketplaceCreateModal);
         marketplaceCreateModal?.querySelectorAll('.marketplace-brand-select').forEach((brandSelect) => {
             brandSelect.dispatchEvent(new Event('change'));
@@ -478,16 +634,16 @@ marketplaceOpenCreateButtons.forEach((button) => {
 
 marketplaceCreateNextButtons.forEach((button) => {
     button.addEventListener('click', () => {
-        if (!validateMarketplaceCreateStep(marketplaceCurrentStep)) {
+        const currentStep = Number(button.getAttribute('data-marketplace-step-current') || marketplaceCurrentStep);
+        if (!validateMarketplaceCreateStep(currentStep)) {
             return;
         }
 
-        const nextStep = marketplaceCurrentStep + 1;
-        if (nextStep === 5) {
+        if (currentStep === 4) {
             syncMarketplaceCreateSummary();
         }
 
-        setMarketplaceCreateStep(nextStep);
+        setMarketplaceCreateStep(Math.min(5, currentStep + 1));
     });
 });
 
@@ -496,7 +652,6 @@ marketplaceCreatePrevButtons.forEach((button) => {
         setMarketplaceCreateStep(Math.max(1, marketplaceCurrentStep - 1));
     });
 });
-
 marketplaceCloseCreateButtons.forEach((button) => {
     button.addEventListener('click', closeMarketplaceCreateModal);
 });
@@ -665,14 +820,49 @@ const renderMarketplaceSaveIcon = (saved) => saved
     ? `<svg viewBox="0 0 24 24" class="marketplace-save-heart-svg is-filled"><path d="M12 21.35 10.55 20.03C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54Z"/></svg>`
     : `<svg viewBox="0 0 24 24" class="marketplace-save-heart-svg is-outline"><path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09A5.964 5.964 0 0 0 7.5 3C4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.31C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3Zm-4.4 15.55-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5 18.5 5 20 6.5 20 8.5c0 2.89-3.14 5.74-7.9 10.05Z"/></svg>`;
 
+const syncMarketplaceSaveState = (listingId, saved) => {
+    document.querySelectorAll(`[data-marketplace-save-form][data-marketplace-listing-id="${listingId}"]`).forEach((form) => {
+        const button = form.querySelector('[data-marketplace-save-button]');
+        const icon = form.querySelector('[data-marketplace-save-icon]');
+        if (!button || !icon) {
+            return;
+        }
+
+        button.classList.toggle('is-active', saved);
+        icon.innerHTML = renderMarketplaceSaveIcon(saved);
+    });
+};
+
+const closeMarketplaceMenus = (exceptMenu = null) => {
+    document.querySelectorAll('[data-marketplace-menu]').forEach((menu) => {
+        if (exceptMenu && menu === exceptMenu) {
+            return;
+        }
+
+        const trigger = menu.querySelector('[data-marketplace-menu-trigger]');
+        const dropdown = menu.querySelector('[data-marketplace-menu-dropdown]');
+        if (!trigger || !dropdown) {
+            return;
+        }
+
+        trigger.setAttribute('aria-expanded', 'false');
+        dropdown.hidden = true;
+    });
+};
+
 const bindMarketplaceSaveForms = (root) => {
     root.querySelectorAll('[data-marketplace-save-form]').forEach((form) => {
         if (form.dataset.boundSave === 'true') {
             return;
         }
 
+        form.addEventListener('click', (event) => {
+            event.stopPropagation();
+        });
+
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
+            event.stopPropagation();
 
             const button = form.querySelector('[data-marketplace-save-button]');
             const icon = form.querySelector('[data-marketplace-save-icon]');
@@ -702,14 +892,165 @@ const bindMarketplaceSaveForms = (root) => {
                     throw new Error('Invalid payload');
                 }
 
-                button.classList.toggle('is-active', Boolean(payload.saved_by_current_user));
-                icon.innerHTML = renderMarketplaceSaveIcon(Boolean(payload.saved_by_current_user));
+                const listingId = String(form.getAttribute('data-marketplace-listing-id') || formData.get('listing_id') || '');
+                syncMarketplaceSaveState(listingId, Boolean(payload.saved_by_current_user));
             } catch {
                 form.submit();
             }
         });
 
         form.dataset.boundSave = 'true';
+    });
+};
+
+const bindMarketplaceMenus = (root) => {
+    root.querySelectorAll('[data-marketplace-menu]').forEach((menu) => {
+        if (menu.dataset.boundMenu === 'true') {
+            return;
+        }
+
+        const trigger = menu.querySelector('[data-marketplace-menu-trigger]');
+        const dropdown = menu.querySelector('[data-marketplace-menu-dropdown]');
+        if (!trigger || !dropdown) {
+            return;
+        }
+
+        trigger.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const isOpen = trigger.getAttribute('aria-expanded') === 'true';
+            closeMarketplaceMenus(isOpen ? null : menu);
+            trigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+            dropdown.hidden = isOpen;
+        });
+
+        menu.addEventListener('click', (event) => {
+            event.stopPropagation();
+        });
+
+        menu.dataset.boundMenu = 'true';
+    });
+};
+
+const bindMarketplaceReportForms = (root) => {
+    root.querySelectorAll('[data-marketplace-report-form]').forEach((form) => {
+        if (form.dataset.boundReport === 'true') {
+            return;
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch(window.location.pathname + window.location.search, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+
+                const payload = await response.json();
+                if (!payload.success) {
+                    throw new Error('Invalid payload');
+                }
+
+                showAppToast(payload.message || 'OgĹ‚oszenie zostaĹ‚o zgĹ‚oszone.', 'success');
+                closeMarketplaceMenus();
+            } catch {
+                form.submit();
+            }
+        });
+
+        form.dataset.boundReport = 'true';
+    });
+};
+
+const bindMarketplaceDeleteForms = (root) => {
+    root.querySelectorAll('[data-marketplace-delete-form]').forEach((form) => {
+        if (form.dataset.boundDelete === 'true') {
+            return;
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const formData = new FormData(form);
+            const listingId = String(formData.get('listing_id') || '');
+
+            try {
+                const response = await fetch(window.location.pathname + window.location.search, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+
+                const payload = await response.json();
+                if (!payload.success) {
+                    throw new Error('Invalid payload');
+                }
+
+                document.querySelectorAll(`#listing-${listingId}`).forEach((element) => element.remove());
+                document.querySelectorAll(`[id="marketplace-details-modal-${listingId}"]`).forEach((element) => element.remove());
+                if (activeMarketplaceDetailsModal?.id === `marketplace-details-modal-${listingId}`) {
+                    activeMarketplaceDetailsModal = null;
+                    syncMarketplaceScrollLock();
+                }
+
+                showAppToast(payload.message || 'OgÄ‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąÄľĂ„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă‹â€ˇÄ‚â€žĂ˘â‚¬ĹˇÄ‚â€ąĂ‚ÂĂ„â€šĂ‹ÂÄ‚ËĂ˘â€šÂ¬ÄąË‡Ä‚â€šĂ‚Â¬Ä‚â€žĂ„â€¦Ä‚â€žĂ„ÄľĂ„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă„ÄľÄ‚â€žĂ˘â‚¬ĹˇÄ‚â€ąĂ‚ÂĂ„â€šĂ‹ÂÄ‚ËĂ˘â€šÂ¬ÄąË‡Ä‚â€šĂ‚Â¬Ă„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚Â¦Ä‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąÄľĂ„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă‹â€ˇÄ‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬Ă„â€¦Ă„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚ÂĂ„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ˘â‚¬Ä…Ä‚â€šĂ‚ÂÄ‚â€žĂ˘â‚¬ĹˇÄ‚â€ąĂ‚ÂĂ„â€šĂ‹ÂÄ‚ËĂ˘â€šÂ¬ÄąË‡Ä‚â€šĂ‚Â¬Ä‚â€žĂ„â€¦Ä‚â€ąĂ˘â‚¬Ë‡Ä‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚Â¬Ä‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąÄľĂ„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬Ă‚Â¦Ä‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬Ă„â€¦Ă„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ä‚â€ąĂ˘â‚¬Ë‡oszenie zostaÄ‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąÄľĂ„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă‹â€ˇÄ‚â€žĂ˘â‚¬ĹˇÄ‚â€ąĂ‚ÂĂ„â€šĂ‹ÂÄ‚ËĂ˘â€šÂ¬ÄąË‡Ä‚â€šĂ‚Â¬Ä‚â€žĂ„â€¦Ä‚â€žĂ„ÄľĂ„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă„ÄľÄ‚â€žĂ˘â‚¬ĹˇÄ‚â€ąĂ‚ÂĂ„â€šĂ‹ÂÄ‚ËĂ˘â€šÂ¬ÄąË‡Ä‚â€šĂ‚Â¬Ă„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚Â¦Ä‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąÄľĂ„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă‹â€ˇÄ‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬Ă„â€¦Ă„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚ÂĂ„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ˘â‚¬Ä…Ä‚â€šĂ‚ÂÄ‚â€žĂ˘â‚¬ĹˇÄ‚â€ąĂ‚ÂĂ„â€šĂ‹ÂÄ‚ËĂ˘â€šÂ¬ÄąË‡Ä‚â€šĂ‚Â¬Ä‚â€žĂ„â€¦Ä‚â€ąĂ˘â‚¬Ë‡Ä‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚Â¬Ä‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąÄľĂ„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬Ă‚Â¦Ä‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬Ă„â€¦Ă„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ä‚â€ąĂ˘â‚¬Ë‡o usuniĂ„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă„ÄľÄ‚â€žĂ˘â‚¬ĹˇÄ‚â€ąĂ‚ÂĂ„â€šĂ‹ÂÄ‚ËĂ˘â€šÂ¬ÄąË‡Ä‚â€šĂ‚Â¬Ä‚â€žĂ„â€¦Ä‚â€ąĂ˘â‚¬Ë‡Ă„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ˘â‚¬Ä…Ä‚â€šĂ‚ÂÄ‚â€žĂ˘â‚¬ĹˇÄ‚â€ąĂ‚ÂĂ„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă‹â€ˇĂ„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚Â¬Ă„â€šĂ˘â‚¬ĹľÄ‚â€žĂ˘â‚¬Â¦Ă„â€šĂ˘â‚¬ĹľÄ‚â€žĂ„ÄľÄ‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąÄľĂ„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă‹â€ˇÄ‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬Ă„â€¦Ă„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚ÂĂ„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ˘â‚¬Ä…Ä‚â€šĂ‚ÂÄ‚â€žĂ˘â‚¬ĹˇÄ‚â€ąĂ‚ÂĂ„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă‹â€ˇĂ„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚Â¬Ă„â€šĂ˘â‚¬ĹľÄ‚â€žĂ˘â‚¬Â¦Ă„â€šĂ˘â‚¬ĹľÄ‚â€žĂ„ÄľĂ„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ä‚â€žĂ˘â‚¬Â¦Ä‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚Âte.', 'success');
+                closeMarketplaceMenus();
+            } catch {
+                form.submit();
+            }
+        });
+
+        form.dataset.boundDelete = 'true';
+    });
+};
+
+const bindMarketplaceEditTriggers = (root) => {
+    root.querySelectorAll('[data-marketplace-edit-trigger]').forEach((button) => {
+        if (button.dataset.boundEdit === 'true') {
+            return;
+        }
+
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const payloadRaw = button.getAttribute('data-marketplace-edit-payload');
+            if (!payloadRaw) {
+                return;
+            }
+
+            try {
+                const payload = JSON.parse(payloadRaw);
+                closeMarketplaceMenus();
+                if (activeMarketplaceDetailsModal) {
+                    closeMarketplaceDetailsModal(activeMarketplaceDetailsModal);
+                }
+                openMarketplaceEditModal(payload);
+            } catch {
+                return;
+            }
+        });
+
+        button.dataset.boundEdit = 'true';
     });
 };
 
@@ -781,7 +1122,7 @@ const bindMarketplaceContactToggles = (root) => {
 
             const isHidden = card.hidden;
             card.hidden = !isHidden;
-            button.textContent = isHidden ? 'Ukryj dane kontaktowe' : 'Sprawdź dane kontaktowe';
+            button.textContent = isHidden ? 'Ukryj dane kontaktowe' : 'SprawdĹş dane kontaktowe';
         });
 
         button.dataset.boundContact = 'true';
@@ -797,12 +1138,18 @@ const bindMarketplaceCarousels = (root) => {
 const initializeMarketplaceChunk = (root) => {
     bindMarketplaceCarousels(root);
     bindMarketplaceSaveForms(root);
+    bindMarketplaceMenus(root);
+    bindMarketplaceEditTriggers(root);
+    bindMarketplaceReportForms(root);
+    bindMarketplaceDeleteForms(root);
     bindMarketplaceDetailModals(root);
     bindMarketplaceDetailOpeners(root);
     bindMarketplaceContactToggles(root);
 };
 
 document.addEventListener('click', (event) => {
+    closeMarketplaceMenus();
+
     if (marketplaceCreateBackdrop && event.target === marketplaceCreateBackdrop) {
         closeMarketplaceCreateModal();
     }
@@ -823,6 +1170,10 @@ document.addEventListener('keydown', (event) => {
 
     if (event.key === 'Escape' && activeMarketplaceDetailsModal) {
         closeMarketplaceDetailsModal(activeMarketplaceDetailsModal);
+    }
+
+    if (event.key === 'Escape') {
+        closeMarketplaceMenus();
     }
 });
 
@@ -921,3 +1272,5 @@ renderMarketplaceGallery();
 setMarketplaceCreateStep(1);
 initializeMarketplaceNumberInputs(document);
 initializeMarketplaceChunk(document);
+
+

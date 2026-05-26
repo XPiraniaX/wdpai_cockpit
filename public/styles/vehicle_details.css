@@ -1015,6 +1015,7 @@ body.vehicle-modal-open {
 }
 
 .vehicle-modal-field {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -1124,7 +1125,8 @@ body.vehicle-modal-open {
     margin: 0;
 }
 
-.vehicle-modal-field input[type="number"] {
+.vehicle-modal-field input[type="number"],
+.vehicle-modal-field input[data-marketplace-number] {
     -moz-appearance: textfield;
     appearance: textfield;
     padding-right: 62px;
@@ -1138,7 +1140,8 @@ body.vehicle-modal-open {
     position: relative;
 }
 
-.vehicle-currency-field input[type="number"] {
+.vehicle-currency-field input[type="number"],
+.vehicle-currency-field input[type="text"] {
     padding-right: 112px;
 }
 

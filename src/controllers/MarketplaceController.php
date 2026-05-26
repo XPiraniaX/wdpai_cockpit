@@ -48,6 +48,8 @@ class MarketplaceController extends AppController
             'bodyType' => $filters['body_type'],
             'engineCapacityMin' => $filters['engine_capacity_min'],
             'engineCapacityMax' => $filters['engine_capacity_max'],
+            'powerMin' => $filters['power_min'],
+            'powerMax' => $filters['power_max'],
             'fuelType' => $filters['fuel_type'],
             'transmission' => $filters['transmission'],
             'drivetrain' => $filters['drivetrain'],
@@ -72,7 +74,6 @@ class MarketplaceController extends AppController
             'scriptFiles' => ['marketplace.js'],
         ]);
     }
-
     private function handleMarketplaceAction(MarketplaceRepository $repository, int $userId): void
     {
         $action = (string) ($_POST['action'] ?? '');
@@ -80,8 +81,11 @@ class MarketplaceController extends AppController
 
         switch ($action) {
             case 'create_listing':
+            case 'update_listing':
                 $payload = $this->buildListingPayload();
                 $missingFields = $this->resolveMissingRequiredListingFields($payload);
+                $isUpdate = $action === 'update_listing';
+                $listingId = (int) ($_POST['listing_id'] ?? 0);
 
                 if ($missingFields !== []) {
                     $this->setFlash('error', 'Uzupełnij wszystkie wymagane pola ogłoszenia.');
@@ -104,19 +108,41 @@ class MarketplaceController extends AppController
                 }
 
                 $payload['image_paths'] = $this->handleListingImageUploads($userId, $payload['title']);
-                if ($payload['image_paths'] === []) {
+                if ($isUpdate) {
+                    $currentImagePaths = $repository->getListingImagePaths($listingId);
+                    $remainingExistingImages = array_values(array_diff($currentImagePaths, $payload['removed_image_paths']));
+
+                    if ($remainingExistingImages === [] && $payload['image_paths'] === []) {
+                        $this->deleteUploadedFiles($payload['image_paths']);
+                        $this->setFlash('error', 'Ogłoszenie musi mieć przynajmniej jedno zdjęcie.');
+                        $this->redirect($redirectTo);
+                    }
+                }
+
+                if (!$isUpdate && $payload['image_paths'] === []) {
                     $this->setFlash('error', 'Dodaj co najmniej jedno zdjęcie ogłoszenia.');
                     $this->redirect($redirectTo);
                 }
 
                 try {
-                    $repository->createListing($userId, $payload);
+                    if ($isUpdate) {
+                        $updateResult = $listingId > 0 ? $repository->updateListing($userId, $listingId, $payload) : false;
+                        if ($updateResult === false) {
+                            $this->deleteUploadedFiles($payload['image_paths']);
+                            $this->setFlash('error', 'Nie udało się zaktualizować ogłoszenia.');
+                            $this->redirect($redirectTo);
+                        }
+
+                        $this->deleteUploadedFiles($updateResult['deleted_image_paths'] ?? []);
+                    } else {
+                        $repository->createListing($userId, $payload);
+                    }
                 } catch (Throwable $exception) {
                     $this->deleteUploadedFiles($payload['image_paths']);
                     throw $exception;
                 }
 
-                $this->setFlash('success', 'Ogłoszenie zostało opublikowane.');
+                $this->setFlash('success', $isUpdate ? 'Ogłoszenie zostało zaktualizowane.' : 'Ogłoszenie zostało opublikowane.');
                 $this->redirect($redirectTo);
                 return;
 
@@ -136,6 +162,53 @@ class MarketplaceController extends AppController
                     }
                 }
 
+                $this->redirect($redirectTo);
+                return;
+
+            case 'report_listing':
+                $listingId = (int) ($_POST['listing_id'] ?? 0);
+                if ($listingId > 0 && $this->isAjaxRequest()) {
+                    $this->jsonResponse([
+                        'success' => true,
+                        'listing_id' => $listingId,
+                        'message' => 'Ogłoszenie zostało zgłoszone.',
+                    ]);
+                }
+
+                $this->setFlash('success', 'Ogłoszenie zostało zgłoszone.');
+                $this->redirect($redirectTo);
+                return;
+
+            case 'delete_listing':
+                $listingId = (int) ($_POST['listing_id'] ?? 0);
+                if ($listingId > 0) {
+                    $imagePaths = $repository->getListingImagePaths($listingId);
+                    $deleted = $repository->deleteListing($userId, $listingId);
+
+                    if ($deleted) {
+                        $this->deleteUploadedFiles($imagePaths);
+
+                        if ($this->isAjaxRequest()) {
+                            $this->jsonResponse([
+                                'success' => true,
+                                'listing_id' => $listingId,
+                                'message' => 'Ogłoszenie zostało usunięte.',
+                            ]);
+                        }
+
+                        $this->setFlash('success', 'Ogłoszenie zostało usunięte.');
+                        $this->redirect($redirectTo);
+                    }
+                }
+
+                if ($this->isAjaxRequest()) {
+                    $this->jsonResponse([
+                        'success' => false,
+                        'message' => 'Nie udało się usunąć ogłoszenia.',
+                    ], 400);
+                }
+
+                $this->setFlash('error', 'Nie udało się usunąć ogłoszenia.');
                 $this->redirect($redirectTo);
                 return;
         }
@@ -165,6 +238,8 @@ class MarketplaceController extends AppController
             'body_type' => $this->sanitizeNullableDisplayText($_GET['body_type'] ?? null),
             'engine_capacity_min' => $this->normalizeNullableInt($_GET['engine_capacity_min'] ?? null),
             'engine_capacity_max' => $this->normalizeNullableInt($_GET['engine_capacity_max'] ?? null),
+            'power_min' => $this->normalizeNullableInt($_GET['power_min'] ?? null),
+            'power_max' => $this->normalizeNullableInt($_GET['power_max'] ?? null),
             'fuel_type' => $this->sanitizeOptionalFuelType($_GET['fuel_type'] ?? null),
             'transmission' => $this->sanitizeNullableEnum($_GET['transmission'] ?? null, ['manual', 'automatic', 'semi_automatic']),
             'drivetrain' => $this->sanitizeNullableDisplayText($_GET['drivetrain'] ?? null),
@@ -175,7 +250,7 @@ class MarketplaceController extends AppController
 
     private function resolveOffset(): int
     {
-        return max(0, $this->normalizeNullableInt($_GET['offset'] ?? null) ?? 0);
+        return max(0, $this->normalizeNullableInt($_GET['offset'] ?? 0) ?? 0);
     }
 
     private function isFeedPageRequest(): bool
@@ -192,7 +267,7 @@ class MarketplaceController extends AppController
             $listing['formatted_fuel_type'] = $this->formatFuelType($listing['fuel_type']);
             $listing['formatted_transmission'] = $this->formatTransmission($listing['transmission']);
             $listing['formatted_engine'] = $listing['engine_capacity_cc']
-                ? number_format(((int) $listing['engine_capacity_cc']) / 1000, 1, ',', '') . ' L'
+                ? number_format(((int) $listing['engine_capacity_cc']) / 1000, 1, '.', '') . 'L'
                 : 'Brak danych';
             $listing['formatted_power'] = $listing['power_hp'] ? (int) $listing['power_hp'] . ' KM' : 'Brak danych';
 
@@ -215,7 +290,6 @@ class MarketplaceController extends AppController
 
         return (string) ob_get_clean();
     }
-
     private function buildListingPayload(): array
     {
         return [
@@ -240,6 +314,7 @@ class MarketplaceController extends AppController
             'contact_name' => $this->sanitizeText($_POST['contact_name'] ?? null) ?? 'Brak danych',
             'contact_phone' => $this->sanitizeText($_POST['contact_phone'] ?? null) ?? 'Brak danych',
             'contact_email' => $this->sanitizeText($_POST['contact_email'] ?? null) ?? 'Brak danych',
+            'removed_image_paths' => $this->sanitizeStringArray($_POST['removed_image_paths'] ?? []),
         ];
     }
 
@@ -437,6 +512,23 @@ class MarketplaceController extends AppController
         $normalized = trim((string) $value);
 
         return in_array($normalized, $allowed, true) ? $normalized : null;
+    }
+
+    private function sanitizeStringArray(mixed $values): array
+    {
+        if (!is_array($values)) {
+            return [];
+        }
+
+        $sanitized = [];
+        foreach ($values as $value) {
+            $normalized = $this->sanitizeText(is_string($value) ? $value : null);
+            if ($normalized !== null) {
+                $sanitized[] = $normalized;
+            }
+        }
+
+        return array_values(array_unique($sanitized));
     }
 
     private function formatDateTime(string $value): string

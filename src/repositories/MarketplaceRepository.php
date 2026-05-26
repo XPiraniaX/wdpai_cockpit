@@ -117,6 +117,16 @@ class MarketplaceRepository
             $params['engine_capacity_max'] = (int) $filters['engine_capacity_max'];
         }
 
+        if (($filters['power_min'] ?? null) !== null) {
+            $conditions[] = 'feed.power_hp >= :power_min';
+            $params['power_min'] = (int) $filters['power_min'];
+        }
+
+        if (($filters['power_max'] ?? null) !== null) {
+            $conditions[] = 'feed.power_hp <= :power_max';
+            $params['power_max'] = (int) $filters['power_max'];
+        }
+
         if (!empty($filters['fuel_type'])) {
             $conditions[] = 'feed.fuel_type = :fuel_type';
             $params['fuel_type'] = (string) $filters['fuel_type'];
@@ -209,6 +219,7 @@ class MarketplaceRepository
                 'user_id' => (int) $listing['user_id'],
                 'author_name' => (string) $listing['full_name'],
                 'author_username' => (string) $listing['username'],
+                'author_tier' => strtoupper((string) $listing['membership_tier']) . ' MEMBER',
                 'profile_path' => '/community/profile?id=' . (int) $listing['user_id'],
                 'title' => (string) $listing['title'],
                 'trim_name' => (string) ($listing['trim_name'] ?? ''),
@@ -354,6 +365,165 @@ class MarketplaceRepository
             $this->connection->rollBack();
             throw $exception;
         }
+    }
+
+    public function updateListing(int $userId, int $listingId, array $data): array|false
+    {
+        $this->connection->beginTransaction();
+
+        try {
+            $statement = $this->connection->prepare(
+                "UPDATE marketplace_listings
+                SET
+                    brand_id = :brand_id,
+                    model_id = :model_id,
+                    title = :title,
+                    trim_name = :trim_name,
+                    description = :description,
+                    price_amount = :price_amount,
+                    production_year = :production_year,
+                    mileage_km = :mileage_km,
+                    fuel_type = :fuel_type,
+                    transmission = :transmission,
+                    body_type = :body_type,
+                    drivetrain = :drivetrain,
+                    steering_side = :steering_side,
+                    technical_condition = :technical_condition,
+                    engine_capacity_cc = :engine_capacity_cc,
+                    power_hp = :power_hp,
+                    exterior_color = :exterior_color,
+                    city = :city,
+                    contact_name = :contact_name,
+                    contact_phone = :contact_phone,
+                    contact_email = :contact_email,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = :listing_id
+                    AND user_id = :user_id"
+            );
+            $statement->execute([
+                'listing_id' => $listingId,
+                'user_id' => $userId,
+                'brand_id' => $data['brand_id'],
+                'model_id' => $data['model_id'],
+                'title' => $data['title'],
+                'trim_name' => $data['trim_name'],
+                'description' => $data['description'],
+                'price_amount' => $data['price_amount'],
+                'production_year' => $data['production_year'],
+                'mileage_km' => $data['mileage_km'],
+                'fuel_type' => $data['fuel_type'],
+                'transmission' => $data['transmission'],
+                'body_type' => $data['body_type'],
+                'drivetrain' => $data['drivetrain'],
+                'steering_side' => $data['steering_side'],
+                'technical_condition' => $data['technical_condition'],
+                'engine_capacity_cc' => $data['engine_capacity_cc'],
+                'power_hp' => $data['power_hp'],
+                'exterior_color' => $data['exterior_color'],
+                'city' => $data['city'],
+                'contact_name' => $data['contact_name'],
+                'contact_phone' => $data['contact_phone'],
+                'contact_email' => $data['contact_email'],
+            ]);
+
+            if ($statement->rowCount() === 0) {
+                $this->connection->rollBack();
+                return false;
+            }
+
+            $deletedImagePaths = [];
+            $removedImagePaths = array_values(array_filter(
+                $data['removed_image_paths'] ?? [],
+                static fn (mixed $path): bool => is_string($path) && $path !== ''
+            ));
+
+            if ($removedImagePaths !== []) {
+                $removePlaceholders = [];
+                $removeParams = [
+                    ':listing_id' => $listingId,
+                ];
+
+                foreach (array_values($removedImagePaths) as $index => $imagePath) {
+                    $placeholder = ':image_path_' . $index;
+                    $removePlaceholders[] = $placeholder;
+                    $removeParams[$placeholder] = $imagePath;
+                }
+
+                $deleteStatement = $this->connection->prepare(
+                    'DELETE FROM marketplace_listing_images
+                    WHERE listing_id = :listing_id
+                        AND image_path IN (' . implode(', ', $removePlaceholders) . ')
+                    RETURNING image_path'
+                );
+                $deleteStatement->execute($removeParams);
+                $deletedImagePaths = array_map(
+                    static fn (array $row): string => (string) $row['image_path'],
+                    $deleteStatement->fetchAll(PDO::FETCH_ASSOC)
+                );
+            }
+
+            if (!empty($data['image_paths'])) {
+                $maxOrderStatement = $this->connection->prepare(
+                    'SELECT COALESCE(MAX(display_order), 0)
+                    FROM marketplace_listing_images
+                    WHERE listing_id = :listing_id'
+                );
+                $maxOrderStatement->execute(['listing_id' => $listingId]);
+                $startOrder = (int) $maxOrderStatement->fetchColumn();
+
+                $imageStatement = $this->connection->prepare(
+                    'INSERT INTO marketplace_listing_images (listing_id, image_path, display_order)
+                    VALUES (:listing_id, :image_path, :display_order)'
+                );
+
+                foreach ($data['image_paths'] as $index => $imagePath) {
+                    $imageStatement->execute([
+                        'listing_id' => $listingId,
+                        'image_path' => $imagePath,
+                        'display_order' => $startOrder + $index + 1,
+                    ]);
+                }
+            }
+
+            $this->connection->commit();
+            return [
+                'deleted_image_paths' => $deletedImagePaths,
+            ];
+        } catch (Throwable $exception) {
+            $this->connection->rollBack();
+            throw $exception;
+        }
+    }
+
+    public function deleteListing(int $userId, int $listingId): bool
+    {
+        $statement = $this->connection->prepare(
+            'DELETE FROM marketplace_listings
+            WHERE id = :listing_id
+                AND user_id = :user_id'
+        );
+        $statement->execute([
+            'listing_id' => $listingId,
+            'user_id' => $userId,
+        ]);
+
+        return $statement->rowCount() > 0;
+    }
+
+    public function getListingImagePaths(int $listingId): array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT image_path
+            FROM marketplace_listing_images
+            WHERE listing_id = :listing_id
+            ORDER BY display_order ASC, id ASC'
+        );
+        $statement->execute(['listing_id' => $listingId]);
+
+        return array_map(
+            static fn (array $row): string => (string) $row['image_path'],
+            $statement->fetchAll(PDO::FETCH_ASSOC)
+        );
     }
 
     public function modelBelongsToBrand(int $modelId, int $brandId): bool
@@ -505,3 +675,4 @@ class MarketplaceRepository
         };
     }
 }
+

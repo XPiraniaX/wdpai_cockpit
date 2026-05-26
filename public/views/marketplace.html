@@ -80,7 +80,7 @@ if ($selectedModelName !== null) {
 }
 
 $baseQuery = [
-    'scope' => $scope,
+    'scope' => 'all',
     'brand_id' => $brandId ?: null,
     'model_id' => $modelId ?: null,
     'price_min' => $priceMin ?: null,
@@ -92,6 +92,8 @@ $baseQuery = [
     'body_type' => $bodyType ?: null,
     'engine_capacity_min' => $engineCapacityMin ?: null,
     'engine_capacity_max' => $engineCapacityMax ?: null,
+    'power_min' => $powerMin ?: null,
+    'power_max' => $powerMax ?: null,
     'fuel_type' => $fuelType ?: null,
     'transmission' => $transmission ?: null,
     'drivetrain' => $drivetrain ?: null,
@@ -111,7 +113,7 @@ $baseQuery = [
                             <input type="hidden" name="<?= htmlspecialchars((string) $queryKey, ENT_QUOTES, 'UTF-8'); ?>" value="<?= htmlspecialchars((string) $queryValue, ENT_QUOTES, 'UTF-8'); ?>">
                         <?php endif; ?>
                     <?php endforeach; ?>
-                    <input type="hidden" name="scope" value="<?= htmlspecialchars($scope, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="scope" value="all">
 
                     <label class="marketplace-sort-label">
                         <span>Sortowanie</span>
@@ -154,14 +156,12 @@ $baseQuery = [
         </button>
 
         <form method="get" class="marketplace-filter-stack">
-            <input type="hidden" name="scope" value="<?= htmlspecialchars($scope, ENT_QUOTES, 'UTF-8'); ?>">
+            <input type="hidden" name="scope" value="all">
             <?php if ($hasSelectedBrand): ?>
                 <input type="hidden" name="sort" value="<?= htmlspecialchars($sort, ENT_QUOTES, 'UTF-8'); ?>">
             <?php endif; ?>
 
             <section class="marketplace-filter-card">
-                <div class="marketplace-side-heading">KATEGORIE</div>
-
                 <label class="marketplace-field">
                     <span class="marketplace-field-label">Kategoria</span>
                     <select class="marketplace-select" disabled>
@@ -224,7 +224,10 @@ $baseQuery = [
 
                 <div class="marketplace-filter-actions">
                     <button type="submit" class="marketplace-button marketplace-button-secondary">Filtruj</button>
-                    <a href="/marketplace" class="marketplace-button marketplace-button-muted">Reset</a>
+                    <a
+                        href="/marketplace?scope=all<?= $brandId ? '&amp;brand_id=' . (int) $brandId : ''; ?><?= $modelId ? '&amp;model_id=' . (int) $modelId : ''; ?><?= $hasSelectedBrand ? '&amp;sort=' . htmlspecialchars($sort, ENT_QUOTES, 'UTF-8') : ''; ?>"
+                        class="marketplace-button marketplace-button-muted"
+                    >Reset</a>
                 </div>
             </section>
         </form>
@@ -245,7 +248,7 @@ $baseQuery = [
                 </div>
 
                 <form method="get" class="vehicle-modal-form marketplace-detailed-form">
-                    <input type="hidden" name="scope" value="<?= htmlspecialchars($scope, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="scope" value="all">
                     <input type="hidden" name="brand_id" value="<?= htmlspecialchars((string) $brandId, ENT_QUOTES, 'UTF-8'); ?>">
                     <?php if ($modelId !== null): ?>
                         <input type="hidden" name="model_id" value="<?= htmlspecialchars((string) $modelId, ENT_QUOTES, 'UTF-8'); ?>">
@@ -259,14 +262,20 @@ $baseQuery = [
                     <input type="hidden" name="sort" value="<?= htmlspecialchars($sort, ENT_QUOTES, 'UTF-8'); ?>">
 
                     <div class="vehicle-modal-section">
-                        <div class="vehicle-modal-grid vehicle-modal-grid-single marketplace-detailed-grid">
+                        <div class="vehicle-modal-grid marketplace-detailed-grid">
                             <label class="vehicle-modal-field">
                                 <span>Przebieg od</span>
-                                <input type="text" inputmode="numeric" name="mileage_min" data-marketplace-number min="0" value="<?= htmlspecialchars((string) ($mileageMin ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                <div class="vehicle-currency-field">
+                                    <input type="text" inputmode="numeric" name="mileage_min" data-marketplace-number min="0" value="<?= htmlspecialchars((string) ($mileageMin ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                    <span class="vehicle-currency-suffix">km</span>
+                                </div>
                             </label>
                             <label class="vehicle-modal-field">
                                 <span>Przebieg do</span>
-                                <input type="text" inputmode="numeric" name="mileage_max" data-marketplace-number min="0" value="<?= htmlspecialchars((string) ($mileageMax ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                <div class="vehicle-currency-field">
+                                    <input type="text" inputmode="numeric" name="mileage_max" data-marketplace-number min="0" value="<?= htmlspecialchars((string) ($mileageMax ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                    <span class="vehicle-currency-suffix">km</span>
+                                </div>
                             </label>
 
                             <label class="vehicle-modal-field">
@@ -279,24 +288,47 @@ $baseQuery = [
                             </label>
 
                             <label class="vehicle-modal-field">
-                                <span>Rodzaj nadwozia</span>
-                                <select name="body_type" class="marketplace-select">
-                                    <option value="">Dowolny</option>
-                                    <?php foreach ($bodyTypeLabels as $value => $label): ?>
-                                        <option value="<?= htmlspecialchars($value, ENT_QUOTES, 'UTF-8'); ?>"<?= $bodyType === $value ? ' selected' : ''; ?>>
-                                            <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </label>
-
-                            <label class="vehicle-modal-field">
                                 <span>Pojemność silnika od</span>
-                                <input type="text" inputmode="numeric" name="engine_capacity_min" data-marketplace-number min="0" value="<?= htmlspecialchars((string) ($engineCapacityMin ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                <div class="vehicle-currency-field">
+                                    <input
+                                        type="text"
+                                        inputmode="decimal"
+                                        name="engine_capacity_min"
+                                        data-marketplace-decimal
+                                        data-marketplace-decimal-scale="1000"
+                                        value="<?= htmlspecialchars($engineCapacityMin !== null ? number_format($engineCapacityMin / 1000, 1, '.', '') : '', ENT_QUOTES, 'UTF-8'); ?>"
+                                    >
+                                    <span class="vehicle-currency-suffix">L</span>
+                                </div>
                             </label>
                             <label class="vehicle-modal-field">
                                 <span>Pojemność silnika do</span>
-                                <input type="text" inputmode="numeric" name="engine_capacity_max" data-marketplace-number min="0" value="<?= htmlspecialchars((string) ($engineCapacityMax ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                <div class="vehicle-currency-field">
+                                    <input
+                                        type="text"
+                                        inputmode="decimal"
+                                        name="engine_capacity_max"
+                                        data-marketplace-decimal
+                                        data-marketplace-decimal-scale="1000"
+                                        value="<?= htmlspecialchars($engineCapacityMax !== null ? number_format($engineCapacityMax / 1000, 1, '.', '') : '', ENT_QUOTES, 'UTF-8'); ?>"
+                                    >
+                                    <span class="vehicle-currency-suffix">L</span>
+                                </div>
+                            </label>
+
+                            <label class="vehicle-modal-field">
+                                <span>Moc od</span>
+                                <div class="vehicle-currency-field">
+                                    <input type="text" inputmode="numeric" name="power_min" data-marketplace-number min="0" value="<?= htmlspecialchars((string) ($powerMin ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                    <span class="vehicle-currency-suffix">KM</span>
+                                </div>
+                            </label>
+                            <label class="vehicle-modal-field">
+                                <span>Moc do</span>
+                                <div class="vehicle-currency-field">
+                                    <input type="text" inputmode="numeric" name="power_max" data-marketplace-number min="0" value="<?= htmlspecialchars((string) ($powerMax ?? ''), ENT_QUOTES, 'UTF-8'); ?>">
+                                    <span class="vehicle-currency-suffix">KM</span>
+                                </div>
                             </label>
 
                             <label class="vehicle-modal-field">
@@ -329,6 +361,18 @@ $baseQuery = [
                                     <option value="">Dowolny</option>
                                     <?php foreach ($drivetrainLabels as $value => $label): ?>
                                         <option value="<?= htmlspecialchars($value, ENT_QUOTES, 'UTF-8'); ?>"<?= $drivetrain === $value ? ' selected' : ''; ?>>
+                                            <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </label>
+
+                            <label class="vehicle-modal-field">
+                                <span>Rodzaj nadwozia</span>
+                                <select name="body_type" class="marketplace-select">
+                                    <option value="">Dowolny</option>
+                                    <?php foreach ($bodyTypeLabels as $value => $label): ?>
+                                        <option value="<?= htmlspecialchars($value, ENT_QUOTES, 'UTF-8'); ?>"<?= $bodyType === $value ? ' selected' : ''; ?>>
                                             <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8'); ?>
                                         </option>
                                     <?php endforeach; ?>
@@ -376,15 +420,17 @@ $baseQuery = [
         <section class="vehicle-modal-panel cars-add-modal marketplace-create-modal marketplace-create-wizard" hidden data-marketplace-create-modal>
             <div class="vehicle-modal-head">
                 <div class="vehicle-modal-title-wrap">
-                    <div class="vehicle-modal-kicker">Nowe ogłoszenie</div>
-                    <h3 class="vehicle-modal-title">Dodaj ogłoszenie</h3>
+                    <div class="vehicle-modal-kicker" data-marketplace-create-kicker>Nowe ogłoszenie</div>
+                    <h3 class="vehicle-modal-title" data-marketplace-create-title>Dodaj ogłoszenie</h3>
                 </div>
                 <button type="button" class="vehicle-modal-close" aria-label="Zamknij" data-close-marketplace-create><span class="vehicle-modal-close-icon" aria-hidden="true"></span></button>
             </div>
 
             <form method="post" action="/marketplace" enctype="multipart/form-data" class="vehicle-modal-form cars-add-form marketplace-create-form" data-marketplace-create-form>
-                <input type="hidden" name="action" value="create_listing">
+                <input type="hidden" name="action" value="create_listing" data-marketplace-create-action>
+                <input type="hidden" name="listing_id" value="" data-marketplace-edit-id>
                 <input type="hidden" name="redirect_to" value="/marketplace">
+                <div data-marketplace-removed-images-inputs hidden></div>
 
                 <div class="cars-add-form-shell marketplace-create-shell">
                     <aside class="cars-add-media-column marketplace-create-media-column">
@@ -399,6 +445,7 @@ $baseQuery = [
                                 required
                             >
                             <div class="cars-add-media-note">Zdjęcia ogłoszenia, maks. 12</div>
+                            <div class="cars-add-media-note" data-marketplace-existing-images-note hidden>Obecne zdjęcia zostaną zachowane. Nowe zdjęcia zostaną dodane do istniejących.</div>
                             <div class="cars-add-gallery" data-marketplace-gallery></div>
                         </div>
                     </aside>
@@ -471,7 +518,10 @@ $baseQuery = [
                                 </label>
                                 <label class="vehicle-modal-field">
                                     <span>Przebieg</span>
-                                    <input type="text" inputmode="numeric" name="mileage_km" data-marketplace-number min="0" required>
+                                    <div class="vehicle-currency-field">
+                                        <input type="text" inputmode="numeric" name="mileage_km" data-marketplace-number min="0" required>
+                                        <span class="vehicle-currency-suffix">km</span>
+                                    </div>
                                 </label>
                                 <label class="vehicle-modal-field">
                                     <span>Rodzaj nadwozia</span>
@@ -497,12 +547,18 @@ $baseQuery = [
                         <section class="marketplace-create-step" data-marketplace-create-step="3" hidden>
                             <div class="vehicle-modal-grid vehicle-modal-grid-single marketplace-create-step-grid">
                                 <label class="vehicle-modal-field">
-                                    <span>Pojemność silnika (cc)</span>
-                                    <input type="text" inputmode="numeric" name="engine_capacity_cc" data-marketplace-number min="0" required>
+                                    <span>Pojemność silnika</span>
+                                    <div class="vehicle-currency-field">
+                                        <input type="text" inputmode="numeric" name="engine_capacity_cc" data-marketplace-number min="0" required>
+                                        <span class="vehicle-currency-suffix">cm3</span>
+                                    </div>
                                 </label>
                                 <label class="vehicle-modal-field">
-                                    <span>Moc (KM)</span>
-                                    <input type="text" inputmode="numeric" name="power_hp" data-marketplace-number min="0" required>
+                                    <span>Moc</span>
+                                    <div class="vehicle-currency-field">
+                                        <input type="text" inputmode="numeric" name="power_hp" data-marketplace-number min="0" required>
+                                        <span class="vehicle-currency-suffix">KM</span>
+                                    </div>
                                 </label>
                                 <label class="vehicle-modal-field">
                                     <span>Rodzaj paliwa</span>
@@ -556,7 +612,7 @@ $baseQuery = [
                                 </label>
                                 <label class="vehicle-modal-field">
                                     <span>Telefon</span>
-                                    <input type="text" name="contact_phone" required>
+                                    <input type="text" name="contact_phone" inputmode="numeric" maxlength="11" placeholder="123 456 789" required>
                                 </label>
                                 <label class="vehicle-modal-field">
                                     <span>E-mail</span>
@@ -603,7 +659,7 @@ $baseQuery = [
 
                             <div class="vehicle-modal-footer marketplace-create-actions">
                                 <button type="button" class="vehicle-modal-secondary" data-marketplace-step-prev>Wstecz</button>
-                                <button type="submit" class="vehicle-modal-submit">Dodaj ogłoszenie</button>
+                                <button type="submit" class="vehicle-modal-submit" data-marketplace-create-submit>Dodaj ogłoszenie</button>
                             </div>
                         </section>
                     </div>
@@ -612,4 +668,3 @@ $baseQuery = [
         </section>
     </div>
 </div>
-
