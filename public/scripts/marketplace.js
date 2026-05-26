@@ -379,6 +379,113 @@ const initializeMarketplaceNumberInputs = (root = document) => {
     });
 };
 
+const initializeMarketplaceDecimalInputs = (root = document) => {
+    const decimalInputs = root.querySelectorAll('input[data-marketplace-decimal]:not([readonly])');
+
+    const sanitizeDecimalValue = (value) => {
+        const normalized = String(value ?? '').replace(',', '.').replace(/[^\d.]/g, '');
+        const [integerPart = '', ...decimalParts] = normalized.split('.');
+        const decimalPart = decimalParts.join('');
+
+        if (integerPart === '' && decimalPart === '') {
+            return '';
+        }
+
+        return decimalPart === '' ? integerPart : `${integerPart}.${decimalPart.slice(0, 1)}`;
+    };
+
+    const parseDecimalValue = (value) => {
+        const sanitized = sanitizeDecimalValue(value);
+        return sanitized === '' ? 0 : Number.parseFloat(sanitized);
+    };
+
+    const formatDecimalValue = (value) => {
+        const sanitized = sanitizeDecimalValue(value);
+        if (sanitized === '') {
+            return '';
+        }
+
+        const parsed = Number.parseFloat(sanitized);
+        return Number.isFinite(parsed) ? parsed.toFixed(1) : '';
+    };
+
+    decimalInputs.forEach((input) => {
+        if (!(input instanceof HTMLInputElement)) {
+            return;
+        }
+
+        const decimalScale = Number.parseInt(input.dataset.marketplaceDecimalScale || '1', 10) || 1;
+        input.value = formatDecimalValue(input.value);
+
+        input.addEventListener('input', () => {
+            input.value = sanitizeDecimalValue(input.value);
+        });
+
+        input.addEventListener('blur', () => {
+            input.value = formatDecimalValue(input.value);
+        });
+
+        const currencyField = input.closest('.vehicle-currency-field');
+        let numberField = input.closest('.vehicle-number-input');
+
+        if (!currencyField && !numberField) {
+            numberField = document.createElement('div');
+            numberField.className = 'vehicle-number-input';
+            input.parentNode?.insertBefore(numberField, input);
+            numberField.appendChild(input);
+        }
+
+        const stepperHost = currencyField || numberField || input.parentElement;
+
+        if (!stepperHost || stepperHost.querySelector('.vehicle-number-stepper')) {
+            return;
+        }
+
+        const stepper = document.createElement('div');
+        stepper.className = 'vehicle-number-stepper';
+
+        const increaseButton = document.createElement('button');
+        increaseButton.type = 'button';
+        increaseButton.className = 'vehicle-number-stepper-button';
+        increaseButton.setAttribute('aria-label', 'Zwiększ wartość');
+        increaseButton.textContent = '+';
+
+        const decreaseButton = document.createElement('button');
+        decreaseButton.type = 'button';
+        decreaseButton.className = 'vehicle-number-stepper-button';
+        decreaseButton.setAttribute('aria-label', 'Zmniejsz wartość');
+        decreaseButton.textContent = '-';
+
+        const dispatchInputEvents = () => {
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        };
+
+        increaseButton.addEventListener('click', () => {
+            const nextValue = parseDecimalValue(input.value) + 0.1;
+            input.value = formatDecimalValue(String(nextValue));
+            dispatchInputEvents();
+        });
+
+        decreaseButton.addEventListener('click', () => {
+            const nextValue = Math.max(0, parseDecimalValue(input.value) - 0.1);
+            input.value = formatDecimalValue(String(nextValue));
+            dispatchInputEvents();
+        });
+
+        stepper.appendChild(increaseButton);
+        stepper.appendChild(decreaseButton);
+        stepperHost.appendChild(stepper);
+
+        if (input.form && input.dataset.boundMarketplaceDecimalSubmit !== 'true') {
+            input.form.addEventListener('submit', () => {
+                input.value = sanitizeDecimalValue(input.value);
+            });
+            input.dataset.boundMarketplaceDecimalSubmit = 'true';
+        }
+    });
+};
+
 const getMarketplaceCreateStepElement = (stepNumber) => marketplaceCreateSteps.find(
     (step) => Number(step.getAttribute('data-marketplace-create-step')) === stepNumber,
 );
@@ -1271,6 +1378,7 @@ if (feed && feedSentinel) {
 renderMarketplaceGallery();
 setMarketplaceCreateStep(1);
 initializeMarketplaceNumberInputs(document);
+initializeMarketplaceDecimalInputs(document);
 initializeMarketplaceChunk(document);
 
 

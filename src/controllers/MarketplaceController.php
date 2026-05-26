@@ -236,8 +236,8 @@ class MarketplaceController extends AppController
             'year_min' => $this->normalizeNullableInt($_GET['year_min'] ?? null),
             'year_max' => $this->normalizeNullableInt($_GET['year_max'] ?? null),
             'body_type' => $this->sanitizeNullableDisplayText($_GET['body_type'] ?? null),
-            'engine_capacity_min' => $this->normalizeNullableInt($_GET['engine_capacity_min'] ?? null),
-            'engine_capacity_max' => $this->normalizeNullableInt($_GET['engine_capacity_max'] ?? null),
+            'engine_capacity_min' => $this->normalizeNullableEngineCapacityFilterMin($_GET['engine_capacity_min'] ?? null),
+            'engine_capacity_max' => $this->normalizeNullableEngineCapacityFilterMax($_GET['engine_capacity_max'] ?? null),
             'power_min' => $this->normalizeNullableInt($_GET['power_min'] ?? null),
             'power_max' => $this->normalizeNullableInt($_GET['power_max'] ?? null),
             'fuel_type' => $this->sanitizeOptionalFuelType($_GET['fuel_type'] ?? null),
@@ -459,6 +459,36 @@ class MarketplaceController extends AppController
         }
 
         return is_numeric($value) ? (float) $value : null;
+    }
+
+    private function normalizeNullableEngineCapacityFilterMin(mixed $value): ?int
+    {
+        $normalized = $this->normalizeNullableFloat($value);
+
+        if ($normalized === null || $normalized < 0) {
+            return null;
+        }
+
+        if ($normalized > 20) {
+            return (int) round($normalized);
+        }
+
+        return max(0, (int) round(($normalized - 0.05) * 1000));
+    }
+
+    private function normalizeNullableEngineCapacityFilterMax(mixed $value): ?int
+    {
+        $normalized = $this->normalizeNullableFloat($value);
+
+        if ($normalized === null || $normalized < 0) {
+            return null;
+        }
+
+        if ($normalized > 20) {
+            return (int) round($normalized);
+        }
+
+        return max(0, (int) ceil(($normalized + 0.05) * 1000) - 1);
     }
 
     private function sanitizeText(?string $value): ?string
