@@ -239,6 +239,138 @@ class CommunityRepository
         }
     }
 
+    public function updatePostByOwner(int $userId, int $postId, array $data): ?array
+    {
+        $this->connection->beginTransaction();
+
+        try {
+            $ownershipStatement = $this->connection->prepare(
+                'SELECT id
+                FROM community_posts
+                WHERE id = :post_id
+                    AND user_id = :user_id
+                    AND is_active = TRUE
+                LIMIT 1'
+            );
+            $ownershipStatement->execute([
+                'post_id' => $postId,
+                'user_id' => $userId,
+            ]);
+
+            if (!$ownershipStatement->fetchColumn()) {
+                $this->connection->rollBack();
+                return null;
+            }
+
+            $existingImagesStatement = $this->connection->prepare(
+                'SELECT id, image_path
+                FROM community_post_images
+                WHERE post_id = :post_id
+                ORDER BY display_order ASC, id ASC'
+            );
+            $existingImagesStatement->execute([
+                'post_id' => $postId,
+            ]);
+            $existingImages = $existingImagesStatement->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
+            $removedImageIds = array_values(array_unique(array_map('intval', $data['removed_image_ids'] ?? [])));
+            $removedImagePaths = [];
+
+            if ($removedImageIds !== []) {
+                $removedImagePaths = array_values(array_map(
+                    static fn (array $row): string => (string) $row['image_path'],
+                    array_filter(
+                        $existingImages,
+                        static fn (array $row): bool => in_array((int) $row['id'], $removedImageIds, true)
+                    )
+                ));
+
+                $placeholders = [];
+                $params = [
+                    'post_id' => $postId,
+                ];
+                foreach ($removedImageIds as $index => $imageId) {
+                    $placeholder = 'image_id_' . $index;
+                    $placeholders[] = ':' . $placeholder;
+                    $params[$placeholder] = $imageId;
+                }
+
+                $deleteImagesStatement = $this->connection->prepare(
+                    'DELETE FROM community_post_images
+                    WHERE post_id = :post_id
+                        AND id IN (' . implode(', ', $placeholders) . ')'
+                );
+                $deleteImagesStatement->execute($params);
+            }
+
+            $updateStatement = $this->connection->prepare(
+                'UPDATE community_posts
+                SET brand_id = :brand_id,
+                    model_id = :model_id,
+                    content = :content,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = :post_id
+                    AND user_id = :user_id
+                    AND is_active = TRUE'
+            );
+            $updateStatement->execute([
+                'post_id' => $postId,
+                'user_id' => $userId,
+                'brand_id' => $data['brand_id'],
+                'model_id' => $data['model_id'],
+                'content' => $data['content'],
+            ]);
+
+            $remainingCountStatement = $this->connection->prepare(
+                'SELECT COUNT(*)
+                FROM community_post_images
+                WHERE post_id = :post_id'
+            );
+            $remainingCountStatement->execute([
+                'post_id' => $postId,
+            ]);
+            $remainingImagesCount = (int) $remainingCountStatement->fetchColumn();
+
+            $remainingSlots = max(0, 8 - $remainingImagesCount);
+            $newImagePaths = array_slice($data['image_paths'] ?? [], 0, $remainingSlots);
+
+            if ($newImagePaths !== []) {
+                $displayOrderStatement = $this->connection->prepare(
+                    'SELECT COALESCE(MAX(display_order), 0)
+                    FROM community_post_images
+                    WHERE post_id = :post_id'
+                );
+                $displayOrderStatement->execute([
+                    'post_id' => $postId,
+                ]);
+                $displayOrder = (int) $displayOrderStatement->fetchColumn();
+
+                $imageStatement = $this->connection->prepare(
+                    'INSERT INTO community_post_images (post_id, image_path, display_order)
+                    VALUES (:post_id, :image_path, :display_order)'
+                );
+
+                foreach ($newImagePaths as $index => $imagePath) {
+                    $imageStatement->execute([
+                        'post_id' => $postId,
+                        'image_path' => $imagePath,
+                        'display_order' => $displayOrder + $index + 1,
+                    ]);
+                }
+            }
+
+            $this->connection->commit();
+
+            return [
+                'removed_image_paths' => $removedImagePaths,
+                'kept_new_image_paths' => $newImagePaths,
+            ];
+        } catch (Throwable $exception) {
+            $this->connection->rollBack();
+            throw $exception;
+        }
+    }
+
     public function modelBelongsToBrand(int $modelId, int $brandId): bool
     {
         $statement = $this->connection->prepare(
@@ -386,13 +518,80 @@ class CommunityRepository
 
         return [
             'id' => (int) ($inserted['id'] ?? 0),
+            'post_id' => $postId,
             'user_id' => $userId,
             'author_name' => (string) ($author['full_name'] ?? ''),
             'author_username' => (string) ($author['username'] ?? ''),
             'content' => $content,
             'created_at' => (string) ($inserted['created_at'] ?? ''),
             'profile_path' => '/community/profile?id=' . $userId,
+            'is_own_comment' => true,
         ];
+    }
+
+    public function updateCommentByOwner(int $userId, int $commentId, string $content): ?array
+    {
+        $statement = $this->connection->prepare(
+            'UPDATE community_comments
+            SET content = :content
+            WHERE id = :comment_id
+                AND user_id = :user_id
+                AND is_active = TRUE
+            RETURNING id, post_id, user_id, content, created_at'
+        );
+        $statement->execute([
+            'comment_id' => $commentId,
+            'user_id' => $userId,
+            'content' => $content,
+        ]);
+
+        $updated = $statement->fetch(PDO::FETCH_ASSOC) ?: null;
+        if ($updated === null) {
+            return null;
+        }
+
+        $authorStatement = $this->connection->prepare(
+            'SELECT username, CONCAT(first_name, \' \', last_name) AS full_name
+            FROM users
+            WHERE id = :user_id
+            LIMIT 1'
+        );
+        $authorStatement->execute([
+            'user_id' => $userId,
+        ]);
+        $author = $authorStatement->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        return [
+            'id' => (int) $updated['id'],
+            'post_id' => (int) $updated['post_id'],
+            'user_id' => (int) $updated['user_id'],
+            'author_name' => (string) ($author['full_name'] ?? ''),
+            'author_username' => (string) ($author['username'] ?? ''),
+            'content' => (string) $updated['content'],
+            'created_at' => (string) $updated['created_at'],
+            'profile_path' => '/community/profile?id=' . $userId,
+            'is_own_comment' => true,
+        ];
+    }
+
+    public function deleteCommentByOwner(int $userId, int $commentId): ?int
+    {
+        $statement = $this->connection->prepare(
+            'UPDATE community_comments
+            SET is_active = FALSE
+            WHERE id = :comment_id
+                AND user_id = :user_id
+                AND is_active = TRUE
+            RETURNING post_id'
+        );
+        $statement->execute([
+            'comment_id' => $commentId,
+            'user_id' => $userId,
+        ]);
+
+        $deleted = $statement->fetch(PDO::FETCH_ASSOC) ?: null;
+
+        return $deleted !== null ? (int) $deleted['post_id'] : null;
     }
 
     public function getCommentState(int $userId, int $postId): array
@@ -579,6 +778,7 @@ class CommunityRepository
 
         $statement = $this->connection->prepare(
             'SELECT
+                id,
                 post_id,
                 image_path,
                 display_order
@@ -594,6 +794,7 @@ class CommunityRepository
             $postId = (int) $row['post_id'];
             $grouped[$postId] ??= [];
             $grouped[$postId][] = [
+                'id' => (int) $row['id'],
                 'path' => (string) $row['image_path'],
                 'display_order' => (int) $row['display_order'],
             ];

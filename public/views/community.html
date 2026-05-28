@@ -108,8 +108,10 @@ $composerFirstName = explode(' ', trim($composerUserName))[0] ?: $composerUserNa
 
 <div class="community-modal-backdrop" hidden data-community-modal-backdrop></div>
 <section class="community-modal" hidden data-community-modal>
-    <form method="post" enctype="multipart/form-data" class="community-modal-panel">
-        <input type="hidden" name="action" value="create_post">
+    <form method="post" enctype="multipart/form-data" class="community-modal-panel" data-community-create-form>
+        <input type="hidden" name="action" value="create_post" data-community-modal-action>
+        <input type="hidden" name="post_id" value="" data-community-modal-post-id>
+        <input type="hidden" name="removed_image_ids" value="" data-community-removed-image-ids>
         <input type="hidden" name="redirect_to" value="/community">
 
         <header class="community-modal-header">

@@ -1,6 +1,16 @@
 <?php
 $isOwnPost = ((int) ($currentUser['id'] ?? 0)) === (int) $post['user_id'];
 $commentsModalId = 'community-comments-modal-' . (int) $post['id'];
+$editPostPayload = htmlspecialchars(json_encode([
+    'id' => (int) $post['id'],
+    'content' => (string) $post['content'],
+    'brand_id' => $post['brand_id'] !== null ? (int) $post['brand_id'] : null,
+    'model_id' => $post['model_id'] !== null ? (int) $post['model_id'] : null,
+    'images' => array_map(static fn (array $image): array => [
+        'id' => (int) ($image['id'] ?? 0),
+        'path' => (string) ($image['path'] ?? ''),
+    ], $post['images'] ?? []),
+], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8');
 ?>
 <article class="community-post card" id="post-<?= (int) $post['id']; ?>">
     <div class="community-post-top">
@@ -35,6 +45,16 @@ $commentsModalId = 'community-comments-modal-' . (int) $post['id'];
                 </button>
 
                 <div class="community-post-menu-dropdown" hidden data-community-post-menu-dropdown>
+                    <?php if ($isOwnPost): ?>
+                        <button
+                            type="button"
+                            class="community-post-menu-action is-primary"
+                            data-community-edit-post-button
+                            data-community-edit-post-payload="<?= $editPostPayload; ?>"
+                        >
+                            Edytuj post
+                        </button>
+                    <?php endif; ?>
                     <form method="post" class="community-inline-form<?= $isOwnPost ? '' : ' community-report-form'; ?>"<?= $isOwnPost ? '' : ' data-community-report-form' ?>>
                         <input type="hidden" name="post_id" value="<?= (int) $post['id']; ?>">
                         <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/community', ENT_QUOTES, 'UTF-8'); ?>">
@@ -210,7 +230,7 @@ $commentsModalId = 'community-comments-modal-' . (int) $post['id'];
                 <?php else: ?>
                 <?php foreach ($post['comments'] as $comment): ?>
                     <?php $isOwnComment = ((int) ($currentUser['id'] ?? 0)) === (int) $comment['user_id']; ?>
-                    <article class="community-comment">
+                    <article class="community-comment" data-community-comment-id="<?= (int) $comment['id']; ?>" data-community-post-id="<?= (int) $post['id']; ?>">
                         <div class="community-comment-meta">
                             <div class="community-comment-meta-main">
                                 <a href="<?= htmlspecialchars($comment['profile_path'], ENT_QUOTES, 'UTF-8'); ?>" class="community-comment-author">
@@ -219,8 +239,7 @@ $commentsModalId = 'community-comments-modal-' . (int) $post['id'];
                                 <span><?= htmlspecialchars($comment['formatted_created_at'], ENT_QUOTES, 'UTF-8'); ?></span>
                             </div>
 
-                            <?php if (!$isOwnComment): ?>
-                                <div class="community-post-menu community-comment-menu" data-community-post-menu>
+                            <div class="community-post-menu community-comment-menu" data-community-post-menu>
                                     <button
                                         type="button"
                                         class="community-post-menu-trigger"
@@ -234,6 +253,20 @@ $commentsModalId = 'community-comments-modal-' . (int) $post['id'];
                                     </button>
 
                                     <div class="community-post-menu-dropdown" hidden data-community-post-menu-dropdown>
+                                        <?php if ($isOwnComment): ?>
+                                            <button type="button" class="community-post-menu-action is-primary" data-community-edit-comment-open>
+                                                Edytuj komentarz
+                                            </button>
+                                            <form method="post" class="community-inline-form community-comment-delete-form" data-community-comment-delete-form>
+                                                <input type="hidden" name="comment_id" value="<?= (int) $comment['id']; ?>">
+                                                <input type="hidden" name="post_id" value="<?= (int) $post['id']; ?>">
+                                                <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/community', ENT_QUOTES, 'UTF-8'); ?>">
+                                                <input type="hidden" name="action" value="delete_comment">
+                                                <button type="submit" class="community-post-menu-action is-danger">
+                                                    Usuń komentarz
+                                                </button>
+                                            </form>
+                                        <?php else: ?>
                                         <form method="post" class="community-inline-form community-report-form" data-community-report-form>
                                             <input type="hidden" name="comment_id" value="<?= (int) $comment['id']; ?>">
                                             <input type="hidden" name="post_id" value="<?= (int) $post['id']; ?>">
@@ -243,11 +276,28 @@ $commentsModalId = 'community-comments-modal-' . (int) $post['id'];
                                                 Zgłoś komentarz
                                             </button>
                                         </form>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
-                            <?php endif; ?>
                         </div>
-                        <p class="community-comment-content"><?= nl2br(htmlspecialchars($comment['content'], ENT_QUOTES, 'UTF-8')); ?></p>
+                        <p class="community-comment-content" data-community-comment-content><?= nl2br(htmlspecialchars($comment['content'], ENT_QUOTES, 'UTF-8')); ?></p>
+                        <?php if ($isOwnComment): ?>
+                            <form method="post" class="community-comment-edit-form" hidden data-community-comment-edit-form>
+                                <input type="hidden" name="action" value="update_comment">
+                                <input type="hidden" name="comment_id" value="<?= (int) $comment['id']; ?>">
+                                <input type="hidden" name="post_id" value="<?= (int) $post['id']; ?>">
+                                <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/community', ENT_QUOTES, 'UTF-8'); ?>">
+                                <textarea name="comment_content" rows="4" class="community-textarea-small" required><?= htmlspecialchars($comment['content'], ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                <div class="community-comment-edit-actions">
+                                    <button type="button" class="community-button community-button-muted" data-community-edit-comment-cancel>
+                                        Anuluj
+                                    </button>
+                                    <button type="submit" class="community-button community-button-primary">
+                                        Zapisz
+                                    </button>
+                                </div>
+                            </form>
+                        <?php endif; ?>
                     </article>
                 <?php endforeach; ?>
                 <?php endif; ?>

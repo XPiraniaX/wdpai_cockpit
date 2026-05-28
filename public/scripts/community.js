@@ -44,13 +44,23 @@ const createPostModal = document.querySelector('[data-community-modal]');
 const createPostBackdrop = document.querySelector('[data-community-modal-backdrop]');
 const openModalButtons = document.querySelectorAll('[data-open-community-modal]');
 const closeModalButton = document.querySelector('[data-close-community-modal]');
+const createPostForm = createPostModal?.querySelector('[data-community-create-form]') ?? null;
+const createPostActionInput = createPostModal?.querySelector('[data-community-modal-action]') ?? null;
+const createPostIdInput = createPostModal?.querySelector('[data-community-modal-post-id]') ?? null;
+const removedPostImageIdsInput = createPostModal?.querySelector('[data-community-removed-image-ids]') ?? null;
 const modalTextarea = createPostModal?.querySelector('.community-modal-textarea') ?? null;
 const imagesGallery = createPostModal?.querySelector('[data-community-images-gallery]') ?? null;
 const imagesInput = createPostModal?.querySelector('[data-community-images-input]') ?? null;
 const imagesTrigger = createPostModal?.querySelector('[data-community-images-trigger]') ?? null;
 const modalPanel = createPostModal?.querySelector('.community-modal-panel') ?? null;
+const createPostModalTitle = createPostModal?.querySelector('.community-modal-title') ?? null;
+const createPostSubmitButton = createPostModal?.querySelector('.community-modal-submit') ?? null;
+const createPostBrandSelect = createPostModal?.querySelector('select[name="brand_id"]') ?? null;
+const createPostModelSelect = createPostModal?.querySelector('select[name="model_id"]') ?? null;
 
 let editablePostFiles = [];
+let editableExistingPostImages = [];
+let removedExistingPostImageIds = [];
 let activeCommentsModal = null;
 let lockedScrollY = 0;
 
@@ -119,7 +129,15 @@ const syncPostImagesInput = () => {
     imagesInput.files = transfer.files;
 };
 
-const countEditablePostImages = () => editablePostFiles.length;
+const syncRemovedExistingPostImageIds = () => {
+    if (!removedPostImageIdsInput) {
+        return;
+    }
+
+    removedPostImageIdsInput.value = removedExistingPostImageIds.join(',');
+};
+
+const countEditablePostImages = () => editablePostFiles.length + editableExistingPostImages.length;
 
 const openPostImagePicker = () => {
     if (imagesInput && countEditablePostImages() < 8) {
@@ -157,6 +175,34 @@ const renderPostImagesGallery = () => {
     }
 
     imagesGallery.innerHTML = '';
+
+    editableExistingPostImages.forEach((image, index) => {
+        const card = document.createElement('div');
+        card.className = 'community-post-images-edit-card';
+
+        const photo = document.createElement('img');
+        photo.className = 'community-post-images-edit-photo';
+        photo.alt = `Istniejące zdjęcie posta ${index + 1}`;
+        photo.src = String(image.path ?? '');
+
+        const removeButton = document.createElement('button');
+        removeButton.type = 'button';
+        removeButton.className = 'community-post-images-edit-remove';
+        removeButton.setAttribute('aria-label', `Usuń zdjęcie ${index + 1}`);
+        removeButton.addEventListener('click', () => {
+            if (image.id) {
+                removedExistingPostImageIds.push(Number(image.id));
+                removedExistingPostImageIds = Array.from(new Set(removedExistingPostImageIds));
+                syncRemovedExistingPostImageIds();
+            }
+            editableExistingPostImages = editableExistingPostImages.filter((currentImage) => currentImage.id !== image.id);
+            renderPostImagesGallery();
+        });
+
+        card.appendChild(photo);
+        card.appendChild(removeButton);
+        imagesGallery.appendChild(card);
+    });
 
     editablePostFiles.forEach((file, index) => {
         const card = document.createElement('div');
@@ -202,8 +248,36 @@ const renderPostImagesGallery = () => {
 
 const resetPostImagesGallery = () => {
     editablePostFiles = [];
+    editableExistingPostImages = [];
+    removedExistingPostImageIds = [];
+    syncRemovedExistingPostImageIds();
     syncPostImagesInput();
     renderPostImagesGallery();
+};
+
+const resetCreatePostFormState = () => {
+    createPostForm?.reset();
+    if (createPostActionInput) {
+        createPostActionInput.value = 'create_post';
+    }
+    if (createPostIdInput) {
+        createPostIdInput.value = '';
+    }
+    if (createPostModalTitle) {
+        createPostModalTitle.textContent = 'Utwórz post';
+    }
+    if (createPostSubmitButton) {
+        createPostSubmitButton.textContent = 'Opublikuj';
+    }
+    if (createPostBrandSelect) {
+        createPostBrandSelect.value = '';
+        createPostBrandSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (createPostModelSelect) {
+        createPostModelSelect.value = '';
+        createPostModelSelect.disabled = true;
+    }
+    resetPostImagesGallery();
 };
 
 const openCreatePostModal = () => {
@@ -220,6 +294,45 @@ const openCreatePostModal = () => {
     }
 };
 
+const populateEditPostModal = (payload) => {
+    resetCreatePostFormState();
+
+    if (createPostActionInput) {
+        createPostActionInput.value = 'update_post';
+    }
+    if (createPostIdInput) {
+        createPostIdInput.value = String(payload.id ?? '');
+    }
+    if (createPostModalTitle) {
+        createPostModalTitle.textContent = 'Edytuj post';
+    }
+    if (createPostSubmitButton) {
+        createPostSubmitButton.textContent = 'Zapisz zmiany';
+    }
+    if (modalTextarea) {
+        modalTextarea.value = String(payload.content ?? '');
+    }
+    if (createPostBrandSelect) {
+        createPostBrandSelect.value = payload.brand_id ? String(payload.brand_id) : '';
+        createPostBrandSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (createPostModelSelect) {
+        createPostModelSelect.value = payload.model_id ? String(payload.model_id) : '';
+    }
+
+    editableExistingPostImages = Array.isArray(payload.images)
+        ? payload.images
+            .filter((image) => image && image.path)
+            .slice(0, 8)
+            .map((image) => ({
+                id: Number(image.id || 0),
+                path: String(image.path || ''),
+            }))
+        : [];
+    syncRemovedExistingPostImageIds();
+    renderPostImagesGallery();
+};
+
 const closeCreatePostModal = () => {
     if (!createPostModal || !createPostBackdrop) {
         return;
@@ -228,6 +341,7 @@ const closeCreatePostModal = () => {
     createPostModal.hidden = true;
     createPostBackdrop.hidden = true;
     syncBodyScrollLock();
+    resetCreatePostFormState();
 };
 
 const openCommentsModal = (modalElement) => {
@@ -254,7 +368,10 @@ const closeCommentsModal = (modalElement = activeCommentsModal) => {
 };
 
 openModalButtons.forEach((button) => {
-    button.addEventListener('click', openCreatePostModal);
+    button.addEventListener('click', () => {
+        resetCreatePostFormState();
+        openCreatePostModal();
+    });
 });
 
 closeModalButton?.addEventListener('click', closeCreatePostModal);
@@ -570,14 +687,83 @@ const escapeHtml = (value) => String(value)
     .replace(/'/g, '&#039;');
 
 const buildCommunityCommentMarkup = (comment) => `
-    <article class="community-comment">
+    <article class="community-comment" data-community-comment-id="${Number(comment.id || 0)}" data-community-post-id="${Number(comment.post_id || 0)}">
         <div class="community-comment-meta">
-            <a href="${escapeHtml(comment.profile_path)}" class="community-comment-author">${escapeHtml(comment.author_name)}</a>
-            <span>${escapeHtml(comment.formatted_created_at)}</span>
+            <div class="community-comment-meta-main">
+                <a href="${escapeHtml(comment.profile_path)}" class="community-comment-author">${escapeHtml(comment.author_name)}</a>
+                <span>${escapeHtml(comment.formatted_created_at)}</span>
+            </div>
+            ${comment.is_own_comment ? `
+                <div class="community-post-menu community-comment-menu" data-community-post-menu>
+                    <button
+                        type="button"
+                        class="community-post-menu-trigger"
+                        aria-label="Opcje komentarza"
+                        aria-expanded="false"
+                        data-community-post-menu-trigger
+                    >
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </button>
+                    <div class="community-post-menu-dropdown" hidden data-community-post-menu-dropdown>
+                        <button type="button" class="community-post-menu-action is-primary" data-community-edit-comment-open>
+                            Edytuj komentarz
+                        </button>
+                        <form method="post" class="community-inline-form community-comment-delete-form" data-community-comment-delete-form>
+                            <input type="hidden" name="comment_id" value="${Number(comment.id || 0)}">
+                            <input type="hidden" name="post_id" value="${Number(comment.post_id || 0)}">
+                            <input type="hidden" name="redirect_to" value="${escapeHtml(window.location.pathname + window.location.search)}">
+                            <input type="hidden" name="action" value="delete_comment">
+                            <button type="submit" class="community-post-menu-action is-danger">
+                                Usuń komentarz
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            ` : ''}
         </div>
-        <p class="community-comment-content">${escapeHtml(comment.content).replace(/\n/g, '<br>')}</p>
+        <p class="community-comment-content" data-community-comment-content>${escapeHtml(comment.content).replace(/\n/g, '<br>')}</p>
+        ${comment.is_own_comment ? `
+            <form method="post" class="community-comment-edit-form" hidden data-community-comment-edit-form>
+                <input type="hidden" name="action" value="update_comment">
+                <input type="hidden" name="comment_id" value="${Number(comment.id || 0)}">
+                <input type="hidden" name="post_id" value="${Number(comment.post_id || 0)}">
+                <input type="hidden" name="redirect_to" value="${escapeHtml(window.location.pathname + window.location.search)}">
+                <textarea name="comment_content" rows="4" class="community-textarea-small" required>${escapeHtml(comment.content)}</textarea>
+                <div class="community-comment-edit-actions">
+                    <button type="button" class="community-button community-button-muted" data-community-edit-comment-cancel>
+                        Anuluj
+                    </button>
+                    <button type="submit" class="community-button community-button-primary">
+                        Zapisz
+                    </button>
+                </div>
+            </form>
+        ` : ''}
     </article>
 `;
+
+const syncCommunityCommentTriggerState = (postId, commentCount, commentedByCurrentUser) => {
+    const commentButton = document.querySelector(`[data-open-comments-modal][data-comments-modal-id="community-comments-modal-${postId}"]`);
+    if (!commentButton) {
+        return;
+    }
+
+    const count = commentButton.querySelector('[data-community-comment-count]');
+    const icon = commentButton.querySelector('[data-community-comment-icon]');
+    commentButton.classList.toggle('is-active', Boolean(commentedByCurrentUser));
+
+    if (count) {
+        count.textContent = String(commentCount ?? 0);
+    }
+
+    if (icon) {
+        icon.src = commentedByCurrentUser
+            ? '/public/assets/icons/comment_icon_full.svg'
+            : '/public/assets/icons/comment_icon.svg';
+    }
+};
 
 document.querySelectorAll('[data-community-comment-form]').forEach((form) => {
     form.addEventListener('submit', async (event) => {
@@ -620,19 +806,8 @@ document.querySelectorAll('[data-community-comment-form]').forEach((form) => {
             commentsList.insertAdjacentHTML('afterbegin', buildCommunityCommentMarkup(payload.comment));
             textarea.value = '';
 
-            const count = commentButton.querySelector('[data-community-comment-count]');
-            const icon = commentButton.querySelector('[data-community-comment-icon]');
-            commentButton.classList.toggle('is-active', Boolean(payload.commented_by_current_user));
-
-            if (count) {
-                count.textContent = String(payload.comment_count ?? 0);
-            }
-
-            if (icon) {
-                icon.src = payload.commented_by_current_user
-                    ? '/public/assets/icons/comment_icon_full.svg'
-                    : '/public/assets/icons/comment_icon.svg';
-            }
+            initializeCommunityFeedChunk(commentsList);
+            syncCommunityCommentTriggerState(postId, payload.comment_count ?? 0, payload.commented_by_current_user);
         } catch (error) {
             form.submit();
         } finally {
@@ -664,6 +839,12 @@ const bindCommunityCommentModals = (root) => {
         if (commentsModal.parentElement !== document.body) {
             document.body.appendChild(commentsModal);
         }
+
+        bindCommunityPostMenus(commentsModal);
+        bindCommunityReportForms(commentsModal);
+        bindCommunityCommentForms(commentsModal);
+        bindCommunityCommentEditActions(commentsModal);
+        bindCommunityCommentDeleteForms(commentsModal);
 
         if (commentsModal.dataset.boundClose === 'true') {
             return;
@@ -897,20 +1078,8 @@ const bindCommunityCommentForms = (root) => {
                 commentsList.querySelector('[data-community-comments-empty]')?.remove();
                 commentsList.insertAdjacentHTML('afterbegin', buildCommunityCommentMarkup(payload.comment));
                 textarea.value = '';
-
-                const count = commentButton.querySelector('[data-community-comment-count]');
-                const icon = commentButton.querySelector('[data-community-comment-icon]');
-                commentButton.classList.toggle('is-active', Boolean(payload.commented_by_current_user));
-
-                if (count) {
-                    count.textContent = String(payload.comment_count ?? 0);
-                }
-
-                if (icon) {
-                    icon.src = payload.commented_by_current_user
-                        ? '/public/assets/icons/comment_icon_full.svg'
-                        : '/public/assets/icons/comment_icon.svg';
-                }
+                initializeCommunityFeedChunk(commentsList);
+                syncCommunityCommentTriggerState(postId, payload.comment_count ?? 0, payload.commented_by_current_user);
             } catch (error) {
                 form.submit();
             } finally {
@@ -919,6 +1088,201 @@ const bindCommunityCommentForms = (root) => {
         });
 
         form.dataset.boundComment = 'true';
+    });
+};
+
+const bindCommunityCommentEditActions = (root) => {
+    root.querySelectorAll('[data-community-edit-comment-open]').forEach((button) => {
+        if (button.dataset.boundEditOpen === 'true') {
+            return;
+        }
+
+        button.addEventListener('click', () => {
+            const comment = button.closest('[data-community-comment-id]');
+            const editForm = comment?.querySelector('[data-community-comment-edit-form]');
+            const content = comment?.querySelector('[data-community-comment-content]');
+            const menu = button.closest('[data-community-post-menu]');
+
+            if (!comment || !editForm || !content) {
+                return;
+            }
+
+            content.hidden = true;
+            editForm.hidden = false;
+            editForm.querySelector('textarea[name="comment_content"]')?.focus();
+
+            if (menu) {
+                closeCommunityPostMenu(menu);
+            }
+        });
+
+        button.dataset.boundEditOpen = 'true';
+    });
+
+    root.querySelectorAll('[data-community-edit-comment-cancel]').forEach((button) => {
+        if (button.dataset.boundEditCancel === 'true') {
+            return;
+        }
+
+        button.addEventListener('click', () => {
+            const comment = button.closest('[data-community-comment-id]');
+            const editForm = comment?.querySelector('[data-community-comment-edit-form]');
+            const content = comment?.querySelector('[data-community-comment-content]');
+
+            if (!comment || !editForm || !content) {
+                return;
+            }
+
+            editForm.hidden = true;
+            content.hidden = false;
+        });
+
+        button.dataset.boundEditCancel = 'true';
+    });
+
+    root.querySelectorAll('[data-community-comment-edit-form]').forEach((form) => {
+        if (form.dataset.boundEditSubmit === 'true') {
+            return;
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const comment = form.closest('[data-community-comment-id]');
+            const content = comment?.querySelector('[data-community-comment-content]');
+            const submitButton = form.querySelector('button[type="submit"]');
+            const textarea = form.querySelector('textarea[name="comment_content"]');
+            const postId = form.querySelector('input[name="post_id"]')?.value ?? '';
+
+            if (!comment || !content || !submitButton || !textarea || !postId) {
+                form.submit();
+                return;
+            }
+
+            const formData = new FormData(form);
+            submitButton.disabled = true;
+
+            try {
+                const response = await fetch(window.location.pathname + window.location.search, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+
+                const payload = await response.json();
+                if (!payload.success || !payload.comment) {
+                    throw new Error('Invalid payload');
+                }
+
+                content.innerHTML = escapeHtml(payload.comment.content).replace(/\n/g, '<br>');
+                textarea.value = payload.comment.content;
+                content.hidden = false;
+                form.hidden = true;
+                syncCommunityCommentTriggerState(postId, payload.comment_count ?? 0, payload.commented_by_current_user);
+                showAppToast(payload.message || 'Komentarz został zaktualizowany.', 'success');
+            } catch (error) {
+                form.submit();
+            } finally {
+                submitButton.disabled = false;
+            }
+        });
+
+        form.dataset.boundEditSubmit = 'true';
+    });
+};
+
+const bindCommunityCommentDeleteForms = (root) => {
+    root.querySelectorAll('[data-community-comment-delete-form]').forEach((form) => {
+        if (form.dataset.boundDeleteComment === 'true') {
+            return;
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const comment = form.closest('[data-community-comment-id]');
+            const commentsList = form.closest('[data-community-comments-list]');
+            const postId = form.querySelector('input[name="post_id"]')?.value ?? '';
+
+            if (!comment || !commentsList || !postId) {
+                form.submit();
+                return;
+            }
+
+            const formData = new FormData(form);
+
+            try {
+                const response = await fetch(window.location.pathname + window.location.search, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+
+                const payload = await response.json();
+                if (!payload.success) {
+                    throw new Error('Invalid payload');
+                }
+
+                comment.remove();
+                if (!commentsList.querySelector('[data-community-comment-id]')) {
+                    commentsList.innerHTML = '<p class="community-comments-empty" data-community-comments-empty>Brak komentarzy. Bądź pierwszy.</p>';
+                }
+
+                syncCommunityCommentTriggerState(postId, payload.comment_count ?? 0, payload.commented_by_current_user);
+                showAppToast(payload.message || 'Komentarz został usunięty.', 'success');
+
+                const menu = form.closest('[data-community-post-menu]');
+                if (menu) {
+                    closeCommunityPostMenu(menu);
+                }
+            } catch (error) {
+                form.submit();
+            }
+        });
+
+        form.dataset.boundDeleteComment = 'true';
+    });
+};
+
+const bindCommunityEditPostButtons = (root) => {
+    root.querySelectorAll('[data-community-edit-post-button]').forEach((button) => {
+        if (button.dataset.boundEditPost === 'true') {
+            return;
+        }
+
+        button.addEventListener('click', () => {
+            const payloadRaw = button.getAttribute('data-community-edit-post-payload');
+            const menu = button.closest('[data-community-post-menu]');
+
+            if (!payloadRaw) {
+                return;
+            }
+
+            try {
+                const payload = JSON.parse(payloadRaw);
+                populateEditPostModal(payload);
+                openCreatePostModal();
+                if (menu) {
+                    closeCommunityPostMenu(menu);
+                }
+            } catch (error) {
+                // ignore malformed payload
+            }
+        });
+
+        button.dataset.boundEditPost = 'true';
     });
 };
 
@@ -955,10 +1319,13 @@ const initializeCommunityFeedChunk = (root) => {
     bindCommunityCarousels(root);
     bindCommunityCommentModals(root);
     bindCommunityCommentOpeners(root);
+    bindCommunityEditPostButtons(root);
     bindCommunityLikeForms(root);
     bindCommunitySaveForms(root);
     bindCommunityReportForms(root);
     bindCommunityCommentForms(root);
+    bindCommunityCommentEditActions(root);
+    bindCommunityCommentDeleteForms(root);
     bindCommunityPostMenus(root);
 };
 
@@ -1093,4 +1460,7 @@ if (feed && feedSentinel) {
     feedObserver.observe(feedSentinel);
 }
 
+bindCommunityCommentEditActions(document);
+bindCommunityCommentDeleteForms(document);
+bindCommunityEditPostButtons(document);
 resetPostImagesGallery();

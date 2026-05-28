@@ -477,6 +477,16 @@
     color: #0b0f17;
 }
 
+.community-post-menu-action.is-primary {
+    background: rgba(56, 189, 248, 0.9);
+    color: #071120;
+}
+
+.community-post-menu-action.is-primary:hover {
+    background: #67d2ff;
+    color: #071120;
+}
+
 .community-avatar {
     position: relative;
     flex: 0 0 auto;
@@ -547,6 +557,23 @@
     color: #ebf2ff;
     font-size: 15px;
     line-height: 1.7;
+}
+
+.community-comment-edit-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.community-comment-edit-form[hidden] {
+    display: none !important;
+}
+
+.community-comment-edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
 }
 
 .community-post-carousel {

@@ -135,6 +135,68 @@ class CommunityController extends AppController
                 $this->redirect($redirectTo);
                 return;
 
+            case 'update_post':
+                $postId = (int) ($_POST['post_id'] ?? 0);
+                $content = trim((string) ($_POST['content'] ?? ''));
+
+                if ($postId <= 0 || $content === '') {
+                    $this->setFlash('error', 'Treść posta nie może być pusta.');
+                    $this->redirect($redirectTo);
+                    return;
+                }
+
+                $brandId = $this->normalizeNullableInt($_POST['brand_id'] ?? null);
+                $modelId = $this->normalizeNullableInt($_POST['model_id'] ?? null);
+
+                if ($modelId !== null && $brandId === null) {
+                    $this->setFlash('error', 'Najpierw wybierz markę.');
+                    $this->redirect($redirectTo);
+                    return;
+                }
+
+                if ($brandId !== null && $modelId !== null && !$repository->modelBelongsToBrand($modelId, $brandId)) {
+                    $this->setFlash('error', 'Wybrany model nie pasuje do marki.');
+                    $this->redirect($redirectTo);
+                    return;
+                }
+
+                $removedImageIds = $this->normalizeIntegerList($_POST['removed_image_ids'] ?? '');
+                $imagePaths = $this->handlePostImageUploads($userId);
+
+                try {
+                    $result = $repository->updatePostByOwner($userId, $postId, [
+                        'brand_id' => $brandId,
+                        'model_id' => $modelId,
+                        'content' => $content,
+                        'image_paths' => $imagePaths,
+                        'removed_image_ids' => $removedImageIds,
+                    ]);
+                } catch (Throwable $exception) {
+                    $this->deleteUploadedFiles($imagePaths);
+                    throw $exception;
+                }
+
+                if ($result === null) {
+                    $this->deleteUploadedFiles($imagePaths);
+                    $this->setFlash('error', 'Nie udało się zaktualizować posta.');
+                    $this->redirect($redirectTo);
+                    return;
+                }
+
+                if (!empty($result['removed_image_paths'])) {
+                    $this->deleteUploadedFiles($result['removed_image_paths']);
+                }
+                if (count($imagePaths) > count($result['kept_new_image_paths'] ?? [])) {
+                    $discarded = array_slice($imagePaths, count($result['kept_new_image_paths'] ?? []));
+                    if ($discarded !== []) {
+                        $this->deleteUploadedFiles($discarded);
+                    }
+                }
+
+                $this->setFlash('success', 'Post został zaktualizowany.');
+                $this->redirect($redirectTo);
+                return;
+
             case 'toggle_like':
                 $postId = (int) ($_POST['post_id'] ?? 0);
                 if ($postId > 0) {
@@ -192,6 +254,53 @@ class CommunityController extends AppController
                 }
 
                 $this->redirect($redirectTo . '#post-' . $postId);
+                return;
+
+            case 'update_comment':
+                $commentId = (int) ($_POST['comment_id'] ?? 0);
+                $content = trim((string) ($_POST['comment_content'] ?? ''));
+
+                if ($commentId > 0 && $content !== '') {
+                    $comment = $repository->updateCommentByOwner($userId, $commentId, $content);
+
+                    if ($comment !== null && $this->isAjaxRequest()) {
+                        $comment['formatted_created_at'] = $this->formatDateTime($comment['created_at']);
+                        $state = $repository->getCommentState($userId, (int) $comment['post_id']);
+                        $this->jsonResponse([
+                            'success' => true,
+                            'post_id' => (int) $comment['post_id'],
+                            'comment_id' => $commentId,
+                            'commented_by_current_user' => $state['commented_by_current_user'],
+                            'comment_count' => $state['comment_count'],
+                            'comment' => $comment,
+                            'message' => 'Komentarz został zaktualizowany.',
+                        ]);
+                    }
+                }
+
+                $this->redirect($redirectTo);
+                return;
+
+            case 'delete_comment':
+                $commentId = (int) ($_POST['comment_id'] ?? 0);
+
+                if ($commentId > 0) {
+                    $postId = $repository->deleteCommentByOwner($userId, $commentId);
+
+                    if ($postId !== null && $this->isAjaxRequest()) {
+                        $state = $repository->getCommentState($userId, $postId);
+                        $this->jsonResponse([
+                            'success' => true,
+                            'post_id' => $postId,
+                            'comment_id' => $commentId,
+                            'commented_by_current_user' => $state['commented_by_current_user'],
+                            'comment_count' => $state['comment_count'],
+                            'message' => 'Komentarz został usunięty.',
+                        ]);
+                    }
+                }
+
+                $this->redirect($redirectTo);
                 return;
 
             case 'delete_post':
@@ -306,6 +415,22 @@ class CommunityController extends AppController
     private function formatDateTime(string $value): string
     {
         return (new DateTimeImmutable($value))->format('d.m.Y • H:i');
+    }
+
+    private function normalizeIntegerList(string|array|null $value): array
+    {
+        if (is_array($value)) {
+            return array_values(array_unique(array_filter(array_map('intval', $value), static fn (int $item): bool => $item > 0)));
+        }
+
+        if (!is_string($value) || trim($value) === '') {
+            return [];
+        }
+
+        return array_values(array_unique(array_filter(
+            array_map('intval', preg_split('/\s*,\s*/', trim($value)) ?: []),
+            static fn (int $item): bool => $item > 0
+        )));
     }
 
     private function normalizeNullableInt(mixed $value): ?int
