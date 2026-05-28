@@ -17,6 +17,7 @@ class DashboardController extends AppController
         $lastFuelLog = $repository->getLastFuelLog($userId);
         $garageCars = $repository->getGarageCars($userId, 12);
         $communitySneakPeeks = $repository->getCommunitySneakPeeks($userId, 2);
+        $marketplaceSneakPeek = $repository->getMarketplaceSneakPeek($userId);
 
         $stats = [
             'nextInspectionDate' => $this->formatDate($nextInspection['valid_until'] ?? null),
@@ -58,6 +59,18 @@ class DashboardController extends AppController
             'garagePlaceholderCount' => $placeholderCount,
             'currentUserId' => $userId,
             'communitySneakPeeks' => $communitySneakPeeks,
+            'marketplaceSneakPeek' => $marketplaceSneakPeek !== null ? [
+                'id' => $marketplaceSneakPeek['id'],
+                'title' => $marketplaceSneakPeek['title'],
+                'priceLabel' => $this->formatMoney($marketplaceSneakPeek['priceAmount'], 'PLN'),
+                'yearLabel' => (string) $marketplaceSneakPeek['productionYear'],
+                'mileageLabel' => $this->formatMileage($marketplaceSneakPeek['mileageKm']),
+                'fuelLabel' => $this->formatFuelType($marketplaceSneakPeek['fuelType']),
+                'categoryLabel' => $marketplaceSneakPeek['brandName'] . ' / ' . $marketplaceSneakPeek['modelName'],
+                'locationLabel' => $marketplaceSneakPeek['city'],
+                'imagePath' => $marketplaceSneakPeek['imagePath'],
+                'marketplacePath' => $marketplaceSneakPeek['marketplacePath'],
+            ] : null,
             'fuelChooserCars' => array_map(function (array $car): array {
                 return [
                     'id' => (int) $car['id'],
@@ -133,6 +146,21 @@ class DashboardController extends AppController
         }
 
         return number_format((int) $mileage, 0, ',', ' ') . ' km';
+    }
+
+    private function formatFuelType(?string $fuelType): string
+    {
+        return match ($fuelType) {
+            'petrol' => 'Benzyna',
+            'diesel' => 'Diesel',
+            'hybrid' => 'Hybryda',
+            'plug_in_hybrid' => 'Plug-in hybrid',
+            'electric' => 'Elektryk',
+            'lpg' => 'LPG',
+            'cng' => 'CNG',
+            'other' => 'Inne',
+            default => 'Brak danych',
+        };
     }
 
     private function formatCarCountMeta(int $carCount): string

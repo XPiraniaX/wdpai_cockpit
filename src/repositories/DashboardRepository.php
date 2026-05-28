@@ -245,6 +245,61 @@ class DashboardRepository
         }, $posts);
     }
 
+    public function getMarketplaceSneakPeek(int $userId): ?array
+    {
+        $statement = $this->connection->prepare(
+            "SELECT
+                feed.*,
+                CASE
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM vehicles v
+                        WHERE v.user_id = :user_id
+                            AND v.status = :status
+                            AND v.brand_id = feed.brand_id
+                    ) THEN 1
+                    ELSE 2
+                END AS match_priority
+            FROM vw_marketplace_feed feed
+            ORDER BY match_priority ASC, feed.created_at DESC, feed.id DESC
+            LIMIT 1"
+        );
+        $statement->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        $statement->bindValue(':status', 'active', PDO::PARAM_STR);
+        $statement->execute();
+
+        $listing = $statement->fetch(PDO::FETCH_ASSOC);
+        if (!$listing) {
+            return null;
+        }
+
+        $imageStatement = $this->connection->prepare(
+            'SELECT image_path
+            FROM marketplace_listing_images
+            WHERE listing_id = :listing_id
+            ORDER BY display_order ASC, id ASC
+            LIMIT 1'
+        );
+        $imageStatement->execute([
+            'listing_id' => (int) $listing['id'],
+        ]);
+        $imagePath = $imageStatement->fetchColumn() ?: null;
+
+        return [
+            'id' => (int) $listing['id'],
+            'title' => (string) $listing['title'],
+            'priceAmount' => (float) $listing['price_amount'],
+            'productionYear' => (int) $listing['production_year'],
+            'mileageKm' => (int) $listing['mileage_km'],
+            'fuelType' => (string) ($listing['fuel_type'] ?? ''),
+            'brandName' => (string) $listing['brand_name'],
+            'modelName' => (string) $listing['model_name'],
+            'city' => (string) $listing['city'],
+            'imagePath' => $imagePath ? (string) $imagePath : null,
+            'marketplacePath' => '/marketplace#listing-' . (int) $listing['id'],
+        ];
+    }
+
     private function buildCommunityCategoryLabel(?string $brandName, ?string $modelName): string
     {
         if ($brandName && $modelName) {

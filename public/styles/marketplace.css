@@ -635,6 +635,7 @@ body.is-marketplace-page {
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
+    scrollbar-gutter: stable;
     scrollbar-width: thin;
     scrollbar-color: rgba(56, 189, 248, 0.45) rgba(8, 15, 30, 0.58);
 }
@@ -661,6 +662,25 @@ body.is-marketplace-page {
     min-height: auto;
     overflow: visible;
     padding-right: 0;
+}
+
+.marketplace-details-top .marketplace-listing-top-actions {
+    position: relative;
+    z-index: 2;
+}
+
+.marketplace-details-top .marketplace-save-button {
+    z-index: 3;
+}
+
+.marketplace-details-top .marketplace-save-tooltip {
+    left: auto;
+    right: 0;
+    transform: translateY(0);
+}
+
+.marketplace-details-top .marketplace-save-button:hover .marketplace-save-tooltip {
+    transform: translateY(-2px);
 }
 
 .marketplace-details-description {

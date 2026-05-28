@@ -47,6 +47,43 @@ const refreshMyCarsContent = async (refreshUrl) => {
 };
 
 window.initMyCarsPage = () => {
+    document.querySelectorAll('.cars-page .car-card-arrow').forEach((arrow) => {
+        arrow.querySelector('.cars-card-tooltip')?.remove();
+
+        if (arrow.querySelector('.dashboard-card-tooltip')) {
+            return;
+        }
+
+        const tooltip = document.createElement('span');
+        tooltip.className = 'dashboard-card-tooltip';
+        tooltip.textContent = 'Wejdz w szczegoly pojazdu';
+        arrow.appendChild(tooltip);
+    });
+
+    document.querySelectorAll('.cars-page .car-card-favorite').forEach((button) => {
+        button.removeAttribute('title');
+
+        if (button.querySelector('.dashboard-card-tooltip')) {
+            return;
+        }
+
+        const tooltip = document.createElement('span');
+        tooltip.className = 'dashboard-card-tooltip';
+        tooltip.textContent = button.getAttribute('aria-label') || 'Ustaw jako pojazd glowny';
+        button.appendChild(tooltip);
+    });
+
+    document.querySelectorAll('.cars-page .cars-hero-arrow').forEach((arrow) => {
+        if (arrow.querySelector('.dashboard-card-tooltip')) {
+            return;
+        }
+
+        const tooltip = document.createElement('span');
+        tooltip.className = 'dashboard-card-tooltip';
+        tooltip.textContent = 'Wejdz w szczegoly pojazdu';
+        arrow.appendChild(tooltip);
+    });
+
     const pendingToast = sessionStorage.getItem('myCarsToast');
     if (pendingToast) {
         sessionStorage.removeItem('myCarsToast');
