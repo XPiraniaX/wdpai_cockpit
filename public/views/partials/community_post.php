@@ -86,7 +86,6 @@ $commentsModalId = 'community-comments-modal-' . (int) $post['id'];
                 class="community-post-action-icon community-post-action-like<?= $post['liked_by_current_user'] ? ' is-active' : ''; ?>"
                 data-community-like-button
                 aria-label="Polub post"
-                title="Polub post"
             >
                 <span class="community-post-action-like-icon" aria-hidden="true" data-community-like-icon>
                     <?php if ($post['liked_by_current_user']): ?>
@@ -99,6 +98,7 @@ $commentsModalId = 'community-comments-modal-' . (int) $post['id'];
                         </svg>
                     <?php endif; ?>
                 </span>
+                <span class="community-post-action-tooltip">Polub post</span>
                 <span class="community-post-action-count" data-community-like-count><?= (int) $post['like_count']; ?></span>
             </button>
         </form>
@@ -107,7 +107,6 @@ $commentsModalId = 'community-comments-modal-' . (int) $post['id'];
             type="button"
             class="community-post-action-icon community-post-action-media<?= $post['commented_by_current_user'] ? ' is-active' : ''; ?>"
             aria-label="Otwórz komentarze"
-            title="Komentarze"
             data-open-comments-modal
             data-comments-modal-id="<?= htmlspecialchars($commentsModalId, ENT_QUOTES, 'UTF-8'); ?>"
             data-community-comment-button
@@ -118,6 +117,7 @@ $commentsModalId = 'community-comments-modal-' . (int) $post['id'];
                 class="community-post-action-media-icon"
                 data-community-comment-icon
             >
+            <span class="community-post-action-tooltip">Komentarze</span>
             <span class="community-post-action-count" data-community-comment-count><?= (int) $post['comment_count']; ?></span>
         </button>
 
@@ -130,7 +130,6 @@ $commentsModalId = 'community-comments-modal-' . (int) $post['id'];
                 class="community-post-action-icon community-post-action-media<?= $post['saved_by_current_user'] ? ' is-active' : ''; ?>"
                 data-community-save-button
                 aria-label="Zapisz post"
-                title="Zapisz post"
             >
                 <img
                     src="<?= $post['saved_by_current_user'] ? '/public/assets/icons/save_icon_full.svg' : '/public/assets/icons/save_icon.svg'; ?>"
@@ -138,6 +137,7 @@ $commentsModalId = 'community-comments-modal-' . (int) $post['id'];
                     class="community-post-action-media-icon"
                     data-community-save-icon
                 >
+                <span class="community-post-action-tooltip">Zapisz post</span>
                 <span class="community-post-action-count" data-community-save-count><?= (int) $post['save_count']; ?></span>
             </button>
         </form>

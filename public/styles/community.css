@@ -667,6 +667,7 @@
 }
 
 .community-post-action-icon {
+    position: relative;
     min-width: 26px;
     height: 26px;
     display: inline-flex;
@@ -683,10 +684,35 @@
     color: rgba(226, 232, 240, 0.76);
 }
 
+.community-post-action-tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(8, 15, 30, 0.94);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    color: #eef4ff;
+    font-size: 11px;
+    line-height: 1;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease 0.8s, transform 0.2s ease 0.8s;
+}
+
 .community-post-action-icon:hover {
     transform: translateY(-2px);
     filter: brightness(1.08);
     color: #9adfff;
+}
+
+.community-post-action-icon:hover .community-post-action-tooltip {
+    opacity: 1;
+    transform: translateX(-50%) translateY(-2px);
 }
 
 .community-post-action-icon.is-active {

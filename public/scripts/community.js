@@ -409,10 +409,12 @@ document.querySelectorAll('[data-open-comments-modal]').forEach((button) => {
             return;
         }
 
-        commentsModal.querySelectorAll('[data-community-carousel]').forEach((carousel) => {
-            initializeCommunityCarousel(carousel);
-        });
         openCommentsModal(commentsModal);
+        requestAnimationFrame(() => {
+            commentsModal.querySelectorAll('[data-community-carousel]').forEach((carousel) => {
+                initializeCommunityCarousel(carousel);
+            });
+        });
     });
 });
 
@@ -692,10 +694,12 @@ const bindCommunityCommentOpeners = (root) => {
                 return;
             }
 
-            commentsModal.querySelectorAll('[data-community-carousel]').forEach((carousel) => {
-                initializeCommunityCarousel(carousel);
-            });
             openCommentsModal(commentsModal);
+            requestAnimationFrame(() => {
+                commentsModal.querySelectorAll('[data-community-carousel]').forEach((carousel) => {
+                    initializeCommunityCarousel(carousel);
+                });
+            });
         });
 
         button.dataset.boundOpen = 'true';
