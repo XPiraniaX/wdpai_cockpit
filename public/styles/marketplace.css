@@ -818,6 +818,140 @@ body.is-marketplace-page {
     margin: 0 auto;
 }
 
+.marketplace-create-entry {
+    padding: 20px 22px 24px;
+}
+
+.marketplace-create-entry[hidden],
+.marketplace-create-mode-choice[hidden],
+.marketplace-create-vehicle-choice[hidden],
+.marketplace-create-form[hidden] {
+    display: none !important;
+}
+
+.marketplace-create-mode-choice {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.marketplace-create-vehicle-choice {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.marketplace-create-vehicle-choice-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.marketplace-create-vehicle-choice-head .vehicle-modal-secondary {
+    flex: 0 0 auto;
+    min-width: 120px;
+    min-height: 42px;
+    justify-content: center;
+    padding-inline: 18px;
+    border: 1px solid rgba(56, 189, 248, 0.22);
+    border-radius: 999px;
+    background: rgba(56, 189, 248, 0.12);
+    color: #9adfff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.marketplace-create-vehicle-choice-head .vehicle-modal-secondary:hover {
+    background: rgba(56, 189, 248, 0.2);
+    border-color: rgba(56, 189, 248, 0.4);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(56, 189, 248, 0.16);
+}
+
+.marketplace-create-vehicle-choice-head h4 {
+    margin: 0;
+    color: #eef4ff;
+    font-size: 20px;
+    font-family: var(--font-serif);
+}
+
+.marketplace-create-vehicle-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: min(56vh, 540px);
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.marketplace-create-vehicle-card {
+    display: grid;
+    grid-template-columns: 132px minmax(0, 1fr);
+    gap: 14px;
+    align-items: center;
+    width: 100%;
+    padding: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 18px;
+    background: rgba(8, 15, 30, 0.58);
+    color: #eef4ff;
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.marketplace-create-vehicle-card:hover {
+    transform: translateY(-1px);
+    border-color: rgba(56, 189, 248, 0.4);
+    background: rgba(12, 24, 44, 0.78);
+}
+
+.marketplace-create-vehicle-image {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    border-radius: 14px;
+    display: block;
+}
+
+.marketplace-create-vehicle-image.is-placeholder {
+    background: rgba(15, 25, 48, 0.9);
+}
+
+.marketplace-create-vehicle-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+
+.marketplace-create-vehicle-copy strong {
+    color: #f4f8ff;
+    font-size: 16px;
+}
+
+.marketplace-create-vehicle-copy span {
+    color: rgba(203, 213, 225, 0.62);
+    font-size: 13px;
+}
+
+.marketplace-create-empty-import {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 20px 0 4px;
+}
+
+.marketplace-create-empty-import p {
+    margin: 0;
+    color: rgba(203, 213, 225, 0.74);
+}
+
 .marketplace-create-form {
     flex: 1;
     min-height: 0;

@@ -35,6 +35,9 @@ const marketplaceOpenDetailedButtons = document.querySelectorAll('[data-open-mar
 const marketplaceCloseDetailedButtons = document.querySelectorAll('[data-close-marketplace-detailed-filters]');
 const marketplaceImageInput = document.querySelector('[data-marketplace-image-input]');
 const marketplaceGallery = document.querySelector('[data-marketplace-gallery]');
+const marketplaceCreateEntry = document.querySelector('[data-marketplace-create-entry]');
+const marketplaceCreateModeChoice = document.querySelector('[data-marketplace-create-mode-choice]');
+const marketplaceCreateVehicleChoice = document.querySelector('[data-marketplace-create-vehicle-choice]');
 const marketplaceCreateForm = document.querySelector('[data-marketplace-create-form]');
 const marketplaceCreateSteps = Array.from(document.querySelectorAll('[data-marketplace-create-step]'));
 const marketplaceCreateNextButtons = document.querySelectorAll('[data-marketplace-step-next]');
@@ -44,10 +47,15 @@ const marketplaceCreateKicker = document.querySelector('[data-marketplace-create
 const marketplaceCreateTitle = document.querySelector('[data-marketplace-create-title]');
 const marketplaceCreateActionInput = document.querySelector('[data-marketplace-create-action]');
 const marketplaceEditIdInput = document.querySelector('[data-marketplace-edit-id]');
+const marketplaceSourceVehicleIdInput = document.querySelector('[data-marketplace-source-vehicle-id]');
 const marketplaceCreateSubmit = document.querySelector('[data-marketplace-create-submit]');
 const marketplaceExistingImagesNote = document.querySelector('[data-marketplace-existing-images-note]');
 const marketplacePhoneInput = marketplaceCreateForm?.elements.namedItem('contact_phone');
 const marketplaceRemovedImagesInputs = document.querySelector('[data-marketplace-removed-images-inputs]');
+const marketplaceOpenImportChoiceButtons = document.querySelectorAll('[data-marketplace-open-import-choice]');
+const marketplaceOpenNewChoiceButtons = document.querySelectorAll('[data-marketplace-open-new-choice]');
+const marketplaceBackToModeChoiceButtons = document.querySelectorAll('[data-marketplace-back-to-mode-choice]');
+const marketplaceImportVehicleButtons = document.querySelectorAll('[data-marketplace-import-vehicle]');
 
 let editableMarketplaceFiles = [];
 let existingMarketplaceImages = [];
@@ -379,6 +387,45 @@ const initializeMarketplaceNumberInputs = (root = document) => {
     });
 };
 
+const showMarketplaceCreateModeChoice = () => {
+    if (marketplaceCreateEntry) {
+        marketplaceCreateEntry.hidden = false;
+    }
+    if (marketplaceCreateModeChoice) {
+        marketplaceCreateModeChoice.hidden = false;
+    }
+    if (marketplaceCreateVehicleChoice) {
+        marketplaceCreateVehicleChoice.hidden = true;
+    }
+    if (marketplaceCreateForm) {
+        marketplaceCreateForm.hidden = true;
+    }
+};
+
+const showMarketplaceCreateVehicleChoice = () => {
+    if (marketplaceCreateEntry) {
+        marketplaceCreateEntry.hidden = false;
+    }
+    if (marketplaceCreateModeChoice) {
+        marketplaceCreateModeChoice.hidden = true;
+    }
+    if (marketplaceCreateVehicleChoice) {
+        marketplaceCreateVehicleChoice.hidden = false;
+    }
+    if (marketplaceCreateForm) {
+        marketplaceCreateForm.hidden = true;
+    }
+};
+
+const showMarketplaceCreateForm = () => {
+    if (marketplaceCreateEntry) {
+        marketplaceCreateEntry.hidden = true;
+    }
+    if (marketplaceCreateForm) {
+        marketplaceCreateForm.hidden = false;
+    }
+};
+
 const initializeMarketplaceDecimalInputs = (root = document) => {
     const decimalInputs = root.querySelectorAll('input[data-marketplace-decimal]:not([readonly])');
 
@@ -606,6 +653,9 @@ const resetMarketplaceCreateMode = () => {
     if (marketplaceEditIdInput) {
         marketplaceEditIdInput.value = '';
     }
+    if (marketplaceSourceVehicleIdInput) {
+        marketplaceSourceVehicleIdInput.value = '';
+    }
     if (marketplaceCreateSubmit) {
         marketplaceCreateSubmit.textContent = 'Dodaj ogłoszenie';
     }
@@ -676,6 +726,7 @@ const openMarketplaceEditModal = (payload) => {
     }
 
     fillMarketplaceCreateForm(payload);
+    showMarketplaceCreateForm();
     openMarketplaceCreateModal();
 };
 
@@ -684,7 +735,6 @@ const openMarketplaceCreateModal = () => {
         return;
     }
 
-    setMarketplaceCreateStep(1);
     marketplaceCreateBackdrop.hidden = false;
     marketplaceCreateModal.hidden = false;
     syncMarketplaceScrollLock();
@@ -721,21 +771,71 @@ const closeMarketplaceDetailedModal = () => {
     syncMarketplaceScrollLock();
 };
 
+const prepareMarketplaceCreateFormForNewListing = () => {
+    marketplaceCreateForm?.reset();
+    editableMarketplaceFiles = [];
+    existingMarketplaceImages = [];
+    removedMarketplaceImages = [];
+    syncMarketplaceImagesInput();
+    syncRemovedMarketplaceImagesInputs();
+    renderMarketplaceGallery();
+    resetMarketplaceCreateMode();
+    initializeMarketplaceNumberInputs(marketplaceCreateModal);
+    initializeMarketplaceDecimalInputs(marketplaceCreateModal);
+    marketplaceCreateModal?.querySelectorAll('.marketplace-brand-select').forEach((brandSelect) => {
+        brandSelect.dispatchEvent(new Event('change'));
+    });
+    setMarketplaceCreateStep(1);
+    showMarketplaceCreateForm();
+};
+
 marketplaceOpenCreateButtons.forEach((button) => {
     button.addEventListener('click', () => {
-        marketplaceCreateForm?.reset();
-        editableMarketplaceFiles = [];
-        existingMarketplaceImages = [];
-        removedMarketplaceImages = [];
-        syncMarketplaceImagesInput();
-        syncRemovedMarketplaceImagesInputs();
-        renderMarketplaceGallery();
         resetMarketplaceCreateMode();
-        initializeMarketplaceNumberInputs(marketplaceCreateModal);
-        marketplaceCreateModal?.querySelectorAll('.marketplace-brand-select').forEach((brandSelect) => {
-            brandSelect.dispatchEvent(new Event('change'));
-        });
+        showMarketplaceCreateModeChoice();
         openMarketplaceCreateModal();
+    });
+});
+
+marketplaceOpenImportChoiceButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        showMarketplaceCreateVehicleChoice();
+    });
+});
+
+marketplaceOpenNewChoiceButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        prepareMarketplaceCreateFormForNewListing();
+    });
+});
+
+marketplaceBackToModeChoiceButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        showMarketplaceCreateModeChoice();
+    });
+});
+
+marketplaceImportVehicleButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        const payloadRaw = button.getAttribute('data-marketplace-import-payload');
+        if (!payloadRaw || !marketplaceCreateForm) {
+            return;
+        }
+
+        try {
+            const payload = JSON.parse(payloadRaw);
+            prepareMarketplaceCreateFormForNewListing();
+            if (marketplaceImageInput) {
+                marketplaceImageInput.required = false;
+            }
+            existingMarketplaceImages = Array.isArray(payload.images) ? payload.images.slice(0, 12) : [];
+            renderMarketplaceGallery();
+            fillMarketplaceCreateForm(payload);
+            setMarketplaceCreateStep(1);
+            showMarketplaceCreateForm();
+        } catch {
+            return;
+        }
     });
 });
 

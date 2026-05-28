@@ -7,6 +7,7 @@ class MarketplaceController extends AppController
         $this->requireAuthentication();
 
         $repository = new MarketplaceRepository(Database::getConnection());
+        $carsRepository = new CarsRepository(Database::getConnection());
         $userId = $this->getCurrentUserId();
 
         if ($this->isPost()) {
@@ -56,6 +57,7 @@ class MarketplaceController extends AppController
             'steeringSide' => $filters['steering_side'],
             'technicalCondition' => $filters['technical_condition'],
             'brands' => $repository->getAvailableCategories(),
+            'importVehicles' => $this->mapImportVehicles($carsRepository->getMarketplaceImportVehicles($userId)),
             'listings' => $mappedListings,
             'hasMoreListings' => $feedPage['has_more'],
             'nextOffset' => $feedPage['next_offset'],
@@ -108,6 +110,15 @@ class MarketplaceController extends AppController
                 }
 
                 $payload['image_paths'] = $this->handleListingImageUploads($userId, $payload['title']);
+                if (!$isUpdate && ($payload['source_vehicle_id'] ?? null) !== null) {
+                    $importedImagePaths = $this->copyVehicleImagesToMarketplace(
+                        $userId,
+                        (int) $payload['source_vehicle_id'],
+                        $payload['title'],
+                        $payload['removed_image_paths']
+                    );
+                    $payload['image_paths'] = array_slice(array_merge($importedImagePaths, $payload['image_paths']), 0, 12);
+                }
                 if ($isUpdate) {
                     $currentImagePaths = $repository->getListingImagePaths($listingId);
                     $remainingExistingImages = array_values(array_diff($currentImagePaths, $payload['removed_image_paths']));
@@ -314,6 +325,7 @@ class MarketplaceController extends AppController
             'contact_name' => $this->sanitizeText($_POST['contact_name'] ?? null) ?? 'Brak danych',
             'contact_phone' => $this->sanitizeText($_POST['contact_phone'] ?? null) ?? 'Brak danych',
             'contact_email' => $this->sanitizeText($_POST['contact_email'] ?? null) ?? 'Brak danych',
+            'source_vehicle_id' => $this->normalizeNullableInt($_POST['source_vehicle_id'] ?? null),
             'removed_image_paths' => $this->sanitizeStringArray($_POST['removed_image_paths'] ?? []),
         ];
     }
@@ -633,6 +645,92 @@ class MarketplaceController extends AppController
         }
 
         return getcwd() . DIRECTORY_SEPARATOR . $normalized;
+    }
+
+    private function mapImportVehicles(array $vehicles): array
+    {
+        return array_map(function (array $vehicle): array {
+            return [
+                'id' => (int) $vehicle['id'],
+                'display_name' => (string) ($vehicle['display_name'] ?? ''),
+                'trim_name' => (string) ($vehicle['trim_name'] ?? ''),
+                'production_year' => isset($vehicle['production_year']) ? (int) $vehicle['production_year'] : null,
+                'current_mileage_km' => isset($vehicle['current_mileage_km']) ? (int) $vehicle['current_mileage_km'] : null,
+                'image_path' => isset($vehicle['image_path']) ? (string) $vehicle['image_path'] : '',
+                'payload' => [
+                    'source_vehicle_id' => (int) $vehicle['id'],
+                    'title' => (string) ($vehicle['display_name'] ?? ''),
+                    'brand_id' => isset($vehicle['brand_id']) ? (int) $vehicle['brand_id'] : '',
+                    'model_id' => isset($vehicle['model_id']) ? (int) $vehicle['model_id'] : '',
+                    'trim_name' => (string) ($vehicle['trim_name'] ?? ''),
+                    'production_year' => isset($vehicle['production_year']) ? (int) $vehicle['production_year'] : '',
+                    'mileage_km' => isset($vehicle['current_mileage_km']) ? (int) $vehicle['current_mileage_km'] : '',
+                    'fuel_type' => (string) ($vehicle['fuel_type'] ?? ''),
+                    'transmission' => (string) ($vehicle['transmission'] ?? ''),
+                    'body_type' => (string) ($vehicle['body_type'] ?? ''),
+                    'drivetrain' => (string) ($vehicle['drivetrain'] ?? ''),
+                    'engine_capacity_cc' => isset($vehicle['engine_capacity_cc']) ? (int) $vehicle['engine_capacity_cc'] : '',
+                    'power_hp' => isset($vehicle['power_hp']) ? (int) $vehicle['power_hp'] : '',
+                    'exterior_color' => (string) ($vehicle['exterior_color'] ?? ''),
+                    'description' => (string) ($vehicle['notes'] ?? ''),
+                    'technical_condition' => '',
+                    'steering_side' => '',
+                    'price_amount' => '',
+                    'city' => '',
+                    'images' => array_values(array_filter(
+                        $vehicle['images'] ?? [],
+                        static fn ($path): bool => is_string($path) && $path !== ''
+                    )),
+                ],
+            ];
+        }, $vehicles);
+    }
+
+    private function copyVehicleImagesToMarketplace(int $userId, int $vehicleId, string $title, array $removedImagePaths = []): array
+    {
+        $carsRepository = new CarsRepository(Database::getConnection());
+        $sourceImagePaths = array_values(array_diff(
+            $carsRepository->getVehicleImagePaths($userId, $vehicleId),
+            $removedImagePaths
+        ));
+
+        if ($sourceImagePaths === []) {
+            return [];
+        }
+
+        $userRepository = new UserRepository(Database::getConnection());
+        $user = $userRepository->getById($userId);
+        $username = $user['username'] ?? ('user-' . $userId);
+        $uploadDirectory = getcwd() . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'marketplace';
+
+        if (!is_dir($uploadDirectory)) {
+            mkdir($uploadDirectory, 0775, true);
+        }
+
+        $copiedPaths = [];
+        $slugBase = $this->slugify($username . '-marketplace-' . $title);
+        $timestamp = date('Ymd-His');
+        $requestToken = bin2hex(random_bytes(3));
+
+        foreach (array_slice($sourceImagePaths, 0, 12) as $index => $publicPath) {
+            $sourcePath = $this->resolvePublicPathToFilesystem($publicPath);
+            if ($sourcePath === null || !is_file($sourcePath)) {
+                continue;
+            }
+
+            $extension = strtolower(pathinfo($sourcePath, PATHINFO_EXTENSION));
+            $safeExtension = in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true) ? $extension : 'jpg';
+            $filename = $slugBase . '-' . $timestamp . '-' . $requestToken . '-import-' . ($index + 1) . '.' . $safeExtension;
+            $targetPath = $uploadDirectory . DIRECTORY_SEPARATOR . $filename;
+
+            if (!copy($sourcePath, $targetPath)) {
+                continue;
+            }
+
+            $copiedPaths[] = '/public/uploads/marketplace/' . $filename;
+        }
+
+        return $copiedPaths;
     }
 
     private function resolveMarketplaceRenderUser(int $userId): array

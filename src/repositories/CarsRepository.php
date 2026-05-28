@@ -87,6 +87,54 @@ class CarsRepository
         return $statement->fetchAll();
     }
 
+    public function getMarketplaceImportVehicles(int $userId): array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT
+                v.id,
+                v.brand_id,
+                v.model_id,
+                v.display_name,
+                v.trim_name,
+                v.production_year,
+                v.current_mileage_km,
+                v.fuel_type,
+                v.transmission,
+                v.body_type,
+                v.drivetrain,
+                v.exterior_color,
+                v.power_hp,
+                v.engine_capacity_cc,
+                v.notes,
+                v.is_primary,
+                v.display_order,
+                vi.image_path
+            FROM vehicles v
+            LEFT JOIN vehicle_images vi
+                ON vi.vehicle_id = v.id
+                AND vi.is_primary = TRUE
+            WHERE v.user_id = :user_id
+                AND v.status = :status
+            ORDER BY v.is_primary DESC, v.display_order ASC, v.id ASC'
+        );
+        $statement->execute([
+            'user_id' => $userId,
+            'status' => 'active',
+        ]);
+
+        $vehicles = $statement->fetchAll();
+        if ($vehicles === []) {
+            return [];
+        }
+
+        foreach ($vehicles as &$vehicle) {
+            $vehicle['images'] = $this->getVehicleImagePaths($userId, (int) $vehicle['id']);
+        }
+        unset($vehicle);
+
+        return $vehicles;
+    }
+
     public function getBrandCatalog(): array
     {
         $statement = $this->connection->query(
