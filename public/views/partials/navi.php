@@ -27,6 +27,11 @@ $menuItems = [
     </div>
 
     <div class="bottom">
+        <a href="/profile" class="menu-item menu-item-profile<?= $currentPath === 'profile' || $currentPath === 'community/profile' ? ' active' : ''; ?>">
+            <span class="menu-icon"
+                  style="--icon-url: url('/public/assets/icons/profile.svg');"></span>
+            <span class="menu-label">Profil</span>
+        </a>
         <a href="/settings" class="menu-item<?= $currentPath === 'settings' ? ' active' : ''; ?>">
             <span class="menu-icon"
                   style="--icon-url: url('/public/assets/icons/settings.svg');"></span>

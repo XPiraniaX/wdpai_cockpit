@@ -157,7 +157,10 @@ class CommunityRepository
                 m.id AS model_id,
                 m.name AS model_name
             FROM car_brands b
-            LEFT JOIN car_models m ON m.brand_id = b.id
+            LEFT JOIN car_models m
+                ON m.brand_id = b.id
+                AND m.is_approved = TRUE
+            WHERE b.is_approved = TRUE
             ORDER BY b.name ASC, m.name ASC"
         );
 

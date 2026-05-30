@@ -54,10 +54,10 @@ class CommunityController extends AppController
 
         $repository = new CommunityRepository(Database::getConnection());
         $currentUserId = $this->getCurrentUserId();
-        $profileUserId = (int) ($_GET['id'] ?? 0);
+        $profileUserId = (int) ($_GET['id'] ?? $currentUserId);
 
         if ($profileUserId <= 0) {
-            $this->redirect('/community');
+            $this->redirect('/profile');
         }
 
         if ($this->isPost()) {

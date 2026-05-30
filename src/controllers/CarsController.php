@@ -964,7 +964,9 @@ class CarsController extends AppController
         return [
             'brand_name' => $this->sanitizeText($_POST['brand_name'] ?? null) ?? 'Brak danych',
             'model_name' => $this->sanitizeText($_POST['model_name'] ?? null) ?? 'Brak danych',
-            'catalog_requires_approval' => ($_POST['brand_name_select'] ?? '') === '__custom__',
+            'brand_requires_approval' => ($_POST['brand_name_select'] ?? '') === '__custom__',
+            'model_requires_approval' => ($_POST['brand_name_select'] ?? '') === '__custom__'
+                || ($_POST['model_name_select'] ?? '') === '__custom_model__',
             'trim_name' => $this->sanitizeText($_POST['trim_name'] ?? null) ?? 'Brak danych',
             'display_name' => $this->sanitizeText($_POST['display_name'] ?? null) ?? 'Brak danych',
             'production_year' => $this->sanitizeSmallInt($_POST['production_year'] ?? null) ?? (int) date('Y'),

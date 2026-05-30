@@ -113,6 +113,8 @@ window.initMyCarsPage = () => {
     const customModelField = modalRoot.querySelector('[data-cars-custom-model-field]');
     const customBrandInput = modalRoot.querySelector('[data-cars-brand-custom]');
     const customModelInput = modalRoot.querySelector('[data-cars-model-custom]');
+    const trimInput = modalRoot.querySelector('[data-cars-trim-input]');
+    const displayNameInput = modalRoot.querySelector('[data-cars-display-name-input]');
     const feedbackModal = modalRoot.querySelector('[data-cars-feedback]');
     const feedbackMessage = modalRoot.querySelector('[data-cars-feedback-message]');
     const feedbackCloseButton = modalRoot.querySelector('[data-cars-feedback-close]');
@@ -120,8 +122,11 @@ window.initMyCarsPage = () => {
     let activePanel = null;
     let selectedFiles = [];
     let isSubmittingAddVehicle = false;
+    let isSyncingDisplayName = false;
+    let isDisplayNameLocked = false;
     let brandCatalog = {};
     const CUSTOM_BRAND_VALUE = '__custom__';
+    const CUSTOM_MODEL_VALUE = '__custom_model__';
 
     try {
         brandCatalog = brandCatalogNode ? JSON.parse(brandCatalogNode.textContent || '{}') : {};
@@ -163,6 +168,8 @@ window.initMyCarsPage = () => {
 
         const models = brandCatalog[brandName] ?? [];
         const nextModel = selectedModel || '';
+        const hasCatalogModel = models.includes(nextModel);
+        const shouldUseCustomModel = nextModel !== '' && !hasCatalogModel;
 
         modelSelect.innerHTML = '';
 
@@ -172,29 +179,26 @@ window.initMyCarsPage = () => {
             return;
         }
 
-        if (models.length === 0) {
-            modelSelect.appendChild(buildOption('', 'Najpierw wybierz markę', true));
-            modelSelect.disabled = true;
-            return;
-        }
-
         modelSelect.disabled = false;
-        modelSelect.appendChild(buildOption('', 'Wybierz model', nextModel === ''));
+        modelSelect.appendChild(buildOption('', 'Wybierz model', nextModel === '' && !shouldUseCustomModel));
 
         models.forEach((modelName) => {
             modelSelect.appendChild(buildOption(modelName, modelName, modelName === nextModel));
         });
+
+        modelSelect.appendChild(buildOption(CUSTOM_MODEL_VALUE, 'Inny model', shouldUseCustomModel));
     };
 
     const syncCustomBrandMode = () => {
         const isCustomBrand = brandSelect?.value === CUSTOM_BRAND_VALUE;
+        const isCustomModel = modelSelect?.value === CUSTOM_MODEL_VALUE;
 
         if (customBrandField) {
             customBrandField.hidden = !isCustomBrand;
         }
 
         if (customModelField) {
-            customModelField.hidden = !isCustomBrand;
+            customModelField.hidden = !(isCustomBrand || isCustomModel);
         }
 
         if (customBrandInput) {
@@ -202,12 +206,13 @@ window.initMyCarsPage = () => {
         }
 
         if (customModelInput) {
-            customModelInput.required = Boolean(isCustomBrand);
+            customModelInput.required = Boolean(isCustomBrand || isCustomModel);
         }
     };
 
     const syncHiddenBrandModelValues = () => {
         const isCustomBrand = brandSelect?.value === CUSTOM_BRAND_VALUE;
+        const isCustomModel = modelSelect?.value === CUSTOM_MODEL_VALUE;
 
         if (brandHiddenInput) {
             brandHiddenInput.value = isCustomBrand
@@ -216,10 +221,43 @@ window.initMyCarsPage = () => {
         }
 
         if (modelHiddenInput) {
-            modelHiddenInput.value = isCustomBrand
+            modelHiddenInput.value = (isCustomBrand || isCustomModel)
                 ? (customModelInput?.value || '')
                 : (modelSelect?.value || '');
         }
+    };
+
+    const getTrimValue = () => (trimInput?.value || '').trim();
+
+    const buildAutoDisplayName = () => {
+        const brandName = (brandHiddenInput?.value || '').trim();
+        const modelName = (modelHiddenInput?.value || '').trim();
+        const trimName = getTrimValue();
+
+        if (!brandName || !modelName || !trimName) {
+            return '';
+        }
+
+        return [brandName, modelName, trimName].join(' ');
+    };
+
+    const syncDisplayName = () => {
+        if (!displayNameInput || isDisplayNameLocked) {
+            return;
+        }
+
+        isSyncingDisplayName = true;
+        displayNameInput.value = buildAutoDisplayName();
+        isSyncingDisplayName = false;
+    };
+
+    const resetDisplayNameAutofill = () => {
+        if (!displayNameInput) {
+            return;
+        }
+
+        isDisplayNameLocked = false;
+        syncDisplayName();
     };
 
     const syncBrandModelFields = (selectedBrand = '', selectedModel = '') => {
@@ -227,6 +265,8 @@ window.initMyCarsPage = () => {
 
         const hasCatalogBrand = Object.prototype.hasOwnProperty.call(brandCatalog, selectedBrand);
         const isCustomBrand = selectedBrand !== '' && !hasCatalogBrand;
+        const catalogModels = isCustomBrand ? [] : (brandCatalog[selectedBrand] ?? []);
+        const isCustomModel = !isCustomBrand && selectedModel !== '' && !catalogModels.includes(selectedModel);
 
         if (brandSelect) {
             brandSelect.value = isCustomBrand ? CUSTOM_BRAND_VALUE : selectedBrand;
@@ -243,11 +283,12 @@ window.initMyCarsPage = () => {
         populateModelOptions(isCustomBrand ? CUSTOM_BRAND_VALUE : selectedBrand, selectedModel);
 
         if (!isCustomBrand && modelSelect) {
-            modelSelect.value = selectedModel || '';
+            modelSelect.value = isCustomModel ? CUSTOM_MODEL_VALUE : (selectedModel || '');
         }
 
         syncCustomBrandMode();
         syncHiddenBrandModelValues();
+        syncDisplayName();
     };
 
     const syncImageInput = () => {
@@ -353,6 +394,16 @@ window.initMyCarsPage = () => {
                 });
                 input.dataset.boundCarsNumberSubmit = 'true';
             }
+        });
+    };
+
+    const normalizeCarsNumberInputsForSubmit = () => {
+        modalRoot.querySelectorAll('input[data-cars-number]:not([readonly])').forEach((input) => {
+            if (!(input instanceof HTMLInputElement)) {
+                return;
+            }
+
+            input.value = String(input.value ?? '').replace(/\s+/g, '').replace(/[^\d]/g, '');
         });
     };
 
@@ -492,6 +543,7 @@ window.initMyCarsPage = () => {
                 addVehicleForm.reset();
                 resetAddVehiclePreview();
                 syncBrandModelFields();
+                resetDisplayNameAutofill();
             }
 
             openModal(button.dataset.carsModalOpen);
@@ -550,15 +602,40 @@ window.initMyCarsPage = () => {
         populateModelOptions(brandSelect.value, '');
         syncCustomBrandMode();
         syncHiddenBrandModelValues();
+        syncDisplayName();
 
         if (isCustomBrand) {
             customBrandInput?.focus();
         }
     });
 
-    modelSelect?.addEventListener('change', syncHiddenBrandModelValues);
-    customBrandInput?.addEventListener('input', syncHiddenBrandModelValues);
-    customModelInput?.addEventListener('input', syncHiddenBrandModelValues);
+    modelSelect?.addEventListener('change', () => {
+        if (modelSelect.value !== CUSTOM_MODEL_VALUE && customModelInput) {
+            customModelInput.value = '';
+        }
+
+        syncCustomBrandMode();
+        syncHiddenBrandModelValues();
+        syncDisplayName();
+
+        if (modelSelect.value === CUSTOM_MODEL_VALUE) {
+            customModelInput?.focus();
+        }
+    });
+    customBrandInput?.addEventListener('input', () => {
+        syncHiddenBrandModelValues();
+        syncDisplayName();
+    });
+    customModelInput?.addEventListener('input', () => {
+        syncHiddenBrandModelValues();
+        syncDisplayName();
+    });
+    trimInput?.addEventListener('input', syncDisplayName);
+    displayNameInput?.addEventListener('input', () => {
+        if (!isSyncingDisplayName) {
+            isDisplayNameLocked = true;
+        }
+    });
 
     if (addVehicleForm) {
         addVehicleForm.addEventListener('submit', async (event) => {
@@ -578,6 +655,7 @@ window.initMyCarsPage = () => {
 
             try {
                 syncHiddenBrandModelValues();
+                normalizeCarsNumberInputsForSubmit();
 
                 const response = await fetch(addVehicleForm.action, {
                     method: 'POST',
@@ -650,6 +728,12 @@ window.initMyCarsPage = () => {
         brandSelect?.dataset.selectedBrand || '',
         modelSelect?.dataset.selectedModel || ''
     );
+    if (displayNameInput) {
+        const currentDisplayName = displayNameInput.value.trim();
+        const autoDisplayName = buildAutoDisplayName();
+        isDisplayNameLocked = currentDisplayName !== '' && currentDisplayName !== autoDisplayName;
+        syncDisplayName();
+    }
 
     const params = new URLSearchParams(window.location.search);
     if (params.get('open_modal') === 'cars-add-vehicle') {

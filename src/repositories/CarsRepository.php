@@ -721,8 +721,8 @@ class CarsRepository
         $this->beginTransaction('REPEATABLE READ');
 
         try {
-            $brandId = $this->resolveBrandId($data['brand_name']);
-            $modelId = $this->resolveModelId($brandId, $data['model_name']);
+            $brandId = $this->resolveBrandId($data['brand_name'], (bool) ($data['brand_requires_approval'] ?? false));
+            $modelId = $this->resolveModelId($brandId, $data['model_name'], (bool) ($data['model_requires_approval'] ?? false));
             $displayOrder = $this->resolveNextDisplayOrder($userId);
             $isPrimary = !$this->userHasActiveVehicles($userId);
 
