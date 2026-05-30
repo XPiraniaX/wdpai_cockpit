@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 $vehicleRecord = $vehicleRecord ?? [];
 $formAction = '/my-cars/details?id=' . (int) ($vehicle['id'] ?? 0);
 $transmissionOptions = [
@@ -146,7 +146,7 @@ $inspectionResultOptions = [
                 <div class="vehicle-table-shell">
                     <div class="vehicle-table vehicle-table-header">
                         <span>Data</span>
-                        <span>Paliwo (L)</span>
+                        <span>Paliwo</span>
                         <span>Rodzaj paliwa</span>
                         <span>Kwota</span>
                         <span>Przebieg</span>
@@ -353,16 +353,25 @@ $inspectionResultOptions = [
                     <div class="vehicle-modal-section-title">Silnik</div>
                     <div class="vehicle-modal-grid vehicle-modal-grid-single vehicle-modal-grid-narrow">
                         <label class="vehicle-modal-field">
-                            <span>Pojemność silnika (cc)</span>
-                            <input type="number" name="engine_capacity_cc" value="<?= htmlspecialchars((string) ($vehicleRecord['engine_capacity_cc'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                            <span>Pojemność silnika</span>
+                            <div class="vehicle-currency-field">
+                                <input type="text" inputmode="numeric" name="engine_capacity_cc" data-vehicle-number value="<?= htmlspecialchars((string) ($vehicleRecord['engine_capacity_cc'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                                <span class="vehicle-currency-suffix">cm3</span>
+                            </div>
                         </label>
                         <label class="vehicle-modal-field">
-                            <span>Moc (KM)</span>
-                            <input type="number" name="power_hp" value="<?= htmlspecialchars((string) ($vehicleRecord['power_hp'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                            <span>Moc</span>
+                            <div class="vehicle-currency-field">
+                                <input type="text" inputmode="numeric" name="power_hp" data-vehicle-number value="<?= htmlspecialchars((string) ($vehicleRecord['power_hp'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                                <span class="vehicle-currency-suffix">KM</span>
+                            </div>
                         </label>
                         <label class="vehicle-modal-field">
-                            <span>Moment obrotowy (Nm)</span>
-                            <input type="number" name="power_nm" value="<?= htmlspecialchars((string) ($vehicleRecord['power_nm'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                            <span>Moment obrotowy</span>
+                            <div class="vehicle-currency-field">
+                                <input type="text" inputmode="numeric" name="power_nm" data-vehicle-number value="<?= htmlspecialchars((string) ($vehicleRecord['power_nm'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                                <span class="vehicle-currency-suffix">Nm</span>
+                            </div>
                         </label>
                         <label class="vehicle-modal-field">
                             <span>Rodzaj paliwa</span>
@@ -389,7 +398,7 @@ $inspectionResultOptions = [
                         </label>
                         <label class="vehicle-modal-field">
                             <span>Liczba cylindrów</span>
-                            <input type="number" name="cylinder_count" value="<?= htmlspecialchars((string) ($vehicleRecord['cylinder_count'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                            <input type="text" inputmode="numeric" name="cylinder_count" data-vehicle-number value="<?= htmlspecialchars((string) ($vehicleRecord['cylinder_count'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
                         </label>
                         <label class="vehicle-modal-field">
                             <span>Układ cylindrów</span>
@@ -403,7 +412,14 @@ $inspectionResultOptions = [
                     <div class="vehicle-modal-grid vehicle-modal-grid-single vehicle-modal-grid-narrow">
                         <label class="vehicle-modal-field">
                             <span>Rodzaj napędu</span>
-                            <input type="text" name="drivetrain" value="<?= htmlspecialchars((string) ($vehicleRecord['drivetrain'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Brak danych">
+                            <select name="drivetrain">
+                                <option value="">Brak danych</option>
+                                <?php foreach (($drivetrainOptions ?? []) as $optionValue => $optionLabel): ?>
+                                    <option value="<?= htmlspecialchars($optionValue, ENT_QUOTES, 'UTF-8'); ?>"<?= ($vehicleRecord['drivetrain'] ?? '') === $optionValue ? ' selected' : ''; ?>>
+                                        <?= htmlspecialchars($optionLabel, ENT_QUOTES, 'UTF-8'); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </label>
                         <label class="vehicle-modal-field">
                             <span>Skrzynia biegów</span>
@@ -424,23 +440,39 @@ $inspectionResultOptions = [
                     <div class="vehicle-modal-grid vehicle-modal-grid-single vehicle-modal-grid-narrow">
                         <label class="vehicle-modal-field">
                             <span>Rodzaj nadwozia</span>
-                            <input type="text" name="body_type" value="<?= htmlspecialchars((string) ($vehicleRecord['body_type'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Brak danych">
+                            <select name="body_type">
+                                <option value="">Brak danych</option>
+                                <?php foreach (($bodyTypeOptions ?? []) as $optionValue => $optionLabel): ?>
+                                    <option value="<?= htmlspecialchars($optionValue, ENT_QUOTES, 'UTF-8'); ?>"<?= ($vehicleRecord['body_type'] ?? '') === $optionValue ? ' selected' : ''; ?>>
+                                        <?= htmlspecialchars($optionLabel, ENT_QUOTES, 'UTF-8'); ?>
+                                    </option>
+                                <?php endforeach; ?>
+                            </select>
                         </label>
                         <label class="vehicle-modal-field">
                             <span>Liczba miejsc</span>
-                            <input type="number" name="seat_count" value="<?= htmlspecialchars((string) ($vehicleRecord['seat_count'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                            <input type="text" inputmode="numeric" name="seat_count" data-vehicle-number value="<?= htmlspecialchars((string) ($vehicleRecord['seat_count'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
                         </label>
                         <label class="vehicle-modal-field">
-                            <span>Długość (mm)</span>
-                            <input type="number" name="length_mm" value="<?= htmlspecialchars((string) ($vehicleRecord['length_mm'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                            <span>Długość</span>
+                            <div class="vehicle-currency-field">
+                                <input type="text" inputmode="numeric" name="length_mm" data-vehicle-number value="<?= htmlspecialchars((string) ($vehicleRecord['length_mm'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                                <span class="vehicle-currency-suffix">mm</span>
+                            </div>
                         </label>
                         <label class="vehicle-modal-field">
-                            <span>Szerokość (mm)</span>
-                            <input type="number" name="width_mm" value="<?= htmlspecialchars((string) ($vehicleRecord['width_mm'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                            <span>Szerokość</span>
+                            <div class="vehicle-currency-field">
+                                <input type="text" inputmode="numeric" name="width_mm" data-vehicle-number value="<?= htmlspecialchars((string) ($vehicleRecord['width_mm'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                                <span class="vehicle-currency-suffix">mm</span>
+                            </div>
                         </label>
                         <label class="vehicle-modal-field">
-                            <span>Wysokość (mm)</span>
-                            <input type="number" name="height_mm" value="<?= htmlspecialchars((string) ($vehicleRecord['height_mm'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                            <span>Wysokość</span>
+                            <div class="vehicle-currency-field">
+                                <input type="text" inputmode="numeric" name="height_mm" data-vehicle-number value="<?= htmlspecialchars((string) ($vehicleRecord['height_mm'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" min="0" placeholder="Brak danych">
+                                <span class="vehicle-currency-suffix">mm</span>
+                            </div>
                         </label>
                     </div>
                 </section>
@@ -549,8 +581,11 @@ $inspectionResultOptions = [
                         <input type="date" name="fueled_at" value="<?= htmlspecialchars(date('Y-m-d'), ENT_QUOTES, 'UTF-8'); ?>" required>
                     </label>
                     <label class="vehicle-modal-field">
-                        <span>Paliwo (L)</span>
-                        <input type="number" name="liters" step="0.01" min="0" placeholder="Brak danych" required>
+                        <span>Paliwo</span>
+                        <div class="vehicle-currency-field">
+                            <input type="text" inputmode="decimal" name="liters" data-vehicle-decimal step="0.01" min="0" placeholder="Brak danych" required>
+                            <span class="vehicle-currency-suffix">L</span>
+                        </div>
                     </label>
                     <label class="vehicle-modal-field">
                         <span>Rodzaj paliwa</span>
@@ -563,19 +598,24 @@ $inspectionResultOptions = [
                     <label class="vehicle-modal-field">
                         <span>Kwota</span>
                         <div class="vehicle-currency-field">
-                            <input type="number" name="total_cost" step="0.01" min="0" placeholder="Brak danych" required>
+                            <input type="text" inputmode="decimal" name="total_cost" data-vehicle-decimal step="0.01" min="0" placeholder="Brak danych" required>
                             <span class="vehicle-currency-suffix">PLN</span>
                         </div>
                     </label>
                     <label class="vehicle-modal-field">
                         <span>Przebieg</span>
-                        <input
-                            type="number"
-                            name="mileage_km"
-                            min="<?= htmlspecialchars((string) max(0, (int) ($vehicleRecord['current_mileage_km'] ?? 0)), ENT_QUOTES, 'UTF-8'); ?>"
-                            placeholder="Aktualny przebieg: <?= htmlspecialchars(number_format((int) ($vehicleRecord['current_mileage_km'] ?? 0), 0, ',', ' '), ENT_QUOTES, 'UTF-8'); ?> km"
-                            required
-                        >
+                        <div class="vehicle-currency-field">
+                            <input
+                                type="text"
+                                inputmode="numeric"
+                                name="mileage_km"
+                                data-vehicle-number
+                                min="<?= htmlspecialchars((string) max(0, (int) ($vehicleRecord['current_mileage_km'] ?? 0)), ENT_QUOTES, 'UTF-8'); ?>"
+                                placeholder="Aktualny przebieg: <?= htmlspecialchars(number_format((int) ($vehicleRecord['current_mileage_km'] ?? 0), 0, ',', ' '), ENT_QUOTES, 'UTF-8'); ?> km"
+                                required
+                            >
+                            <span class="vehicle-currency-suffix">km</span>
+                        </div>
                     </label>
                 </div>
                 <div class="vehicle-modal-footer">
@@ -607,7 +647,7 @@ $inspectionResultOptions = [
                     <label class="vehicle-modal-field">
                         <span>Kwota</span>
                         <div class="vehicle-currency-field">
-                            <input type="number" name="cost_amount" step="0.01" min="0" placeholder="Brak danych">
+                            <input type="text" inputmode="decimal" name="cost_amount" data-vehicle-decimal step="0.01" min="0" placeholder="Brak danych">
                             <span class="vehicle-currency-suffix">PLN</span>
                         </div>
                     </label>
@@ -640,7 +680,7 @@ $inspectionResultOptions = [
                     <label class="vehicle-modal-field">
                         <span>Przewidywany koszt</span>
                         <div class="vehicle-currency-field">
-                            <input type="number" name="estimated_cost_amount" step="0.01" min="0" placeholder="Brak danych">
+                            <input type="text" inputmode="decimal" name="estimated_cost_amount" data-vehicle-decimal step="0.01" min="0" placeholder="Brak danych">
                             <span class="vehicle-currency-suffix">PLN</span>
                         </div>
                     </label>
@@ -737,7 +777,7 @@ $inspectionResultOptions = [
                 <div class="vehicle-modal-table">
                     <div class="vehicle-modal-table-row vehicle-modal-table-head">
                         <span>Data</span>
-                        <span>Paliwo (L)</span>
+                        <span>Paliwo</span>
                         <span>Rodzaj</span>
                         <span>Kwota</span>
                         <span>Przebieg</span>
@@ -901,3 +941,4 @@ $inspectionResultOptions = [
         </section>
     </div>
 </div>
+

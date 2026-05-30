@@ -1,4 +1,4 @@
-<main class="cars-page">
+﻿<main class="cars-page">
     <?php
     $transmissionOptions = $transmissionOptions ?? [];
     $fuelTypeOptions = $fuelTypeOptions ?? [];
@@ -258,11 +258,14 @@
                                 </label>
                                 <label class="vehicle-modal-field">
                                     <span>Rocznik</span>
-                                    <input type="number" name="production_year" min="1886" max="2100" value="<?= $fieldValue('production_year'); ?>" placeholder="Brak danych" required>
+                                    <input type="text" inputmode="numeric" name="production_year" data-cars-number min="1886" max="2100" value="<?= $fieldValue('production_year'); ?>" placeholder="Brak danych" required>
                                 </label>
                                 <label class="vehicle-modal-field">
                                     <span>Przebieg</span>
-                                    <input type="number" name="current_mileage_km" min="0" value="<?= $fieldValue('current_mileage_km'); ?>" placeholder="Brak danych" required>
+                                    <div class="vehicle-currency-field">
+                                        <input type="text" inputmode="numeric" name="current_mileage_km" data-cars-number min="0" value="<?= $fieldValue('current_mileage_km'); ?>" placeholder="Brak danych" required>
+                                        <span class="vehicle-currency-suffix">km</span>
+                                    </div>
                                 </label>
                                 <label class="vehicle-modal-field">
                                     <span>Tablice</span>
@@ -318,16 +321,25 @@
                                     <summary class="cars-accordion-summary">Silnik</summary>
                                     <div class="vehicle-modal-grid vehicle-modal-grid-single cars-accordion-body">
                                         <label class="vehicle-modal-field">
-                                            <span>Pojemność silnika (cc)</span>
-                                            <input type="number" name="engine_capacity_cc" min="0" value="<?= $fieldValue('engine_capacity_cc'); ?>" placeholder="Brak danych">
+                                            <span>Pojemność silnika</span>
+                                            <div class="vehicle-currency-field">
+                                                <input type="text" inputmode="numeric" name="engine_capacity_cc" data-cars-number min="0" value="<?= $fieldValue('engine_capacity_cc'); ?>" placeholder="Brak danych">
+                                                <span class="vehicle-currency-suffix">cm3</span>
+                                            </div>
                                         </label>
                                         <label class="vehicle-modal-field">
-                                            <span>Moc (KM)</span>
-                                            <input type="number" name="power_hp" min="0" value="<?= $fieldValue('power_hp'); ?>" placeholder="Brak danych">
+                                            <span>Moc</span>
+                                            <div class="vehicle-currency-field">
+                                                <input type="text" inputmode="numeric" name="power_hp" data-cars-number min="0" value="<?= $fieldValue('power_hp'); ?>" placeholder="Brak danych">
+                                                <span class="vehicle-currency-suffix">KM</span>
+                                            </div>
                                         </label>
                                         <label class="vehicle-modal-field">
-                                            <span>Moment obrotowy (Nm)</span>
-                                            <input type="number" name="power_nm" min="0" value="<?= $fieldValue('power_nm'); ?>" placeholder="Brak danych">
+                                            <span>Moment obrotowy</span>
+                                            <div class="vehicle-currency-field">
+                                                <input type="text" inputmode="numeric" name="power_nm" data-cars-number min="0" value="<?= $fieldValue('power_nm'); ?>" placeholder="Brak danych">
+                                                <span class="vehicle-currency-suffix">Nm</span>
+                                            </div>
                                         </label>
                                         <label class="vehicle-modal-field">
                                             <span>Rodzaj paliwa</span>
@@ -352,7 +364,7 @@
                                         </label>
                                         <label class="vehicle-modal-field">
                                             <span>Liczba cylindrów</span>
-                                            <input type="number" name="cylinder_count" min="0" value="<?= $fieldValue('cylinder_count'); ?>" placeholder="Brak danych">
+                                            <input type="text" inputmode="numeric" name="cylinder_count" data-cars-number min="0" value="<?= $fieldValue('cylinder_count'); ?>" placeholder="Brak danych">
                                         </label>
                                         <label class="vehicle-modal-field">
                                             <span>Układ cylindrów</span>
@@ -366,7 +378,12 @@
                                     <div class="vehicle-modal-grid vehicle-modal-grid-single cars-accordion-body">
                                         <label class="vehicle-modal-field">
                                             <span>Rodzaj napędu</span>
-                                            <input type="text" name="drivetrain" value="<?= $fieldValue('drivetrain'); ?>" placeholder="Brak danych">
+                                            <select name="drivetrain">
+                                                <option value=""<?= $fieldSelected('drivetrain', ''); ?>>Brak danych</option>
+                                                <?php foreach (($drivetrainOptions ?? []) as $optionValue => $optionLabel): ?>
+                                                    <option value="<?= htmlspecialchars($optionValue, ENT_QUOTES, 'UTF-8'); ?>"<?= $fieldSelected('drivetrain', $optionValue); ?>><?= htmlspecialchars($optionLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
                                         </label>
                                         <label class="vehicle-modal-field">
                                             <span>Skrzynia biegów</span>
@@ -385,23 +402,37 @@
                                     <div class="vehicle-modal-grid vehicle-modal-grid-single cars-accordion-body">
                                         <label class="vehicle-modal-field">
                                             <span>Rodzaj nadwozia</span>
-                                            <input type="text" name="body_type" value="<?= $fieldValue('body_type'); ?>" placeholder="Brak danych">
+                                            <select name="body_type">
+                                                <option value=""<?= $fieldSelected('body_type', ''); ?>>Brak danych</option>
+                                                <?php foreach (($bodyTypeOptions ?? []) as $optionValue => $optionLabel): ?>
+                                                    <option value="<?= htmlspecialchars($optionValue, ENT_QUOTES, 'UTF-8'); ?>"<?= $fieldSelected('body_type', $optionValue); ?>><?= htmlspecialchars($optionLabel, ENT_QUOTES, 'UTF-8'); ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
                                         </label>
                                         <label class="vehicle-modal-field">
                                             <span>Liczba miejsc</span>
-                                            <input type="number" name="seat_count" min="0" value="<?= $fieldValue('seat_count'); ?>" placeholder="Brak danych">
+                                            <input type="text" inputmode="numeric" name="seat_count" data-cars-number min="0" value="<?= $fieldValue('seat_count'); ?>" placeholder="Brak danych">
                                         </label>
                                         <label class="vehicle-modal-field">
-                                            <span>Długość (mm)</span>
-                                            <input type="number" name="length_mm" min="0" value="<?= $fieldValue('length_mm'); ?>" placeholder="Brak danych">
+                                            <span>Długość</span>
+                                            <div class="vehicle-currency-field">
+                                                <input type="text" inputmode="numeric" name="length_mm" data-cars-number min="0" value="<?= $fieldValue('length_mm'); ?>" placeholder="Brak danych">
+                                                <span class="vehicle-currency-suffix">mm</span>
+                                            </div>
                                         </label>
                                         <label class="vehicle-modal-field">
-                                            <span>Szerokość (mm)</span>
-                                            <input type="number" name="width_mm" min="0" value="<?= $fieldValue('width_mm'); ?>" placeholder="Brak danych">
+                                            <span>Szerokość</span>
+                                            <div class="vehicle-currency-field">
+                                                <input type="text" inputmode="numeric" name="width_mm" data-cars-number min="0" value="<?= $fieldValue('width_mm'); ?>" placeholder="Brak danych">
+                                                <span class="vehicle-currency-suffix">mm</span>
+                                            </div>
                                         </label>
                                         <label class="vehicle-modal-field">
-                                            <span>Wysokość (mm)</span>
-                                            <input type="number" name="height_mm" min="0" value="<?= $fieldValue('height_mm'); ?>" placeholder="Brak danych">
+                                            <span>Wysokość</span>
+                                            <div class="vehicle-currency-field">
+                                                <input type="text" inputmode="numeric" name="height_mm" data-cars-number min="0" value="<?= $fieldValue('height_mm'); ?>" placeholder="Brak danych">
+                                                <span class="vehicle-currency-suffix">mm</span>
+                                            </div>
                                         </label>
                                     </div>
                                 </details>

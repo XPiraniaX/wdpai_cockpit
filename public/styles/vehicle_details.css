@@ -1126,7 +1126,9 @@ body.vehicle-modal-open {
 }
 
 .vehicle-modal-field input[type="number"],
-.vehicle-modal-field input[data-marketplace-number] {
+.vehicle-modal-field input[data-marketplace-number],
+.vehicle-modal-field input[data-vehicle-number],
+.vehicle-modal-field input[data-vehicle-decimal] {
     -moz-appearance: textfield;
     appearance: textfield;
     padding-right: 62px;

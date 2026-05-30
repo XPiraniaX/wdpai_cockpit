@@ -559,6 +559,79 @@
     background: rgba(103, 210, 255, 0.58);
 }
 
+.vehicle-modal-field input[data-cars-number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+    padding-right: 62px;
+}
+
+.cars-page .vehicle-number-input {
+    position: relative;
+}
+
+.cars-page .vehicle-currency-field {
+    position: relative;
+}
+
+.cars-page .vehicle-currency-field input[type="text"] {
+    padding-right: 112px;
+}
+
+.cars-page .vehicle-currency-field .vehicle-number-stepper {
+    right: 6px;
+}
+
+.cars-page .vehicle-currency-suffix {
+    position: absolute;
+    top: 50%;
+    right: 56px;
+    transform: translateY(-50%);
+    color: rgba(148, 163, 184, 0.82);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    pointer-events: none;
+}
+
+.cars-page .vehicle-number-stepper {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    bottom: 6px;
+    width: 40px;
+    display: grid;
+    grid-template-rows: 1fr 1fr;
+    gap: 4px;
+    pointer-events: none;
+}
+
+.cars-page .vehicle-number-stepper-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(56, 189, 248, 0.18);
+    border-radius: 12px;
+    background: rgba(12, 23, 43, 0.88);
+    color: #96e5ff;
+    font-size: 12px;
+    line-height: 1;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    pointer-events: auto;
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.cars-page .vehicle-number-stepper-button:hover {
+    background: rgba(18, 34, 61, 0.96);
+    border-color: rgba(56, 189, 248, 0.34);
+    transform: translateY(-1px);
+}
+
+.cars-page .vehicle-number-stepper-button:active {
+    transform: translateY(0);
+}
+
 .cars-add-required-fields {
     padding-top: 2px;
 }

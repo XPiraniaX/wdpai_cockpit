@@ -346,6 +346,215 @@ window.initVehicleDetailsPage = () => {
         });
     };
 
+    const initializeVehicleGroupedNumberInputs = () => {
+        const numberInputs = modalRoot.querySelectorAll('input[data-vehicle-number]:not([readonly])');
+
+        const parseNumericValue = (value) => {
+            const digits = String(value ?? '').replace(/\s+/g, '').replace(/[^\d]/g, '');
+            return digits === '' ? 0 : Number.parseInt(digits, 10);
+        };
+
+        const parseMinValue = (input) => {
+            const digits = String(input.min ?? '').replace(/\s+/g, '').replace(/[^\d]/g, '');
+            return digits === '' ? 0 : Number.parseInt(digits, 10);
+        };
+
+        const normalizeNumericValueForSubmit = (value) => {
+            const digits = String(value ?? '').replace(/\s+/g, '').replace(/[^\d]/g, '');
+            return digits === '' ? '' : String(Number.parseInt(digits, 10));
+        };
+
+        const formatNumericValue = (value) => {
+            const digits = String(value ?? '').replace(/\D+/g, '');
+            return digits === '' ? '' : Number.parseInt(digits, 10).toLocaleString('pl-PL');
+        };
+
+        numberInputs.forEach((input) => {
+            if (!(input instanceof HTMLInputElement)) {
+                return;
+            }
+
+            input.value = formatNumericValue(input.value);
+
+            input.addEventListener('input', () => {
+                input.value = formatNumericValue(input.value);
+            }, { signal });
+
+            const currencyField = input.closest('.vehicle-currency-field');
+            let numberField = input.closest('.vehicle-number-input');
+
+            if (!currencyField && !numberField) {
+                numberField = document.createElement('div');
+                numberField.className = 'vehicle-number-input';
+                input.parentNode?.insertBefore(numberField, input);
+                numberField.appendChild(input);
+            }
+
+            const stepperHost = currencyField || numberField || input.parentElement;
+
+            if (!stepperHost || stepperHost.querySelector('.vehicle-number-stepper')) {
+                return;
+            }
+
+            const stepper = document.createElement('div');
+            stepper.className = 'vehicle-number-stepper';
+
+            const increaseButton = document.createElement('button');
+            increaseButton.type = 'button';
+            increaseButton.className = 'vehicle-number-stepper-button';
+            increaseButton.setAttribute('aria-label', 'Zwieksz wartosc');
+            increaseButton.textContent = '+';
+
+            const decreaseButton = document.createElement('button');
+            decreaseButton.type = 'button';
+            decreaseButton.className = 'vehicle-number-stepper-button';
+            decreaseButton.setAttribute('aria-label', 'Zmniejsz wartosc');
+            decreaseButton.textContent = '-';
+
+            const dispatchInputEvents = () => {
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            };
+
+            increaseButton.addEventListener('click', () => {
+                const nextValue = parseNumericValue(input.value) + 1;
+                input.value = formatNumericValue(String(nextValue));
+                dispatchInputEvents();
+            }, { signal });
+
+            decreaseButton.addEventListener('click', () => {
+                const minValue = parseMinValue(input);
+                const nextValue = Math.max(minValue, parseNumericValue(input.value) - 1);
+                input.value = formatNumericValue(String(nextValue));
+                dispatchInputEvents();
+            }, { signal });
+
+            stepper.appendChild(increaseButton);
+            stepper.appendChild(decreaseButton);
+            stepperHost.appendChild(stepper);
+
+            if (input.form && input.dataset.boundVehicleGroupedSubmit !== 'true') {
+                input.form.addEventListener('submit', () => {
+                    input.value = normalizeNumericValueForSubmit(input.value);
+                }, { signal });
+                input.dataset.boundVehicleGroupedSubmit = 'true';
+            }
+        });
+    };
+
+    const initializeVehicleGroupedDecimalInputs = () => {
+        const decimalInputs = modalRoot.querySelectorAll('input[data-vehicle-decimal]:not([readonly])');
+
+        const sanitizeDecimalValue = (value) => {
+            const normalized = String(value ?? '').replace(',', '.').replace(/\s+/g, '').replace(/[^\d.]/g, '');
+            const [integerPart = '', ...decimalParts] = normalized.split('.');
+            const decimalPart = decimalParts.join('').slice(0, 2);
+
+            if (integerPart === '' && decimalPart === '') {
+                return '';
+            }
+
+            return decimalPart === '' ? integerPart : `${integerPart}.${decimalPart}`;
+        };
+
+        const parseDecimalValue = (value) => {
+            const sanitized = sanitizeDecimalValue(value);
+            return sanitized === '' ? 0 : Number.parseFloat(sanitized);
+        };
+
+        const parseDecimalMinValue = (input) => {
+            const sanitized = sanitizeDecimalValue(input.min ?? '');
+            return sanitized === '' ? 0 : Number.parseFloat(sanitized);
+        };
+
+        const formatDecimalValue = (value) => {
+            const sanitized = sanitizeDecimalValue(value);
+
+            if (sanitized === '') {
+                return '';
+            }
+
+            const [integerPart = '0', decimalPart = ''] = sanitized.split('.');
+            const groupedInteger = Number.parseInt(integerPart || '0', 10).toLocaleString('pl-PL');
+
+            return decimalPart === '' ? groupedInteger : `${groupedInteger}.${decimalPart}`;
+        };
+
+        decimalInputs.forEach((input) => {
+            if (!(input instanceof HTMLInputElement)) {
+                return;
+            }
+
+            input.value = formatDecimalValue(input.value);
+
+            input.addEventListener('input', () => {
+                input.value = formatDecimalValue(input.value);
+            }, { signal });
+
+            const currencyField = input.closest('.vehicle-currency-field');
+            let numberField = input.closest('.vehicle-number-input');
+
+            if (!currencyField && !numberField) {
+                numberField = document.createElement('div');
+                numberField.className = 'vehicle-number-input';
+                input.parentNode?.insertBefore(numberField, input);
+                numberField.appendChild(input);
+            }
+
+            const stepperHost = currencyField || numberField || input.parentElement;
+
+            if (!stepperHost || stepperHost.querySelector('.vehicle-number-stepper')) {
+                return;
+            }
+
+            const stepper = document.createElement('div');
+            stepper.className = 'vehicle-number-stepper';
+
+            const increaseButton = document.createElement('button');
+            increaseButton.type = 'button';
+            increaseButton.className = 'vehicle-number-stepper-button';
+            increaseButton.setAttribute('aria-label', 'Zwieksz wartosc');
+            increaseButton.textContent = '+';
+
+            const decreaseButton = document.createElement('button');
+            decreaseButton.type = 'button';
+            decreaseButton.className = 'vehicle-number-stepper-button';
+            decreaseButton.setAttribute('aria-label', 'Zmniejsz wartosc');
+            decreaseButton.textContent = '-';
+
+            const dispatchInputEvents = () => {
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+            };
+
+            increaseButton.addEventListener('click', () => {
+                const step = Number.parseFloat(input.step || '0.01') || 0.01;
+                const nextValue = parseDecimalValue(input.value) + step;
+                input.value = formatDecimalValue(String(nextValue));
+                dispatchInputEvents();
+            }, { signal });
+
+            decreaseButton.addEventListener('click', () => {
+                const step = Number.parseFloat(input.step || '0.01') || 0.01;
+                const minValue = parseDecimalMinValue(input);
+                const nextValue = Math.max(minValue, parseDecimalValue(input.value) - step);
+                input.value = formatDecimalValue(String(nextValue));
+                dispatchInputEvents();
+            }, { signal });
+
+            stepper.appendChild(increaseButton);
+            stepper.appendChild(decreaseButton);
+            stepperHost.appendChild(stepper);
+
+            if (input.form && input.dataset.boundVehicleDecimalSubmit !== 'true') {
+                input.form.addEventListener('submit', () => {
+                    input.value = sanitizeDecimalValue(input.value);
+                }, { signal });
+                input.dataset.boundVehicleDecimalSubmit = 'true';
+            }
+        });
+    };
+
     const enhanceNumberInputs = () => {
         const numberInputs = modalRoot.querySelectorAll('.vehicle-modal-field input[type="number"]:not([readonly])');
 
@@ -567,6 +776,8 @@ window.initVehicleDetailsPage = () => {
         }
     };
 
+    initializeVehicleGroupedNumberInputs();
+    initializeVehicleGroupedDecimalInputs();
     enhanceNumberInputs();
     captureInitialImagesEditState();
     initializeImagesEditState();

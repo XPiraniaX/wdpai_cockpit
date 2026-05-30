@@ -146,6 +146,55 @@ class AppController
         return $flash;
     }
 
+    protected function getBodyTypeOptions(): array
+    {
+        return [
+            'hatchback' => 'Hatchback',
+            'sedan' => 'Sedan',
+            'kombi' => 'Kombi',
+            'suv' => 'SUV',
+            'coupe' => 'Coupe',
+            'cabrio' => 'Cabrio',
+            'liftback' => 'Liftback',
+            'van' => 'Van',
+            'pickup' => 'Pickup',
+            'other' => 'Inny',
+        ];
+    }
+
+    protected function getVehicleFuelTypeOptions(): array
+    {
+        return [
+            'petrol' => 'Benzyna',
+            'diesel' => 'Diesel',
+            'hybrid' => 'Hybryda',
+            'plug_in_hybrid' => 'Plug-in Hybrid',
+            'electric' => 'Elektryczny',
+            'lpg' => 'LPG',
+            'cng' => 'CNG',
+            'other' => 'Inne',
+        ];
+    }
+
+    protected function getTransmissionOptions(): array
+    {
+        return [
+            'manual' => 'Manualna',
+            'automatic' => 'Automatyczna',
+            'semi_automatic' => 'Półautomatyczna',
+        ];
+    }
+
+    protected function getDrivetrainOptions(): array
+    {
+        return [
+            'fwd' => 'FWD',
+            'rwd' => 'RWD',
+            'awd' => 'AWD',
+            '4x4' => '4x4',
+        ];
+    }
+
     private function resolveCurrentUser(int $userId): array
     {
         $fallbackUser = [
