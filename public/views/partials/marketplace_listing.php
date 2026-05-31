@@ -1,4 +1,4 @@
-﻿﻿<?php
+<?php
 $detailsModalId = 'marketplace-details-modal-' . (int) $listing['id'];
 $hasImages = !empty($listing['images']);
 $isOwnListing = ((int) ($currentUser['id'] ?? 0)) === (int) $listing['user_id'];

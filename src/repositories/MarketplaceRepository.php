@@ -543,6 +543,27 @@ class MarketplaceRepository
         return (bool) $statement->fetchColumn();
     }
 
+    public function resolveListingCatalogIds(array $data): array
+    {
+        $brandId = $data['brand_id'] ?? null;
+        $modelId = $data['model_id'] ?? null;
+        $brandName = (string) ($data['brand_name'] ?? '');
+        $modelName = (string) ($data['model_name'] ?? '');
+
+        if ($brandId === null) {
+            $brandId = $this->resolveBrandId($brandName, (bool) ($data['brand_requires_approval'] ?? false));
+        }
+
+        if ($modelId === null) {
+            $modelId = $this->resolveModelId($brandId, $modelName, (bool) ($data['model_requires_approval'] ?? false));
+        }
+
+        $data['brand_id'] = $brandId;
+        $data['model_id'] = $modelId;
+
+        return $data;
+    }
+
     public function toggleSave(int $userId, int $listingId): void
     {
         if ($this->saveExists($userId, $listingId)) {
@@ -650,6 +671,65 @@ class MarketplaceRepository
         ]);
 
         return (bool) $statement->fetchColumn();
+    }
+
+    private function resolveBrandId(string $brandName, bool $requiresApproval = false): int
+    {
+        $select = $this->connection->prepare(
+            'SELECT id
+            FROM car_brands
+            WHERE LOWER(name) = LOWER(:name)
+            LIMIT 1'
+        );
+        $select->execute(['name' => $brandName]);
+        $existingId = $select->fetchColumn();
+
+        if ($existingId !== false) {
+            return (int) $existingId;
+        }
+
+        $insert = $this->connection->prepare(
+            'INSERT INTO car_brands (name, is_approved)
+            VALUES (:name, :is_approved)'
+        );
+        $insert->execute([
+            'name' => $brandName,
+            'is_approved' => $requiresApproval ? 'false' : 'true',
+        ]);
+
+        return (int) $this->connection->lastInsertId();
+    }
+
+    private function resolveModelId(int $brandId, string $modelName, bool $requiresApproval = false): int
+    {
+        $select = $this->connection->prepare(
+            'SELECT id
+            FROM car_models
+            WHERE brand_id = :brand_id
+                AND LOWER(name) = LOWER(:name)
+            LIMIT 1'
+        );
+        $select->execute([
+            'brand_id' => $brandId,
+            'name' => $modelName,
+        ]);
+        $existingId = $select->fetchColumn();
+
+        if ($existingId !== false) {
+            return (int) $existingId;
+        }
+
+        $insert = $this->connection->prepare(
+            'INSERT INTO car_models (brand_id, name, is_approved)
+            VALUES (:brand_id, :name, :is_approved)'
+        );
+        $insert->execute([
+            'brand_id' => $brandId,
+            'name' => $modelName,
+            'is_approved' => $requiresApproval ? 'false' : 'true',
+        ]);
+
+        return (int) $this->connection->lastInsertId();
     }
 
     private function normalizeScope(string $scope): string

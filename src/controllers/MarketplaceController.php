@@ -1,5 +1,4 @@
 <?php
-
 class MarketplaceController extends AppController
 {
     public function index(): void
@@ -97,6 +96,13 @@ class MarketplaceController extends AppController
                     $this->setFlash('error', 'Uzupełnij wszystkie wymagane pola ogłoszenia.');
                     $this->redirect($redirectTo);
                 }
+
+                if (($payload['brand_name'] ?? '') === '' || ($payload['model_name'] ?? '') === '') {
+                    $this->setFlash('error', 'Wybierz lub wpisz marke i model pojazdu.');
+                    $this->redirect($redirectTo);
+                }
+
+                $payload = $repository->resolveListingCatalogIds($payload);
 
                 if ($payload['brand_id'] === null || $payload['model_id'] === null) {
                     $this->setFlash('error', 'Wybierz markę i model pojazdu.');
@@ -310,6 +316,11 @@ class MarketplaceController extends AppController
         return [
             'brand_id' => $this->normalizeNullableInt($_POST['brand_id'] ?? null),
             'model_id' => $this->normalizeNullableInt($_POST['model_id'] ?? null),
+            'brand_name' => $this->sanitizeText($_POST['brand_name'] ?? null) ?? '',
+            'model_name' => $this->sanitizeText($_POST['model_name'] ?? null) ?? '',
+            'brand_requires_approval' => ($_POST['brand_id'] ?? '') === '__custom__',
+            'model_requires_approval' => ($_POST['brand_id'] ?? '') === '__custom__'
+                || ($_POST['model_id'] ?? '') === '__custom_model__',
             'title' => $this->sanitizeText($_POST['title'] ?? null) ?? 'Brak tytułu',
             'trim_name' => $this->sanitizeNullableText($_POST['trim_name'] ?? null),
             'description' => trim((string) ($_POST['description'] ?? '')),
@@ -339,8 +350,8 @@ class MarketplaceController extends AppController
         $missing = [];
 
         foreach ([
-            'brand_id',
-            'model_id',
+            'brand_name',
+            'model_name',
             'title',
             'trim_name',
             'description',
@@ -666,6 +677,8 @@ class MarketplaceController extends AppController
                     'title' => (string) ($vehicle['display_name'] ?? ''),
                     'brand_id' => isset($vehicle['brand_id']) ? (int) $vehicle['brand_id'] : '',
                     'model_id' => isset($vehicle['model_id']) ? (int) $vehicle['model_id'] : '',
+                    'brand_name' => (string) ($vehicle['brand_name'] ?? ''),
+                    'model_name' => (string) ($vehicle['model_name'] ?? ''),
                     'trim_name' => (string) ($vehicle['trim_name'] ?? ''),
                     'production_year' => isset($vehicle['production_year']) ? (int) $vehicle['production_year'] : '',
                     'mileage_km' => isset($vehicle['current_mileage_km']) ? (int) $vehicle['current_mileage_km'] : '',

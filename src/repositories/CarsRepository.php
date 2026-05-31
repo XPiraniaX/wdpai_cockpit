@@ -94,6 +94,8 @@ class CarsRepository
                 v.id,
                 v.brand_id,
                 v.model_id,
+                b.name AS brand_name,
+                m.name AS model_name,
                 v.display_name,
                 v.trim_name,
                 v.production_year,
@@ -110,6 +112,10 @@ class CarsRepository
                 v.display_order,
                 vi.image_path
             FROM vehicles v
+            LEFT JOIN car_brands b
+                ON b.id = v.brand_id
+            LEFT JOIN car_models m
+                ON m.id = v.model_id
             LEFT JOIN vehicle_images vi
                 ON vi.vehicle_id = v.id
                 AND vi.is_primary = TRUE

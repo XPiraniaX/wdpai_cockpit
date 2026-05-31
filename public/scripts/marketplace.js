@@ -48,6 +48,14 @@ const marketplaceCreateTitle = document.querySelector('[data-marketplace-create-
 const marketplaceCreateActionInput = document.querySelector('[data-marketplace-create-action]');
 const marketplaceEditIdInput = document.querySelector('[data-marketplace-edit-id]');
 const marketplaceSourceVehicleIdInput = document.querySelector('[data-marketplace-source-vehicle-id]');
+const marketplaceBrandHiddenInput = document.querySelector('[data-marketplace-brand-hidden]');
+const marketplaceModelHiddenInput = document.querySelector('[data-marketplace-model-hidden]');
+const marketplaceCreateBrandSelect = document.querySelector('[data-marketplace-create-brand-select]');
+const marketplaceCreateModelSelect = document.querySelector('[data-marketplace-create-model-select]');
+const marketplaceCustomBrandField = document.querySelector('[data-marketplace-custom-brand-field]');
+const marketplaceCustomModelField = document.querySelector('[data-marketplace-custom-model-field]');
+const marketplaceCustomBrandInput = document.querySelector('[data-marketplace-brand-custom]');
+const marketplaceCustomModelInput = document.querySelector('[data-marketplace-model-custom]');
 const marketplaceCreateSubmit = document.querySelector('[data-marketplace-create-submit]');
 const marketplaceExistingImagesNote = document.querySelector('[data-marketplace-existing-images-note]');
 const marketplacePhoneInput = marketplaceCreateForm?.elements.namedItem('contact_phone');
@@ -61,6 +69,9 @@ let editableMarketplaceFiles = [];
 let existingMarketplaceImages = [];
 let removedMarketplaceImages = [];
 let marketplaceCurrentStep = 1;
+let marketplaceImportCategoryLock = false;
+const MARKETPLACE_CUSTOM_BRAND_VALUE = '__custom__';
+const MARKETPLACE_CUSTOM_MODEL_VALUE = '__custom_model__';
 
 const syncMarketplaceScrollLock = () => {
     const createOpen = marketplaceCreateModal ? !marketplaceCreateModal.hidden : false;
@@ -132,6 +143,10 @@ const syncRemovedMarketplaceImagesInputs = () => {
 };
 
 document.querySelectorAll('.marketplace-brand-select').forEach((brandSelect) => {
+    if (brandSelect.closest('[data-marketplace-create-form]')) {
+        return;
+    }
+
     const targetModelId = brandSelect.getAttribute('data-target-model');
     const modelSelect = targetModelId ? document.getElementById(targetModelId) : null;
     const modelField = modelSelect?.closest('[data-marketplace-filter-model-field]');
@@ -187,6 +202,327 @@ document.querySelectorAll('.marketplace-brand-select').forEach((brandSelect) => 
 
     syncModelOptions();
 });
+
+const marketplaceApprovedBrandCatalog = (() => {
+    if (!(marketplaceCreateBrandSelect instanceof HTMLSelectElement) || !(marketplaceCreateModelSelect instanceof HTMLSelectElement)) {
+        return [];
+    }
+
+    return Array.from(marketplaceCreateBrandSelect.options)
+        .filter((option) => option.value !== '')
+        .map((option) => ({
+            id: option.value,
+            name: option.textContent?.trim() || '',
+            models: Array.from(marketplaceCreateModelSelect.options)
+                .filter((modelOption) => modelOption.getAttribute('data-brand-id') === option.value)
+                .map((modelOption) => ({
+                    id: modelOption.value,
+                    name: modelOption.textContent?.trim() || '',
+                })),
+        }));
+})();
+
+const buildMarketplaceSelectOption = (value, label, isSelected = false) => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = label;
+    option.selected = isSelected;
+    return option;
+};
+
+const setMarketplaceCategoryFieldLocks = ({
+    brandSelectDisabled = false,
+    modelSelectDisabled = false,
+    customBrandReadOnly = false,
+    customModelReadOnly = false,
+} = {}) => {
+    if (marketplaceCreateBrandSelect instanceof HTMLSelectElement) {
+        marketplaceCreateBrandSelect.disabled = brandSelectDisabled;
+    }
+
+    if (marketplaceCreateModelSelect instanceof HTMLSelectElement) {
+        marketplaceCreateModelSelect.disabled = modelSelectDisabled;
+    }
+
+    if (marketplaceCustomBrandInput instanceof HTMLInputElement) {
+        marketplaceCustomBrandInput.readOnly = customBrandReadOnly;
+    }
+
+    if (marketplaceCustomModelInput instanceof HTMLInputElement) {
+        marketplaceCustomModelInput.readOnly = customModelReadOnly;
+    }
+};
+
+const syncMarketplaceCustomCategoryMode = () => {
+    const isCustomBrand = marketplaceCreateBrandSelect?.value === MARKETPLACE_CUSTOM_BRAND_VALUE;
+    const isCustomModel = marketplaceCreateModelSelect?.value === MARKETPLACE_CUSTOM_MODEL_VALUE;
+
+    if (marketplaceCustomBrandField) {
+        marketplaceCustomBrandField.hidden = !isCustomBrand;
+    }
+
+    if (marketplaceCustomModelField) {
+        marketplaceCustomModelField.hidden = !(isCustomBrand || isCustomModel);
+    }
+
+    if (marketplaceCustomBrandInput instanceof HTMLInputElement) {
+        marketplaceCustomBrandInput.required = Boolean(isCustomBrand);
+    }
+
+    if (marketplaceCustomModelInput instanceof HTMLInputElement) {
+        marketplaceCustomModelInput.required = Boolean(isCustomBrand || isCustomModel);
+    }
+};
+
+const syncMarketplaceCategoryHiddenValues = () => {
+    const isCustomBrand = marketplaceCreateBrandSelect?.value === MARKETPLACE_CUSTOM_BRAND_VALUE;
+    const isCustomModel = marketplaceCreateModelSelect?.value === MARKETPLACE_CUSTOM_MODEL_VALUE;
+
+    if (marketplaceBrandHiddenInput instanceof HTMLInputElement) {
+        if (isCustomBrand) {
+            marketplaceBrandHiddenInput.value = marketplaceCustomBrandInput?.value?.trim() || '';
+        } else {
+            const selectedOption = marketplaceCreateBrandSelect?.selectedOptions?.[0];
+            marketplaceBrandHiddenInput.value = selectedOption?.textContent?.trim() || '';
+        }
+    }
+
+    if (marketplaceModelHiddenInput instanceof HTMLInputElement) {
+        if (isCustomBrand || isCustomModel) {
+            marketplaceModelHiddenInput.value = marketplaceCustomModelInput?.value?.trim() || '';
+        } else {
+            const selectedOption = marketplaceCreateModelSelect?.selectedOptions?.[0];
+            marketplaceModelHiddenInput.value = selectedOption?.textContent?.trim() || '';
+        }
+    }
+};
+
+const populateMarketplaceBrandOptions = (selectedBrandName = '') => {
+    if (!(marketplaceCreateBrandSelect instanceof HTMLSelectElement)) {
+        return;
+    }
+
+    const nextBrandName = String(selectedBrandName || '').trim();
+    const hasApprovedBrand = marketplaceApprovedBrandCatalog.some((brand) => brand.name === nextBrandName);
+    const useCustomBrand = nextBrandName !== '' && !hasApprovedBrand;
+
+    marketplaceCreateBrandSelect.innerHTML = '';
+    marketplaceCreateBrandSelect.appendChild(buildMarketplaceSelectOption('', 'Wybierz markę', nextBrandName === '' && !useCustomBrand));
+
+    marketplaceApprovedBrandCatalog.forEach((brand) => {
+        marketplaceCreateBrandSelect.appendChild(buildMarketplaceSelectOption(brand.id, brand.name, brand.name === nextBrandName));
+    });
+
+    marketplaceCreateBrandSelect.appendChild(buildMarketplaceSelectOption(MARKETPLACE_CUSTOM_BRAND_VALUE, 'Inna marka', useCustomBrand));
+};
+
+const populateMarketplaceModelOptions = (brandName = '', selectedModelName = '') => {
+    if (!(marketplaceCreateModelSelect instanceof HTMLSelectElement)) {
+        return;
+    }
+
+    const nextBrandName = String(brandName || '').trim();
+    const nextModelName = String(selectedModelName || '').trim();
+    const brandEntry = marketplaceApprovedBrandCatalog.find((brand) => brand.name === nextBrandName) || null;
+    const approvedModels = brandEntry?.models || [];
+    const hasApprovedModel = approvedModels.some((model) => model.name === nextModelName);
+    const useCustomModel = nextModelName !== '' && !hasApprovedModel;
+
+    marketplaceCreateModelSelect.innerHTML = '';
+
+    if (!nextBrandName) {
+        marketplaceCreateModelSelect.appendChild(buildMarketplaceSelectOption('', 'Wybierz model', true));
+        marketplaceCreateModelSelect.disabled = true;
+        return;
+    }
+
+    if (brandEntry === null || marketplaceCreateBrandSelect?.value === MARKETPLACE_CUSTOM_BRAND_VALUE) {
+        marketplaceCreateModelSelect.appendChild(buildMarketplaceSelectOption(MARKETPLACE_CUSTOM_MODEL_VALUE, 'Inny model', true));
+        marketplaceCreateModelSelect.disabled = true;
+        return;
+    }
+
+    marketplaceCreateModelSelect.disabled = false;
+    marketplaceCreateModelSelect.appendChild(buildMarketplaceSelectOption('', 'Wybierz model', nextModelName === '' && !useCustomModel));
+
+    approvedModels.forEach((model) => {
+        const option = buildMarketplaceSelectOption(model.id, model.name, model.name === nextModelName);
+        option.setAttribute('data-brand-id', brandEntry.id);
+        marketplaceCreateModelSelect.appendChild(option);
+    });
+
+    marketplaceCreateModelSelect.appendChild(buildMarketplaceSelectOption(MARKETPLACE_CUSTOM_MODEL_VALUE, 'Inny model', useCustomModel));
+};
+
+const syncMarketplaceCategoryFields = (selectedBrandName = '', selectedModelName = '') => {
+    const nextBrandName = String(selectedBrandName || '').trim();
+    const nextModelName = String(selectedModelName || '').trim();
+    const brandEntry = marketplaceApprovedBrandCatalog.find((brand) => brand.name === nextBrandName) || null;
+    const useCustomBrand = nextBrandName !== '' && brandEntry === null;
+    const useCustomModel = !useCustomBrand && nextModelName !== '' && !(brandEntry?.models || []).some((model) => model.name === nextModelName);
+
+    populateMarketplaceBrandOptions(nextBrandName);
+
+    if (marketplaceCustomBrandInput instanceof HTMLInputElement) {
+        marketplaceCustomBrandInput.value = useCustomBrand ? nextBrandName : '';
+    }
+
+    populateMarketplaceModelOptions(nextBrandName, nextModelName);
+
+    if (marketplaceCreateBrandSelect instanceof HTMLSelectElement) {
+        if (useCustomBrand) {
+            marketplaceCreateBrandSelect.value = MARKETPLACE_CUSTOM_BRAND_VALUE;
+        } else if (brandEntry !== null) {
+            marketplaceCreateBrandSelect.value = brandEntry.id;
+        } else {
+            marketplaceCreateBrandSelect.value = '';
+        }
+    }
+
+    if (marketplaceCreateModelSelect instanceof HTMLSelectElement) {
+        if (useCustomBrand || useCustomModel) {
+            marketplaceCreateModelSelect.value = MARKETPLACE_CUSTOM_MODEL_VALUE;
+        } else {
+            const approvedModel = (brandEntry?.models || []).find((model) => model.name === nextModelName) || null;
+            marketplaceCreateModelSelect.value = approvedModel?.id || '';
+        }
+    }
+
+    if (marketplaceCustomModelInput instanceof HTMLInputElement) {
+        marketplaceCustomModelInput.value = (useCustomBrand || useCustomModel) ? nextModelName : '';
+    }
+
+    syncMarketplaceCustomCategoryMode();
+    syncMarketplaceCategoryHiddenValues();
+};
+
+const applyMarketplaceImportedCategoryState = (brandName = '', modelName = '') => {
+    const nextBrandName = String(brandName || '').trim();
+    const nextModelName = String(modelName || '').trim();
+    const brandEntry = marketplaceApprovedBrandCatalog.find((brand) => brand.name === nextBrandName) || null;
+    const approvedModel = (brandEntry?.models || []).find((model) => model.name === nextModelName) || null;
+
+    marketplaceImportCategoryLock = true;
+    syncMarketplaceCategoryFields(nextBrandName, nextModelName);
+
+    if (!nextBrandName) {
+        setMarketplaceCategoryFieldLocks();
+        marketplaceImportCategoryLock = false;
+        return;
+    }
+
+    if (brandEntry === null) {
+        if (marketplaceCreateBrandSelect instanceof HTMLSelectElement) {
+            marketplaceCreateBrandSelect.value = MARKETPLACE_CUSTOM_BRAND_VALUE;
+        }
+        if (marketplaceCreateModelSelect instanceof HTMLSelectElement) {
+            marketplaceCreateModelSelect.innerHTML = '';
+            marketplaceCreateModelSelect.appendChild(buildMarketplaceSelectOption(MARKETPLACE_CUSTOM_MODEL_VALUE, 'Inny model', true));
+            marketplaceCreateModelSelect.value = MARKETPLACE_CUSTOM_MODEL_VALUE;
+            marketplaceCreateModelSelect.disabled = true;
+        }
+        if (marketplaceCustomBrandInput instanceof HTMLInputElement) {
+            marketplaceCustomBrandInput.value = nextBrandName;
+        }
+        if (marketplaceCustomModelInput instanceof HTMLInputElement) {
+            marketplaceCustomModelInput.value = nextModelName;
+        }
+
+        syncMarketplaceCustomCategoryMode();
+        syncMarketplaceCategoryHiddenValues();
+        setMarketplaceCategoryFieldLocks({
+            brandSelectDisabled: true,
+            modelSelectDisabled: true,
+            customBrandReadOnly: true,
+            customModelReadOnly: true,
+        });
+        return;
+    }
+
+    if (marketplaceCreateBrandSelect instanceof HTMLSelectElement) {
+        marketplaceCreateBrandSelect.value = brandEntry.id;
+    }
+
+    if (approvedModel !== null) {
+        populateMarketplaceModelOptions(nextBrandName, nextModelName);
+        if (marketplaceCreateModelSelect instanceof HTMLSelectElement) {
+            marketplaceCreateModelSelect.value = approvedModel.id;
+        }
+        syncMarketplaceCustomCategoryMode();
+        syncMarketplaceCategoryHiddenValues();
+        setMarketplaceCategoryFieldLocks({
+            brandSelectDisabled: true,
+            modelSelectDisabled: true,
+        });
+        return;
+    }
+
+    populateMarketplaceModelOptions(nextBrandName, nextModelName);
+    if (marketplaceCreateModelSelect instanceof HTMLSelectElement) {
+        marketplaceCreateModelSelect.value = MARKETPLACE_CUSTOM_MODEL_VALUE;
+        marketplaceCreateModelSelect.disabled = true;
+    }
+    if (marketplaceCustomModelInput instanceof HTMLInputElement) {
+        marketplaceCustomModelInput.value = nextModelName;
+    }
+    syncMarketplaceCustomCategoryMode();
+    syncMarketplaceCategoryHiddenValues();
+    setMarketplaceCategoryFieldLocks({
+        brandSelectDisabled: true,
+        modelSelectDisabled: true,
+        customModelReadOnly: true,
+    });
+};
+
+marketplaceCreateBrandSelect?.addEventListener('change', () => {
+    if (marketplaceImportCategoryLock) {
+        return;
+    }
+
+    if (marketplaceCustomBrandInput instanceof HTMLInputElement) {
+        marketplaceCustomBrandInput.value = '';
+    }
+
+    if (marketplaceCustomModelInput instanceof HTMLInputElement) {
+        marketplaceCustomModelInput.value = '';
+    }
+
+    if (marketplaceCreateBrandSelect.value === MARKETPLACE_CUSTOM_BRAND_VALUE) {
+        populateMarketplaceModelOptions(MARKETPLACE_CUSTOM_BRAND_VALUE, '');
+        if (marketplaceCreateModelSelect instanceof HTMLSelectElement) {
+            marketplaceCreateModelSelect.value = MARKETPLACE_CUSTOM_MODEL_VALUE;
+        }
+        syncMarketplaceCustomCategoryMode();
+        syncMarketplaceCategoryHiddenValues();
+        marketplaceCustomBrandInput?.focus();
+        return;
+    }
+
+    const selectedBrand = marketplaceApprovedBrandCatalog.find((brand) => brand.id === marketplaceCreateBrandSelect.value);
+    populateMarketplaceModelOptions(selectedBrand?.name || '', '');
+    syncMarketplaceCustomCategoryMode();
+    syncMarketplaceCategoryHiddenValues();
+});
+
+marketplaceCreateModelSelect?.addEventListener('change', () => {
+    if (marketplaceImportCategoryLock) {
+        return;
+    }
+
+    if (marketplaceCreateModelSelect.value !== MARKETPLACE_CUSTOM_MODEL_VALUE && marketplaceCustomModelInput instanceof HTMLInputElement) {
+        marketplaceCustomModelInput.value = '';
+    }
+
+    syncMarketplaceCustomCategoryMode();
+    syncMarketplaceCategoryHiddenValues();
+
+    if (marketplaceCreateModelSelect.value === MARKETPLACE_CUSTOM_MODEL_VALUE) {
+        marketplaceCustomModelInput?.focus();
+    }
+});
+
+marketplaceCustomBrandInput?.addEventListener('input', syncMarketplaceCategoryHiddenValues);
+marketplaceCustomModelInput?.addEventListener('input', syncMarketplaceCategoryHiddenValues);
 
 const syncMarketplaceImagesInput = () => {
     if (!marketplaceImageInput) {
@@ -641,6 +977,7 @@ const syncMarketplaceCreateSummary = () => {
 };
 
 const resetMarketplaceCreateMode = () => {
+    marketplaceImportCategoryLock = false;
     if (marketplaceCreateKicker) {
         marketplaceCreateKicker.textContent = 'Nowe ogłoszenie';
     }
@@ -662,16 +999,40 @@ const resetMarketplaceCreateMode = () => {
     if (marketplaceImageInput) {
         marketplaceImageInput.required = true;
     }
+    if (marketplaceBrandHiddenInput instanceof HTMLInputElement) {
+        marketplaceBrandHiddenInput.value = '';
+    }
+    if (marketplaceModelHiddenInput instanceof HTMLInputElement) {
+        marketplaceModelHiddenInput.value = '';
+    }
+    if (marketplaceCustomBrandInput instanceof HTMLInputElement) {
+        marketplaceCustomBrandInput.value = '';
+    }
+    if (marketplaceCustomModelInput instanceof HTMLInputElement) {
+        marketplaceCustomModelInput.value = '';
+    }
     removedMarketplaceImages = [];
     syncRemovedMarketplaceImagesInputs();
+    syncMarketplaceCustomCategoryMode();
+    setMarketplaceCategoryFieldLocks();
 };
 const fillMarketplaceCreateForm = (payload) => {
     if (!marketplaceCreateForm || !payload) {
         return;
     }
 
+    const selectedBrandName = String(payload.brand_name || '').trim();
+    const selectedModelName = String(payload.model_name || '').trim();
+    const isImportedVehicle = Number.parseInt(String(payload.source_vehicle_id || ''), 10) > 0;
+
+    if (isImportedVehicle) {
+        applyMarketplaceImportedCategoryState(selectedBrandName, selectedModelName);
+    } else {
+        syncMarketplaceCategoryFields(selectedBrandName, selectedModelName);
+    }
+
     Object.entries(payload).forEach(([key, value]) => {
-        if (key === 'id' || key === 'images') {
+        if (key === 'id' || key === 'images' || key === 'brand_id' || key === 'model_id') {
             return;
         }
 
@@ -686,9 +1047,11 @@ const fillMarketplaceCreateForm = (payload) => {
     });
 
     initializeMarketplaceNumberInputs(marketplaceCreateModal);
-    marketplaceCreateModal?.querySelectorAll('.marketplace-brand-select').forEach((brandSelect) => {
-        brandSelect.dispatchEvent(new Event('change'));
-    });
+    if (isImportedVehicle) {
+        applyMarketplaceImportedCategoryState(selectedBrandName, selectedModelName);
+    } else {
+        syncMarketplaceCategoryFields(selectedBrandName, selectedModelName);
+    }
     syncMarketplacePhoneInput();
 };
 
@@ -782,9 +1145,7 @@ const prepareMarketplaceCreateFormForNewListing = () => {
     resetMarketplaceCreateMode();
     initializeMarketplaceNumberInputs(marketplaceCreateModal);
     initializeMarketplaceDecimalInputs(marketplaceCreateModal);
-    marketplaceCreateModal?.querySelectorAll('.marketplace-brand-select').forEach((brandSelect) => {
-        brandSelect.dispatchEvent(new Event('change'));
-    });
+    syncMarketplaceCategoryFields('', '');
     setMarketplaceCreateStep(1);
     showMarketplaceCreateForm();
 };
