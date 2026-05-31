@@ -54,6 +54,8 @@ class AppController
         $viewPath = file_exists($templatePath) ? $templatePath : 'public/views/404.html';
         $currentUserId = $this->getCurrentUserId();
         $currentUser = $this->resolveCurrentUser($currentUserId);
+        $requiresPseudonymSetup = $this->isAuthenticated()
+            && trim((string) ($currentUser['pseudonym'] ?? '')) === '';
         $flash = $this->consumeFlash();
         $styleFiles = [
             'base.css',
@@ -200,6 +202,7 @@ class AppController
         $fallbackUser = [
             'id' => $userId,
             'full_name' => 'Użytkownik testowy',
+            'pseudonym' => null,
             'membership_tier' => 'free',
         ];
 

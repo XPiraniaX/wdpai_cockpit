@@ -10,6 +10,7 @@ Table users {
   password text [not null]
   first_name varchar(100) [not null]
   last_name varchar(100) [not null]
+  pseudonym varchar(80)
   membership_tier varchar(20) [not null, default: 'free', note: 'free | pro | business']
   avatar_path text
   timezone varchar(64) [not null, default: 'Europe/Warsaw']

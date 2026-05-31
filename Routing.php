@@ -6,6 +6,7 @@ class Routing {
         "" => ["controller" => "SecurityController", "action" => "login"],
         "login" => ["controller" => "SecurityController", "action" => "login"],
         "logout" => ["controller" => "SecurityController", "action" => "logout"],
+        "complete-pseudonym" => ["controller" => "SecurityController", "action" => "completePseudonym"],
         "register" => ["controller" => "SecurityController", "action" => "register"],
         "dashboard" => ["controller" => "DashboardController", "action" => "index"],
         "dashboard/set-primary-vehicle" => ["controller" => "DashboardController", "action" => "setPrimaryVehicle"],

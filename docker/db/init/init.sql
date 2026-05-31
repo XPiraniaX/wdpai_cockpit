@@ -5,6 +5,7 @@ CREATE TABLE users (
     password TEXT NOT NULL,
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
+    pseudonym VARCHAR(80),
     membership_tier VARCHAR(20) NOT NULL DEFAULT 'free' CHECK (membership_tier IN ('free', 'pro', 'business')),
     avatar_path TEXT,
     timezone VARCHAR(64) NOT NULL DEFAULT 'Europe/Warsaw',

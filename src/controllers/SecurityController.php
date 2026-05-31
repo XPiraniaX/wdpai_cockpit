@@ -2,9 +2,10 @@
 
 require_once 'AppController.php';
 
-class SecurityController extends AppController {
-
-    public function login(){
+class SecurityController extends AppController
+{
+    public function login(): void
+    {
         $this->redirectIfAuthenticated();
 
         $title = 'Login - Cockpit';
@@ -39,14 +40,15 @@ class SecurityController extends AppController {
             }
         }
 
-        $this->renderAuth("login", [
-            "title" => $title,
+        $this->renderAuth('login', [
+            'title' => $title,
             'errors' => $errors,
             'form' => $form,
         ]);
     }
 
-    public function register() {
+    public function register(): void
+    {
         $this->redirectIfAuthenticated();
 
         $title = 'Register - Cockpit';
@@ -124,8 +126,8 @@ class SecurityController extends AppController {
             }
         }
 
-        $this->renderAuth("register", [
-            "title" => $title,
+        $this->renderAuth('register', [
+            'title' => $title,
             'errors' => $errors,
             'form' => $form,
         ]);
@@ -138,6 +140,39 @@ class SecurityController extends AppController {
         $this->redirect('/login');
     }
 
+    public function completePseudonym(): void
+    {
+        $this->requireAuthentication();
+
+        if (!$this->isPost()) {
+            $this->redirect('/dashboard');
+        }
+
+        $pseudonym = trim((string) ($_POST['pseudonym'] ?? ''));
+        $redirectTo = $this->sanitizeRedirectPath((string) ($_POST['redirect_to'] ?? '/dashboard'));
+
+        if ($pseudonym === '') {
+            $this->setFlash('error', 'Wpisz swój pseudonim.');
+            $this->redirect($redirectTo);
+        }
+
+        if (mb_strlen($pseudonym) < 3) {
+            $this->setFlash('error', 'Pseudonim musi mieć co najmniej 3 znaki.');
+            $this->redirect($redirectTo);
+        }
+
+        if (mb_strlen($pseudonym) > 80) {
+            $this->setFlash('error', 'Pseudonim może mieć maksymalnie 80 znaków.');
+            $this->redirect($redirectTo);
+        }
+
+        $repository = new UserRepository(Database::getConnection());
+        $repository->updatePseudonym($this->getCurrentUserId(), $pseudonym);
+
+        $this->setFlash('success', 'Pseudonim został zapisany.');
+        $this->redirect($redirectTo);
+    }
+
     private function canAuthenticate(string $storedPassword, string $plainPassword): bool
     {
         if (password_verify($plainPassword, $storedPassword)) {
@@ -146,5 +181,20 @@ class SecurityController extends AppController {
 
         return str_contains($storedPassword, 'examplehashedpasswordvalueforseedonly1234567890')
             && hash_equals('password', $plainPassword);
+    }
+
+    private function sanitizeRedirectPath(string $redirectTo): string
+    {
+        $path = trim($redirectTo);
+
+        if ($path === '' || $path[0] !== '/') {
+            return '/dashboard';
+        }
+
+        if (str_starts_with($path, '//')) {
+            return '/dashboard';
+        }
+
+        return $path;
     }
 }

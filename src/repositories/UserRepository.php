@@ -15,6 +15,7 @@ class UserRepository
                 email,
                 first_name,
                 last_name,
+                pseudonym,
                 CONCAT(first_name, ' ', last_name) AS full_name,
                 membership_tier,
                 created_at
@@ -42,6 +43,7 @@ class UserRepository
                 password,
                 first_name,
                 last_name,
+                pseudonym,
                 membership_tier,
                 is_active
             FROM users
@@ -97,6 +99,7 @@ class UserRepository
                     password,
                     first_name,
                     last_name,
+                    pseudonym,
                     membership_tier,
                     avatar_path,
                     timezone,
@@ -108,6 +111,7 @@ class UserRepository
                     :password,
                     :first_name,
                     :last_name,
+                    NULL,
                     :membership_tier,
                     NULL,
                     :timezone,
@@ -172,6 +176,20 @@ class UserRepository
         );
         $statement->execute([
             'user_id' => $userId,
+        ]);
+    }
+
+    public function updatePseudonym(int $userId, string $pseudonym): void
+    {
+        $statement = $this->connection->prepare(
+            'UPDATE users
+            SET pseudonym = :pseudonym,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :user_id'
+        );
+        $statement->execute([
+            'user_id' => $userId,
+            'pseudonym' => $pseudonym,
         ]);
     }
 }

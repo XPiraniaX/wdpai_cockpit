@@ -13,6 +13,28 @@
     </div>
 <?php endif; ?>
 
+<?php if (!empty($requiresPseudonymSetup ?? false)): ?>
+    <div class="pseudonym-lock" data-pseudonym-lock>
+        <div class="pseudonym-lock-backdrop"></div>
+        <section class="pseudonym-lock-modal">
+            <div class="pseudonym-lock-kicker">Pierwsze logowanie</div>
+            <h2 class="pseudonym-lock-title">Wpisz swój pseudonim</h2>
+            <p class="pseudonym-lock-copy">
+                Zanim przejdziesz dalej, ustaw pseudonim widoczny dla innych użytkowników.
+            </p>
+
+            <form method="post" action="/complete-pseudonym" class="pseudonym-lock-form">
+                <input type="hidden" name="redirect_to" value="<?= htmlspecialchars((string) ($_SERVER['REQUEST_URI'] ?? '/dashboard'), ENT_QUOTES, 'UTF-8'); ?>">
+                <label class="pseudonym-lock-field">
+                    <span>Pseudonim</span>
+                    <input type="text" name="pseudonym" maxlength="80" required autofocus>
+                </label>
+                <button type="submit" class="pseudonym-lock-submit">Zapisz pseudonim</button>
+            </form>
+        </section>
+    </div>
+<?php endif; ?>
+
 <div class="app">
 
     <?php include __DIR__ . '/navi.php'; ?>
