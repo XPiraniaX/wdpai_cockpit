@@ -1,5 +1,6 @@
 .cars-page {
     width: 100%;
+    overflow-x: clip;
 }
 
 .cars-page .car-card {

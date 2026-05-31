@@ -173,8 +173,14 @@ window.initMyCarsPage = () => {
 
         modelSelect.innerHTML = '';
 
-        if (!brandName || brandName === CUSTOM_BRAND_VALUE) {
-            modelSelect.appendChild(buildOption('', 'Wpisz model ręcznie', true));
+        if (!brandName) {
+            modelSelect.appendChild(buildOption('', 'Wybierz model', true));
+            modelSelect.disabled = true;
+            return;
+        }
+
+        if (brandName === CUSTOM_BRAND_VALUE) {
+            modelSelect.appendChild(buildOption(CUSTOM_MODEL_VALUE, 'Inny model', true));
             modelSelect.disabled = true;
             return;
         }

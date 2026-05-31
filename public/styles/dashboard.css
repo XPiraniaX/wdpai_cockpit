@@ -21,6 +21,7 @@
 
 .dashboard {
     width: 100%;
+    overflow-x: clip;
     display: flex;
     flex-direction: column;
     gap: clamp(20px, 2vw, 28px);
