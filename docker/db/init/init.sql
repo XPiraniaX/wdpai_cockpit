@@ -16,6 +16,10 @@ CREATE TABLE users (
     is_active BOOLEAN NOT NULL DEFAULT TRUE
 );
 
+CREATE UNIQUE INDEX uq_users_pseudonym_ci
+    ON users (LOWER(pseudonym))
+    WHERE pseudonym IS NOT NULL;
+
 CREATE TABLE user_settings (
     id SERIAL PRIMARY KEY,
     user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
@@ -1120,6 +1124,7 @@ SELECT
     p.updated_at,
     p.is_active,
     u.username,
+    u.pseudonym,
     u.first_name,
     u.last_name,
     CONCAT(u.first_name, ' ', u.last_name) AS full_name,
@@ -1245,6 +1250,7 @@ SELECT
     l.created_at,
     l.updated_at,
     u.username,
+    u.pseudonym,
     CONCAT(u.first_name, ' ', u.last_name) AS full_name,
     u.membership_tier,
     cb.name AS brand_name,

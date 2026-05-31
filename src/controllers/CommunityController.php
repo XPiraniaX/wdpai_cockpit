@@ -54,9 +54,11 @@ class CommunityController extends AppController
 
         $repository = new CommunityRepository(Database::getConnection());
         $currentUserId = $this->getCurrentUserId();
-        $profileUserId = (int) ($_GET['id'] ?? $currentUserId);
+        $requestedPseudonym = trim((string) ($_GET['pseudonym'] ?? ''));
+        $requestedId = isset($_GET['id']) ? (int) $_GET['id'] : null;
+        $profileUserId = $requestedId ?? $currentUserId;
 
-        if ($profileUserId <= 0) {
+        if ($requestedPseudonym === '' && $profileUserId <= 0) {
             $this->redirect('/profile');
         }
 
@@ -65,7 +67,22 @@ class CommunityController extends AppController
             return;
         }
 
-        $profile = $repository->getProfile($profileUserId);
+        if ($requestedPseudonym !== '') {
+            $profile = $repository->getProfileByPseudonym($requestedPseudonym);
+
+            if ($profile !== null && (int) $profile['id'] === $currentUserId) {
+                $this->redirect('/profile');
+            }
+        } else {
+            if ($requestedId !== null && $profileUserId === $currentUserId) {
+                $this->redirect('/profile');
+            }
+
+            $profile = $repository->getProfile($profileUserId);
+            if ($profile !== null && $requestedId !== null && trim((string) ($profile['pseudonym'] ?? '')) !== '') {
+                $this->redirect('/profile/' . rawurlencode((string) $profile['pseudonym']));
+            }
+        }
 
         if ($profile === null) {
             http_response_code(404);
@@ -75,6 +92,8 @@ class CommunityController extends AppController
             return;
         }
 
+        $profileUserId = (int) $profile['id'];
+
         $posts = $repository->getFeed($currentUserId, [
             'scope' => 'all',
             'brand_id' => null,
@@ -83,7 +102,7 @@ class CommunityController extends AppController
         $posts = array_values(array_filter($posts, static fn (array $post): bool => $post['user_id'] === $profileUserId));
 
         $this->render('community_profile', [
-            'title' => $profile['full_name'],
+            'title' => $profile['display_name'],
             'profile' => $profile,
             'posts' => $this->mapPosts($posts),
             'scriptFiles' => ['community.js'],

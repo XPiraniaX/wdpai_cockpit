@@ -19,6 +19,10 @@ Table users {
   created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
   updated_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
   is_active boolean [not null, default: true]
+
+  indexes {
+    `LOWER(pseudonym)` [unique, name: 'uq_users_pseudonym_ci', note: 'Partial unique in SQL when pseudonym IS NOT NULL']
+  }
 }
 
 Table user_settings {

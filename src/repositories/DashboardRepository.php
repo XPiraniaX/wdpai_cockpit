@@ -220,7 +220,7 @@ class DashboardRepository
             ORDER BY display_order ASC, id ASC
             LIMIT 1'
         );
-        return array_map(function (array $post) use ($imageStatement): array {
+        return array_map(function (array $post) use ($imageStatement, $userId): array {
             $imageStatement->execute([
                 'post_id' => (int) $post['id'],
             ]);
@@ -231,7 +231,7 @@ class DashboardRepository
 
             return [
                 'id' => (int) $post['id'],
-                'authorName' => (string) $post['full_name'],
+                'authorName' => (string) (($post['pseudonym'] ?? '') !== '' ? $post['pseudonym'] : $post['full_name']),
                 'authorUsername' => (string) $post['username'],
                 'content' => (string) $post['content'],
                 'categoryLabel' => $this->buildCommunityCategoryLabel($brandName, $modelName),
@@ -239,7 +239,7 @@ class DashboardRepository
                 'commentCount' => (int) $post['comment_count'],
                 'saveCount' => (int) $post['save_count'],
                 'imagePath' => $imagePath ? (string) $imagePath : null,
-                'profilePath' => '/community/profile?id=' . (int) $post['user_id'],
+                'profilePath' => $this->buildProfilePath($userId, (int) $post['user_id'], $post['pseudonym'] ?? null),
                 'communityPath' => '/community#post-' . (int) $post['id'],
             ];
         }, $posts);
@@ -311,5 +311,19 @@ class DashboardRepository
         }
 
         return 'Ogólne';
+    }
+
+    private function buildProfilePath(int $currentUserId, int $profileUserId, ?string $pseudonym): string
+    {
+        if ($profileUserId === $currentUserId) {
+            return '/profile';
+        }
+
+        $normalizedPseudonym = trim((string) $pseudonym);
+        if ($normalizedPseudonym !== '') {
+            return '/profile/' . rawurlencode($normalizedPseudonym);
+        }
+
+        return '/profile?id=' . $profileUserId;
     }
 }

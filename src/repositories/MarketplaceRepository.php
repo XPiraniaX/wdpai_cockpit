@@ -211,16 +211,16 @@ class MarketplaceRepository
         $listingIds = array_map(static fn (array $row): int => (int) $row['id'], $listings);
         $imagesByListing = $this->getImagesForListings($listingIds);
 
-        $mappedListings = array_map(function (array $listing) use ($imagesByListing): array {
+        $mappedListings = array_map(function (array $listing) use ($imagesByListing, $currentUserId): array {
             $listingId = (int) $listing['id'];
 
             return [
                 'id' => $listingId,
                 'user_id' => (int) $listing['user_id'],
-                'author_name' => (string) $listing['full_name'],
+                'author_name' => (string) ($listing['pseudonym'] ?? $listing['full_name']),
                 'author_username' => (string) $listing['username'],
                 'author_tier' => strtoupper((string) $listing['membership_tier']) . ' MEMBER',
-                'profile_path' => '/community/profile?id=' . (int) $listing['user_id'],
+                'profile_path' => $this->buildProfilePath($currentUserId, (int) $listing['user_id'], $listing['pseudonym'] ?? null),
                 'title' => (string) $listing['title'],
                 'trim_name' => (string) ($listing['trim_name'] ?? ''),
                 'description' => (string) $listing['description'],
@@ -753,6 +753,20 @@ class MarketplaceRepository
             'mileage_asc' => 'feed.mileage_km ASC, feed.created_at DESC, feed.id DESC',
             default => 'feed.created_at DESC, feed.id DESC',
         };
+    }
+
+    private function buildProfilePath(int $currentUserId, int $profileUserId, ?string $pseudonym): string
+    {
+        if ($profileUserId === $currentUserId) {
+            return '/profile';
+        }
+
+        $normalizedPseudonym = trim((string) $pseudonym);
+        if ($normalizedPseudonym !== '') {
+            return '/profile/' . rawurlencode($normalizedPseudonym);
+        }
+
+        return '/profile?id=' . $profileUserId;
     }
 }
 

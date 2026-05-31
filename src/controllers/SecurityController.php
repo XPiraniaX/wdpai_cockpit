@@ -166,7 +166,17 @@ class SecurityController extends AppController
             $this->redirect($redirectTo);
         }
 
+        if (!preg_match('/^[\p{L}\p{N}._ -]+$/u', $pseudonym)) {
+            $this->setFlash('error', 'Pseudonim może zawierać tylko litery, cyfry, spacje, kropki, myślniki i podkreślenia.');
+            $this->redirect($redirectTo);
+        }
+
         $repository = new UserRepository(Database::getConnection());
+        if ($repository->pseudonymExistsForOtherUser($pseudonym, $this->getCurrentUserId())) {
+            $this->setFlash('error', 'Ten pseudonim jest już zajęty.');
+            $this->redirect($redirectTo);
+        }
+
         $repository->updatePseudonym($this->getCurrentUserId(), $pseudonym);
 
         $this->setFlash('success', 'Pseudonim został zapisany.');

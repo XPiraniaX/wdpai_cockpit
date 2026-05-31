@@ -87,6 +87,23 @@ class UserRepository
         return (bool) $statement->fetchColumn();
     }
 
+    public function pseudonymExistsForOtherUser(string $pseudonym, int $excludedUserId): bool
+    {
+        $statement = $this->connection->prepare(
+            'SELECT 1
+            FROM users
+            WHERE LOWER(pseudonym) = LOWER(:pseudonym)
+                AND id <> :excluded_user_id
+            LIMIT 1'
+        );
+        $statement->execute([
+            'pseudonym' => $pseudonym,
+            'excluded_user_id' => $excludedUserId,
+        ]);
+
+        return (bool) $statement->fetchColumn();
+    }
+
     public function createUser(array $data): int
     {
         $this->connection->beginTransaction();

@@ -1,16 +1,27 @@
 <?php
 $currentPath = trim(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/');
+$isProfileRoute = $currentPath === 'profile'
+    || $currentPath === 'community/profile'
+    || str_starts_with($currentPath, 'profile/');
+$isOwnProfile = isset($profile['id'], $currentUser['id']) && (int) $profile['id'] === (int) $currentUser['id'];
+$profileSubtitle = $isOwnProfile
+    ? 'Mój profil'
+    : (string) ($profile['display_name'] ?? ($title ?? 'Profil użytkownika'));
 $pageMap = [
     'dashboard' => ['title' => 'Dashboard', 'subtitle' => 'Przegląd'],
     'my-cars' => ['title' => 'Moje samochody', 'subtitle' => 'Garaż'],
     'my-cars/details' => ['title' => 'Moje samochody', 'subtitle' => $vehicle['title'] ?? ($title ?? 'Szczegóły pojazdu')],
     'marketplace' => ['title' => 'Marketplace', 'subtitle' => 'Oferty'],
     'community' => ['title' => 'Społeczność', 'subtitle' => 'Feed'],
-    'community/profile' => ['title' => 'Społeczność', 'subtitle' => $profile['full_name'] ?? ($title ?? 'Profil użytkownika')],
     'settings' => ['title' => 'Ustawienia', 'subtitle' => 'Preferencje'],
 ];
 $pageMeta = $pageMap[$currentPath] ?? ['title' => 'Cockpit', 'subtitle' => 'Panel'];
-$headerUserName = $currentUser['full_name'] ?? 'Użytkownik testowy';
+if ($isProfileRoute) {
+    $pageMeta = ['title' => 'Profil', 'subtitle' => $profileSubtitle];
+}
+$headerUserName = trim((string) ($currentUser['pseudonym'] ?? '')) !== ''
+    ? (string) $currentUser['pseudonym']
+    : (string) ($currentUser['full_name'] ?? 'Użytkownik testowy');
 $headerUserRole = strtoupper((string) ($currentUser['membership_tier'] ?? 'free')) . ' MEMBER';
 ?>
 <header class="topbar">
@@ -25,7 +36,7 @@ $headerUserRole = strtoupper((string) ($currentUser['membership_tier'] ?? 'free'
             <img src="/public/assets/icons/bell_icon.svg" alt="" class="bell-icon">
         </button>
 
-        <div class="user-card">
+        <a href="/profile" class="user-card user-card-link" aria-label="Przejdź do swojego profilu">
             <div class="user-meta">
                 <span class="user-name"><?= htmlspecialchars($headerUserName, ENT_QUOTES, 'UTF-8'); ?></span>
                 <span class="user-role"><?= htmlspecialchars($headerUserRole, ENT_QUOTES, 'UTF-8'); ?></span>
@@ -33,6 +44,6 @@ $headerUserRole = strtoupper((string) ($currentUser['membership_tier'] ?? 'free'
             <div class="avatar">
                 <span class="avatar-ring"></span>
             </div>
-        </div>
+        </a>
     </div>
 </header>

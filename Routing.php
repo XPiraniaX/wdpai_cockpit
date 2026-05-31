@@ -22,6 +22,11 @@ class Routing {
     public static function run(string $path) {
         $normalizedPath = trim($path, '/');
 
+        if (str_starts_with($normalizedPath, 'profile/')) {
+            $_GET['pseudonym'] = rawurldecode(substr($normalizedPath, strlen('profile/')));
+            $normalizedPath = 'profile';
+        }
+
         if (!array_key_exists($normalizedPath, self::$routes)) {
             http_response_code(404);
             $title = '404 - Not Found';

@@ -56,6 +56,7 @@ SELECT
     p.updated_at,
     p.is_active,
     u.username,
+    u.pseudonym,
     u.first_name,
     u.last_name,
     CONCAT(u.first_name, ' ', u.last_name) AS full_name,

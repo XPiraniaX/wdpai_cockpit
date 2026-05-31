@@ -107,10 +107,10 @@ class CommunityRepository
         }
 
         $postIds = array_column($posts, 'id');
-        $commentsByPost = $this->getCommentsForPosts($postIds);
+        $commentsByPost = $this->getCommentsForPosts($postIds, $currentUserId);
         $imagesByPost = $this->getImagesForPosts($postIds);
 
-        $mappedPosts = array_map(function (array $post) use ($commentsByPost, $imagesByPost): array {
+        $mappedPosts = array_map(function (array $post) use ($commentsByPost, $imagesByPost, $currentUserId): array {
             $postId = (int) $post['id'];
             $brandName = $post['brand_name'] ?? null;
             $modelName = $post['model_name'] ?? null;
@@ -118,10 +118,10 @@ class CommunityRepository
             return [
                 'id' => $postId,
                 'user_id' => (int) $post['user_id'],
-                'author_name' => $post['full_name'],
+                'author_name' => (string) ($post['pseudonym'] ?? $post['full_name']),
                 'author_username' => $post['username'],
                 'author_tier' => strtoupper((string) $post['membership_tier']) . ' MEMBER',
-                'profile_path' => '/community/profile?id=' . (int) $post['user_id'],
+                'profile_path' => $this->buildProfilePath($currentUserId, (int) $post['user_id'], $post['pseudonym'] ?? null),
                 'content' => $post['content'],
                 'created_at' => $post['created_at'],
                 'category_label' => $this->buildCategoryLabel($brandName, $modelName),
@@ -509,7 +509,7 @@ class CommunityRepository
         $inserted = $statement->fetch(PDO::FETCH_ASSOC) ?: [];
 
         $authorStatement = $this->connection->prepare(
-            'SELECT username, CONCAT(first_name, \' \', last_name) AS full_name
+            'SELECT username, pseudonym, CONCAT(first_name, \' \', last_name) AS full_name
             FROM users
             WHERE id = :user_id
             LIMIT 1'
@@ -523,11 +523,11 @@ class CommunityRepository
             'id' => (int) ($inserted['id'] ?? 0),
             'post_id' => $postId,
             'user_id' => $userId,
-            'author_name' => (string) ($author['full_name'] ?? ''),
+            'author_name' => (string) (($author['pseudonym'] ?? '') !== '' ? $author['pseudonym'] : ($author['full_name'] ?? '')),
             'author_username' => (string) ($author['username'] ?? ''),
             'content' => $content,
             'created_at' => (string) ($inserted['created_at'] ?? ''),
-            'profile_path' => '/community/profile?id=' . $userId,
+            'profile_path' => '/profile',
             'is_own_comment' => true,
         ];
     }
@@ -554,7 +554,7 @@ class CommunityRepository
         }
 
         $authorStatement = $this->connection->prepare(
-            'SELECT username, CONCAT(first_name, \' \', last_name) AS full_name
+            'SELECT username, pseudonym, CONCAT(first_name, \' \', last_name) AS full_name
             FROM users
             WHERE id = :user_id
             LIMIT 1'
@@ -568,11 +568,11 @@ class CommunityRepository
             'id' => (int) $updated['id'],
             'post_id' => (int) $updated['post_id'],
             'user_id' => (int) $updated['user_id'],
-            'author_name' => (string) ($author['full_name'] ?? ''),
+            'author_name' => (string) (($author['pseudonym'] ?? '') !== '' ? $author['pseudonym'] : ($author['full_name'] ?? '')),
             'author_username' => (string) ($author['username'] ?? ''),
             'content' => (string) $updated['content'],
             'created_at' => (string) $updated['created_at'],
-            'profile_path' => '/community/profile?id=' . $userId,
+            'profile_path' => '/profile',
             'is_own_comment' => true,
         ];
     }
@@ -664,10 +664,21 @@ class CommunityRepository
 
     public function getProfile(int $profileUserId): ?array
     {
+        return $this->getProfileByCondition('u.id = :value', ['value' => $profileUserId]);
+    }
+
+    public function getProfileByPseudonym(string $pseudonym): ?array
+    {
+        return $this->getProfileByCondition('LOWER(u.pseudonym) = LOWER(:value)', ['value' => $pseudonym]);
+    }
+
+    private function getProfileByCondition(string $conditionSql, array $params): ?array
+    {
         $statement = $this->connection->prepare(
             "SELECT
                 u.id,
                 u.username,
+                u.pseudonym,
                 CONCAT(u.first_name, ' ', u.last_name) AS full_name,
                 u.membership_tier,
                 COALESCE(vehicle_counts.vehicle_count, 0) AS vehicle_count,
@@ -685,13 +696,11 @@ class CommunityRepository
                 WHERE p.user_id = u.id
                     AND p.is_active = TRUE
             ) AS post_counts ON TRUE
-            WHERE u.id = :user_id
+            WHERE {$conditionSql}
                 AND u.is_active = TRUE
             LIMIT 1"
         );
-        $statement->execute([
-            'user_id' => $profileUserId,
-        ]);
+        $statement->execute($params);
 
         $row = $statement->fetch();
 
@@ -702,14 +711,16 @@ class CommunityRepository
         return [
             'id' => (int) $row['id'],
             'username' => $row['username'],
+            'pseudonym' => $row['pseudonym'],
             'full_name' => $row['full_name'],
+            'display_name' => $row['pseudonym'] ?: $row['full_name'],
             'membership_tier' => strtoupper((string) $row['membership_tier']) . ' MEMBER',
             'vehicle_count' => (int) $row['vehicle_count'],
             'post_count' => (int) $row['post_count'],
         ];
     }
 
-    private function getCommentsForPosts(array $postIds): array
+    private function getCommentsForPosts(array $postIds, int $currentUserId): array
     {
         $postIds = array_values(array_unique(array_map('intval', $postIds)));
 
@@ -734,6 +745,7 @@ class CommunityRepository
                 c.created_at,
                 u.id AS user_id,
                 u.username,
+                u.pseudonym,
                 CONCAT(u.first_name, \' \', u.last_name) AS full_name
             FROM community_comments c
             INNER JOIN users u ON u.id = c.user_id
@@ -751,11 +763,11 @@ class CommunityRepository
             $grouped[$postId][] = [
                 'id' => (int) $row['id'],
                 'user_id' => (int) $row['user_id'],
-                'author_name' => $row['full_name'],
+                'author_name' => (string) ($row['pseudonym'] ?: $row['full_name']),
                 'author_username' => $row['username'],
                 'content' => $row['content'],
                 'created_at' => $row['created_at'],
-                'profile_path' => '/community/profile?id=' . (int) $row['user_id'],
+                'profile_path' => $this->buildProfilePath($currentUserId, (int) $row['user_id'], $row['pseudonym'] ?? null),
             ];
         }
 
@@ -841,5 +853,19 @@ class CommunityRepository
         ]);
 
         return (bool) $statement->fetchColumn();
+    }
+
+    private function buildProfilePath(int $currentUserId, int $profileUserId, ?string $pseudonym): string
+    {
+        if ($profileUserId === $currentUserId) {
+            return '/profile';
+        }
+
+        $normalizedPseudonym = trim((string) $pseudonym);
+        if ($normalizedPseudonym !== '') {
+            return '/profile/' . rawurlencode($normalizedPseudonym);
+        }
+
+        return '/profile?id=' . $profileUserId;
     }
 }

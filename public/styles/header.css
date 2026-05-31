@@ -60,6 +60,11 @@
     gap: clamp(8px, 0.8vw, 12px);
 }
 
+.user-card-link {
+    color: inherit;
+    text-decoration: none;
+}
+
 .user-meta {
     display: flex;
     flex-direction: column;
