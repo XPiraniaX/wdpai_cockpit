@@ -22,14 +22,14 @@ class DashboardController extends AppController
         $stats = [
             'nextInspectionDate' => $this->formatDate($nextInspection['valid_until'] ?? null),
             'nextInspectionCar' => $nextInspection['display_name'] ?? 'Brak danych',
-            'nextInspectionAction' => $this->buildDetailsModalPath($nextInspection['vehicle_id'] ?? null, 'modal-inspection-edit'),
+            'nextInspectionAction' => $this->buildDetailsModalPath($nextInspection['vehicle_id'] ?? null, $nextInspection['display_name'] ?? null, 'modal-inspection-edit'),
             'nextInsuranceDate' => $this->formatDate($nextInsurance['valid_until'] ?? null),
             'nextInsuranceCar' => $nextInsurance['display_name'] ?? 'Brak danych',
-            'nextInsuranceAction' => $this->buildDetailsModalPath($nextInsurance['vehicle_id'] ?? null, 'modal-insurance-edit'),
+            'nextInsuranceAction' => $this->buildDetailsModalPath($nextInsurance['vehicle_id'] ?? null, $nextInsurance['display_name'] ?? null, 'modal-insurance-edit'),
             'lastFuelAmount' => $this->formatMoney($lastFuelLog['total_cost'] ?? null, $lastFuelLog['currency'] ?? 'PLN'),
             'lastFuelCount' => $this->formatLiters($lastFuelLog['liters'] ?? null),
             'lastFuelMeta' => $lastFuelLog['display_name'] ?? 'Brak danych',
-            'lastFuelAction' => $this->buildDetailsModalPath($lastFuelLog['vehicle_id'] ?? null, 'modal-fuel-add'),
+            'lastFuelAction' => $this->buildDetailsModalPath($lastFuelLog['vehicle_id'] ?? null, $lastFuelLog['display_name'] ?? null, 'modal-fuel-add'),
             'carCount' => (string) $carCount,
             'carCountMeta' => $this->formatCarCountMeta($carCount),
         ];
@@ -37,7 +37,7 @@ class DashboardController extends AppController
         $cars = array_map(function (array $car): array {
             return [
                 'id' => (int) $car['id'],
-                'detailsPath' => '/my-cars/details?id=' . (int) $car['id'],
+                'detailsPath' => $this->buildVehicleDetailsPath((int) $car['id'], (string) $car['display_name']) ?? '/my-cars',
                 'year' => (string) $car['production_year'],
                 'title' => $car['display_name'],
                 'subtitle' => $car['trim_name'] ?: 'Brak wersji',
@@ -76,7 +76,7 @@ class DashboardController extends AppController
                     'id' => (int) $car['id'],
                     'title' => $car['display_name'],
                     'subtitle' => $car['trim_name'] ?: 'Brak wersji',
-                    'fuelActionPath' => '/my-cars/details?id=' . (int) $car['id'] . '&open_modal=modal-fuel-add',
+                    'fuelActionPath' => $this->buildVehicleDetailsPath((int) $car['id'], (string) $car['display_name'], 'modal-fuel-add') ?? '/my-cars',
                 ];
             }, $garageCars),
             'scriptFiles' => ['dashboard.js'],
@@ -194,12 +194,8 @@ class DashboardController extends AppController
         return $redirectTo;
     }
 
-    private function buildDetailsModalPath(int|string|null $vehicleId, string $modal): ?string
+    private function buildDetailsModalPath(int|string|null $vehicleId, ?string $displayName, string $modal): ?string
     {
-        if (filter_var($vehicleId, FILTER_VALIDATE_INT) === false || (int) $vehicleId <= 0) {
-            return null;
-        }
-
-        return '/my-cars/details?id=' . (int) $vehicleId . '&open_modal=' . rawurlencode($modal);
+        return $this->buildVehicleDetailsPath($vehicleId, $displayName, $modal);
     }
 }

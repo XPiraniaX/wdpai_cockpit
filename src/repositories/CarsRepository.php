@@ -43,6 +43,39 @@ class CarsRepository
         return $row ?: null;
     }
 
+    public function getVehicleBySlug(int $userId, string $slug): ?array
+    {
+        if (preg_match('/^(?<id>\d+)(?<slug>.*)$/', trim($slug), $matches) === 1) {
+            $vehicleId = (int) ($matches['id'] ?? 0);
+            if ($vehicleId > 0) {
+                return $this->getVehicleById($userId, $vehicleId);
+            }
+        }
+
+        $statement = $this->connection->prepare($this->buildVehicleBaseQuery() . '
+            AND v.user_id = :user_id
+            AND v.status = :status
+            ORDER BY v.is_primary DESC, v.display_order ASC, v.id ASC'
+        );
+        $statement->execute([
+            'user_id' => $userId,
+            'status' => 'active',
+        ]);
+
+        $normalizedSlug = $this->slugifyVehicleName($slug);
+        if ($normalizedSlug === '') {
+            return null;
+        }
+
+        foreach ($statement->fetchAll() as $row) {
+            if ($this->slugifyVehicleName((string) ($row['display_name'] ?? '')) === $normalizedSlug) {
+                return $row;
+            }
+        }
+
+        return null;
+    }
+
     public function getRemainingVehicles(int $userId): array
     {
         $statement = $this->connection->prepare(
@@ -85,6 +118,23 @@ class CarsRepository
         ]);
 
         return $statement->fetchAll();
+    }
+
+    private function slugifyVehicleName(string $value): string
+    {
+        $normalized = trim($value);
+        if ($normalized === '') {
+            return '';
+        }
+
+        $transliterated = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $normalized);
+        if ($transliterated !== false && $transliterated !== '') {
+            $normalized = $transliterated;
+        }
+
+        $normalized = strtolower($normalized);
+        $normalized = preg_replace('/[^a-z0-9]+/', '-', $normalized) ?? '';
+        return trim($normalized, '-');
     }
 
     public function getMarketplaceImportVehicles(int $userId): array

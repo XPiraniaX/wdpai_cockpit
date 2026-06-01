@@ -26,7 +26,7 @@ class CarsController extends AppController
             'year' => (string) $primaryVehicle['production_year'],
             'imagePath' => $primaryVehicle['image_path'] ?? null,
             'bodyType' => $this->formatBodyType($primaryVehicle['body_type'] ?? null),
-            'detailsPath' => '/my-cars/details?id=' . (int) $primaryVehicle['id'],
+            'detailsPath' => $this->buildVehicleDetailsPath((int) $primaryVehicle['id'], (string) $primaryVehicle['display_name']) ?? '/my-cars',
         ] : null;
 
         $stats = [
@@ -55,7 +55,7 @@ class CarsController extends AppController
         $cars = array_map(function (array $car): array {
             return [
                 'id' => (int) $car['id'],
-                'detailsPath' => '/my-cars/details?id=' . (int) $car['id'],
+                'detailsPath' => $this->buildVehicleDetailsPath((int) $car['id'], (string) $car['display_name']) ?? '/my-cars',
                 'year' => (string) $car['production_year'],
                 'title' => $car['display_name'],
                 'subtitle' => $car['trim_name'] ?: 'Brak wersji',
@@ -93,22 +93,25 @@ class CarsController extends AppController
     {
         $this->requireAuthentication();
 
-        $vehicleId = (int) ($_GET['id'] ?? 0);
+        $requestedSlug = trim((string) ($_GET['slug'] ?? ''));
+        $requestedId = isset($_GET['id']) ? (int) $_GET['id'] : 0;
 
-        if ($vehicleId <= 0) {
+        if ($requestedSlug === '' && $requestedId <= 0) {
             $this->redirect('/my-cars');
         }
 
         $repository = new CarsRepository(Database::getConnection());
         $userId = $this->getCurrentUserId();
-        $vehicle = $repository->getVehicleById($userId, $vehicleId);
+        $vehicle = $requestedSlug !== ''
+            ? $repository->getVehicleBySlug($userId, $requestedSlug)
+            : $repository->getVehicleById($userId, $requestedId);
 
         if ($this->isPost()) {
             if (!$vehicle) {
                 $this->redirect('/my-cars');
             }
 
-            $this->handleVehicleDetailsAction($repository, $userId, $vehicleId, $vehicle);
+            $this->handleVehicleDetailsAction($repository, $userId, (int) $vehicle['id'], $vehicle);
         }
 
         if (!$vehicle) {
@@ -116,6 +119,19 @@ class CarsController extends AppController
             $title = 'Nie znaleziono pojazdu';
 
             return $this->render('404', ['title' => $title]);
+        }
+
+        $vehicleId = (int) $vehicle['id'];
+        $canonicalPath = $this->buildVehicleDetailsPath($vehicleId, (string) $vehicle['display_name']) ?? '/my-cars';
+        $currentPath = '/' . trim(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/');
+
+        if (!$this->isPost() && ($requestedId > 0 || $currentPath !== $canonicalPath)) {
+            $redirectPath = $canonicalPath;
+            $openModal = trim((string) ($_GET['open_modal'] ?? ''));
+            if ($openModal !== '') {
+                $redirectPath .= '?open_modal=' . rawurlencode($openModal);
+            }
+            $this->redirect($redirectPath);
         }
 
         $recentFuelLogs = $repository->getRecentFuelLogs($vehicleId, 3);
@@ -158,6 +174,7 @@ class CarsController extends AppController
                 'technicalSpec' => $this->buildTechnicalSpec($vehicle),
             ],
             'vehicleRecord' => $vehicle,
+            'vehicleDetailsPath' => $canonicalPath,
             'vehicleImages' => array_map(
                 static fn (array $image): array => [
                     'id' => (int) ($image['id'] ?? 0),
@@ -245,24 +262,25 @@ class CarsController extends AppController
                 break;
         }
 
-        $this->redirect('/my-cars/details?id=' . $vehicleId);
+        $this->redirect($this->buildVehicleDetailsPath($vehicleId, (string) ($vehicle['display_name'] ?? '')) ?? '/my-cars');
     }
 
-    private function respondVehicleDetailsSuccess(int $vehicleId, string $message): void
+    private function respondVehicleDetailsSuccess(int $vehicleId, string $message, ?string $vehicleName = null): void
     {
+        $refreshUrl = $this->buildVehicleDetailsPath($vehicleId, (string) ($vehicleName ?? '')) ?? '/my-cars';
         if ($this->isAjaxRequest()) {
             $this->jsonResponse([
                 'success' => true,
                 'message' => $message,
-                'refresh_url' => '/my-cars/details?id=' . $vehicleId,
+                'refresh_url' => $refreshUrl,
             ]);
         }
 
         $this->setFlash('success', $message);
-        $this->redirect('/my-cars/details?id=' . $vehicleId);
+        $this->redirect($refreshUrl);
     }
 
-    private function respondVehicleDetailsError(int $vehicleId, string $message, ?string $modalName = null): void
+    private function respondVehicleDetailsError(int $vehicleId, string $message, ?string $modalName = null, ?string $vehicleName = null): void
     {
         if ($this->isAjaxRequest()) {
             $this->jsonResponse([
@@ -273,10 +291,7 @@ class CarsController extends AppController
         }
 
         $this->setFlash('error', $message);
-        $path = '/my-cars/details?id=' . $vehicleId;
-        if ($modalName !== null && $modalName !== '') {
-            $path .= '&open_modal=' . urlencode($modalName);
-        }
+        $path = $this->buildVehicleDetailsPath($vehicleId, (string) ($vehicleName ?? ''), $modalName) ?? '/my-cars';
 
         $this->redirect($path);
     }
@@ -1101,16 +1116,6 @@ class CarsController extends AppController
         }
 
         return getcwd() . DIRECTORY_SEPARATOR . $normalized;
-    }
-
-    private function slugify(string $value): string
-    {
-        $normalized = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
-        $normalized = $normalized === false ? $value : $normalized;
-        $normalized = strtolower($normalized);
-        $normalized = preg_replace('/[^a-z0-9]+/', '-', $normalized) ?? '';
-
-        return trim($normalized, '-') ?: 'vehicle';
     }
 
     private function rememberAddVehicleFormDraft(): void

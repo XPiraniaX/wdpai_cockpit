@@ -69,17 +69,9 @@ class CommunityController extends AppController
 
         if ($requestedPseudonym !== '') {
             $profile = $repository->getProfileByPseudonym($requestedPseudonym);
-
-            if ($profile !== null && (int) $profile['id'] === $currentUserId) {
-                $this->redirect('/profile');
-            }
         } else {
-            if ($requestedId !== null && $profileUserId === $currentUserId) {
-                $this->redirect('/profile');
-            }
-
             $profile = $repository->getProfile($profileUserId);
-            if ($profile !== null && $requestedId !== null && trim((string) ($profile['pseudonym'] ?? '')) !== '') {
+            if ($profile !== null && trim((string) ($profile['pseudonym'] ?? '')) !== '') {
                 $this->redirect('/profile/' . rawurlencode((string) $profile['pseudonym']));
             }
         }
@@ -535,16 +527,6 @@ class CommunityController extends AppController
         }
 
         return $normalized;
-    }
-
-    private function slugify(string $value): string
-    {
-        $normalized = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
-        $normalized = $normalized === false ? $value : $normalized;
-        $normalized = strtolower($normalized);
-        $normalized = preg_replace('/[^a-z0-9]+/', '-', $normalized) ?? '';
-
-        return trim($normalized, '-') ?: 'post';
     }
 
     private function deleteUploadedFiles(array $imagePaths): void

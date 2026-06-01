@@ -757,10 +757,6 @@ class MarketplaceRepository
 
     private function buildProfilePath(int $currentUserId, int $profileUserId, ?string $pseudonym): string
     {
-        if ($profileUserId === $currentUserId) {
-            return '/profile';
-        }
-
         $normalizedPseudonym = trim((string) $pseudonym);
         if ($normalizedPseudonym !== '') {
             return '/profile/' . rawurlencode($normalizedPseudonym);

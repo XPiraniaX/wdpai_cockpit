@@ -27,6 +27,11 @@ class Routing {
             $normalizedPath = 'profile';
         }
 
+        if (str_starts_with($normalizedPath, 'my-cars/') && $normalizedPath !== 'my-cars/details') {
+            $_GET['slug'] = rawurldecode(substr($normalizedPath, strlen('my-cars/')));
+            $normalizedPath = 'my-cars/details';
+        }
+
         if (!array_key_exists($normalizedPath, self::$routes)) {
             http_response_code(404);
             $title = '404 - Not Found';

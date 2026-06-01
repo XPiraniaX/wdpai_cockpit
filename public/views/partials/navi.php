@@ -3,6 +3,9 @@ $currentPath = trim(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/'
 $isProfileRoute = $currentPath === 'profile'
     || $currentPath === 'community/profile'
     || str_starts_with($currentPath, 'profile/');
+$ownProfilePath = trim((string) ($currentUser['pseudonym'] ?? '')) !== ''
+    ? '/profile/' . rawurlencode((string) $currentUser['pseudonym'])
+    : '/profile';
 $menuItems = [
     ['href' => '/dashboard', 'path' => 'dashboard', 'label' => 'Dashboard', 'icon' => '/public/assets/icons/dashboard.svg'],
     ['href' => '/my-cars', 'path' => 'my-cars', 'label' => 'Moje samochody', 'icon' => '/public/assets/icons/my_cars.svg'],
@@ -20,6 +23,7 @@ $menuItems = [
             <?php foreach ($menuItems as $item): ?>
                 <?php
                 $isActive = $currentPath === $item['path']
+                    || ($item['path'] === 'my-cars' && str_starts_with($currentPath, 'my-cars/'))
                     || ($item['path'] === 'community' && str_starts_with($currentPath, 'community/') && !$isProfileRoute);
                 ?>
                 <a href="<?= htmlspecialchars($item['href'], ENT_QUOTES, 'UTF-8'); ?>"
@@ -33,7 +37,7 @@ $menuItems = [
     </div>
 
     <div class="bottom">
-        <a href="/profile" class="menu-item menu-item-profile<?= $isProfileRoute ? ' active' : ''; ?>">
+        <a href="<?= htmlspecialchars($ownProfilePath, ENT_QUOTES, 'UTF-8'); ?>" class="menu-item menu-item-profile<?= $isProfileRoute ? ' active' : ''; ?>">
             <span class="menu-icon"
                   style="--icon-url: url('/public/assets/icons/profile.svg');"></span>
             <span class="menu-label">Profil</span>

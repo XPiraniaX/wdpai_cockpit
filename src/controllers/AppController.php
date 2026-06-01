@@ -197,6 +197,44 @@ class AppController
         ];
     }
 
+    protected function slugify(string $value): string
+    {
+        $normalized = trim($value);
+        if ($normalized === '') {
+            return '';
+        }
+
+        $transliterated = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $normalized);
+        if ($transliterated !== false && $transliterated !== '') {
+            $normalized = $transliterated;
+        }
+
+        $normalized = strtolower($normalized);
+        $normalized = preg_replace('/[^a-z0-9]+/', '-', $normalized) ?? '';
+        $normalized = trim($normalized, '-');
+
+        return $normalized;
+    }
+
+    protected function buildVehicleDetailsPath(int|string|null $vehicleId, ?string $displayName, ?string $modal = null): ?string
+    {
+        if (filter_var($vehicleId, FILTER_VALIDATE_INT) === false || (int) $vehicleId <= 0) {
+            return null;
+        }
+
+        $slug = $this->slugify((string) ($displayName ?? ''));
+        if ($slug === '') {
+            $slug = 'pojazd-' . (int) $vehicleId;
+        }
+
+        $path = '/my-cars/' . (int) $vehicleId . rawurlencode($slug);
+        if ($modal !== null && $modal !== '') {
+            $path .= '?open_modal=' . rawurlencode($modal);
+        }
+
+        return $path;
+    }
+
     private function resolveCurrentUser(int $userId): array
     {
         $fallbackUser = [

@@ -628,16 +628,6 @@ class MarketplaceController extends AppController
         };
     }
 
-    private function slugify(string $value): string
-    {
-        $normalized = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $value);
-        $normalized = $normalized === false ? $value : $normalized;
-        $normalized = strtolower($normalized);
-        $normalized = preg_replace('/[^a-z0-9]+/', '-', $normalized) ?? '';
-
-        return trim($normalized, '-') ?: 'listing';
-    }
-
     private function deleteUploadedFiles(array $imagePaths): void
     {
         foreach ($imagePaths as $imagePath) {
