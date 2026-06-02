@@ -55,7 +55,11 @@ $editPostPayload = htmlspecialchars(json_encode([
                             Edytuj post
                         </button>
                     <?php endif; ?>
-                    <form method="post" class="community-inline-form<?= $isOwnPost ? '' : ' community-report-form'; ?>"<?= $isOwnPost ? '' : ' data-community-report-form' ?>>
+                    <form
+                        method="post"
+                        class="community-inline-form<?= $isOwnPost ? '' : ' community-report-form'; ?>"
+                        <?= $isOwnPost ? 'data-community-delete-post-form' : 'data-community-report-form' ?>
+                    >
                         <input type="hidden" name="post_id" value="<?= (int) $post['id']; ?>">
                         <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/community', ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="action" value="<?= $isOwnPost ? 'delete_post' : 'report_post'; ?>">

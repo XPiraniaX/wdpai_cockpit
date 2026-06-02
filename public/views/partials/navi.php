@@ -10,7 +10,7 @@ $menuItems = [
     ['href' => '/dashboard', 'path' => 'dashboard', 'label' => 'Dashboard', 'icon' => '/public/assets/icons/dashboard.svg'],
     ['href' => '/my-cars', 'path' => 'my-cars', 'label' => 'Moje samochody', 'icon' => '/public/assets/icons/my_cars.svg'],
     ['href' => '/marketplace', 'path' => 'marketplace', 'label' => 'Marketplace', 'icon' => '/public/assets/icons/marketplace.svg'],
-    ['href' => '/community', 'path' => 'community', 'label' => 'Społeczność', 'icon' => '/public/assets/icons/community.svg'],
+    ['href' => '/community', 'path' => 'community', 'label' => 'Spolecznosc', 'icon' => '/public/assets/icons/community.svg'],
 ];
 ?>
 <aside class="navi">
@@ -40,7 +40,7 @@ $menuItems = [
         <a href="<?= htmlspecialchars($ownProfilePath, ENT_QUOTES, 'UTF-8'); ?>" class="menu-item menu-item-profile<?= $isProfileRoute ? ' active' : ''; ?>">
             <span class="menu-icon"
                   style="--icon-url: url('/public/assets/icons/profile.svg');"></span>
-            <span class="menu-label">Profil</span>
+            <span class="menu-label">Moj profil</span>
         </a>
         <a href="/settings" class="menu-item<?= $currentPath === 'settings' ? ' active' : ''; ?>">
             <span class="menu-icon"

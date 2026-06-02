@@ -25,6 +25,8 @@ $editPayload = htmlspecialchars(json_encode([
     'contact_email' => (string) $listing['contact_email'],
     'brand_id' => (int) $listing['brand_id'],
     'model_id' => (int) $listing['model_id'],
+    'brand_name' => (string) ($listing['brand_name'] ?? ''),
+    'model_name' => (string) ($listing['model_name'] ?? ''),
     'images' => array_map(static fn (array $image): string => (string) $image['path'], $listing['images'] ?? []),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8');
 ?>
@@ -47,14 +49,14 @@ $editPayload = htmlspecialchars(json_encode([
                     <div class="marketplace-post-menu-dropdown" hidden data-marketplace-menu-dropdown>
                         <?php if ($isOwnListing): ?>
                             <button type="button" class="marketplace-post-menu-action is-primary" data-marketplace-edit-trigger data-marketplace-edit-payload="<?= $editPayload; ?>">Edytuj ogłoszenie</button>
-                            <form method="post" class="marketplace-post-menu-form" data-marketplace-delete-form>
+                            <form method="post" action="/marketplace" class="marketplace-post-menu-form" data-marketplace-delete-form>
                                 <input type="hidden" name="action" value="delete_listing">
                                 <input type="hidden" name="listing_id" value="<?= (int) $listing['id']; ?>">
                                 <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/marketplace', ENT_QUOTES, 'UTF-8'); ?>">
                                 <button type="submit" class="marketplace-post-menu-action is-danger">Usuń ogłoszenie</button>
                             </form>
                         <?php else: ?>
-                            <form method="post" class="marketplace-post-menu-form" data-marketplace-report-form>
+                            <form method="post" action="/marketplace" class="marketplace-post-menu-form" data-marketplace-report-form>
                                 <input type="hidden" name="action" value="report_listing">
                                 <input type="hidden" name="listing_id" value="<?= (int) $listing['id']; ?>">
                                 <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/marketplace', ENT_QUOTES, 'UTF-8'); ?>">
@@ -89,7 +91,7 @@ $editPayload = htmlspecialchars(json_encode([
                 <div class="marketplace-listing-price"><?= htmlspecialchars($listing['formatted_price'], ENT_QUOTES, 'UTF-8'); ?></div>
 
                 <div class="marketplace-listing-top-actions">
-                    <form method="post" class="marketplace-inline-form marketplace-listing-save-form" data-marketplace-save-form data-marketplace-listing-id="<?= (int) $listing['id']; ?>">
+                    <form method="post" action="/marketplace" class="marketplace-inline-form marketplace-listing-save-form" data-marketplace-save-form data-marketplace-listing-id="<?= (int) $listing['id']; ?>">
                         <input type="hidden" name="action" value="toggle_save">
                         <input type="hidden" name="listing_id" value="<?= (int) $listing['id']; ?>">
                         <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/marketplace', ENT_QUOTES, 'UTF-8'); ?>">
@@ -152,14 +154,14 @@ $editPayload = htmlspecialchars(json_encode([
                     <div class="marketplace-post-menu-dropdown" hidden data-marketplace-menu-dropdown>
                         <?php if ($isOwnListing): ?>
                             <button type="button" class="marketplace-post-menu-action is-primary" data-marketplace-edit-trigger data-marketplace-edit-payload="<?= $editPayload; ?>">Edytuj ogłoszenie</button>
-                            <form method="post" class="marketplace-post-menu-form" data-marketplace-delete-form>
+                            <form method="post" action="/marketplace" class="marketplace-post-menu-form" data-marketplace-delete-form>
                                 <input type="hidden" name="action" value="delete_listing">
                                 <input type="hidden" name="listing_id" value="<?= (int) $listing['id']; ?>">
                                 <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/marketplace', ENT_QUOTES, 'UTF-8'); ?>">
                                 <button type="submit" class="marketplace-post-menu-action is-danger">Usuń ogłoszenie</button>
                             </form>
                         <?php else: ?>
-                            <form method="post" class="marketplace-post-menu-form" data-marketplace-report-form>
+                            <form method="post" action="/marketplace" class="marketplace-post-menu-form" data-marketplace-report-form>
                                 <input type="hidden" name="action" value="report_listing">
                                 <input type="hidden" name="listing_id" value="<?= (int) $listing['id']; ?>">
                                 <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/marketplace', ENT_QUOTES, 'UTF-8'); ?>">
@@ -194,7 +196,7 @@ $editPayload = htmlspecialchars(json_encode([
                     <div class="marketplace-details-price"><?= htmlspecialchars($listing['formatted_price'], ENT_QUOTES, 'UTF-8'); ?></div>
 
                     <div class="marketplace-listing-top-actions">
-                        <form method="post" class="marketplace-inline-form marketplace-listing-save-form" data-marketplace-save-form data-marketplace-listing-id="<?= (int) $listing['id']; ?>">
+                        <form method="post" action="/marketplace" class="marketplace-inline-form marketplace-listing-save-form" data-marketplace-save-form data-marketplace-listing-id="<?= (int) $listing['id']; ?>">
                             <input type="hidden" name="action" value="toggle_save">
                             <input type="hidden" name="listing_id" value="<?= (int) $listing['id']; ?>">
                             <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/marketplace', ENT_QUOTES, 'UTF-8'); ?>">
@@ -245,7 +247,12 @@ $editPayload = htmlspecialchars(json_encode([
                             <span class="marketplace-details-seller-role"><?= htmlspecialchars($listing['author_tier'], ENT_QUOTES, 'UTF-8'); ?></span>
                         </span>
                     </a>
-                    <button type="button" class="marketplace-contact-button" data-marketplace-contact-toggle>Sprawdź dane kontaktowe</button>
+                    <button
+                        type="button"
+                        class="marketplace-contact-button"
+                        data-marketplace-contact-toggle
+                        onclick="const card=this.nextElementSibling; if(card){ const hidden = card.hidden; card.hidden = !hidden; this.textContent = hidden ? 'Ukryj dane kontaktowe' : 'Sprawdź dane kontaktowe'; }"
+                    >Sprawdź dane kontaktowe</button>
                     <div class="marketplace-contact-card" hidden data-marketplace-contact-card>
                         <div class="marketplace-details-row"><span>Imię i nazwisko</span><strong><?= htmlspecialchars($listing['contact_name'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
                         <div class="marketplace-details-row"><span>Telefon</span><strong><?= htmlspecialchars($listing['contact_phone'], ENT_QUOTES, 'UTF-8'); ?></strong></div>

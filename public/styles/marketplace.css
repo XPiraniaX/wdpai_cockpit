@@ -28,7 +28,7 @@ body.is-marketplace-page {
     margin: 0 auto;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 14px;
     transform: translateX(calc(var(--sidebar-width, 0px) / -2));
     padding-bottom: 20px;
 }
@@ -72,7 +72,7 @@ body.is-marketplace-page {
 .marketplace-feed {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 14px;
 }
 
 .marketplace-feed-toolbar {

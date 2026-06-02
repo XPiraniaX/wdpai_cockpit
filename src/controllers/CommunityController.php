@@ -35,7 +35,7 @@ class CommunityController extends AppController
         }
 
         $this->render('community', [
-            'title' => 'Społeczność',
+            'title' => 'Spolecznosc',
             'scope' => $filters['scope'],
             'brandId' => $filters['brand_id'],
             'modelId' => $filters['model_id'],
@@ -44,7 +44,7 @@ class CommunityController extends AppController
             'hasMorePosts' => $feedPage['has_more'],
             'nextCursorCreatedAt' => $feedPage['next_cursor_created_at'],
             'nextCursorId' => $feedPage['next_cursor_id'],
-            'scriptFiles' => ['community.js'],
+            'scriptFiles' => ['community.js', 'marketplace.js'],
         ]);
     }
 
@@ -53,10 +53,13 @@ class CommunityController extends AppController
         $this->requireAuthentication();
 
         $repository = new CommunityRepository(Database::getConnection());
+        $marketplaceRepository = new MarketplaceRepository(Database::getConnection());
+        $carsRepository = new CarsRepository(Database::getConnection());
         $currentUserId = $this->getCurrentUserId();
         $requestedPseudonym = trim((string) ($_GET['pseudonym'] ?? ''));
         $requestedId = isset($_GET['id']) ? (int) $_GET['id'] : null;
         $profileUserId = $requestedId ?? $currentUserId;
+        $activityScope = $this->resolveProfileActivityScope((string) ($_GET['scope'] ?? ''));
 
         if ($requestedPseudonym === '' && $profileUserId <= 0) {
             $this->redirect('/profile');
@@ -85,23 +88,68 @@ class CommunityController extends AppController
         }
 
         $profileUserId = (int) $profile['id'];
+        $isOwnProfile = $profileUserId === $currentUserId;
+        $listingVisibility = $isOwnProfile
+            ? $this->resolveProfileListingVisibility((string) ($_GET['listing_visibility'] ?? 'all'))
+            : 'active';
 
-        $posts = $repository->getFeed($currentUserId, [
-            'scope' => 'all',
-            'brand_id' => null,
-            'model_id' => null,
-        ]);
-        $posts = array_values(array_filter($posts, static fn (array $post): bool => $post['user_id'] === $profileUserId));
+        $posts = [];
+        if ($activityScope === 'posts') {
+            $posts = $repository->getFeed($currentUserId, [
+                'scope' => 'all',
+                'brand_id' => null,
+                'model_id' => null,
+            ]);
+            $posts = array_values(array_filter($posts, static fn (array $post): bool => $post['user_id'] === $profileUserId));
+            usort($posts, static function (array $left, array $right): int {
+                $createdAtComparison = strcmp((string) $right['created_at'], (string) $left['created_at']);
+                if ($createdAtComparison !== 0) {
+                    return $createdAtComparison;
+                }
+
+                return ((int) $right['id']) <=> ((int) $left['id']);
+            });
+            $posts = $this->mapPosts($posts);
+        }
+
+        $listings = [];
+        if ($activityScope === 'listings') {
+            $listings = $this->mapProfileListings(
+                $marketplaceRepository->getListingsByUser($currentUserId, $profileUserId, $listingVisibility)
+            );
+        }
 
         $this->render('community_profile', [
             'title' => $profile['display_name'],
             'profile' => $profile,
-            'posts' => $this->mapPosts($posts),
-            'scriptFiles' => ['community.js'],
+            'isOwnProfile' => $isOwnProfile,
+            'activityScope' => $activityScope,
+            'listingVisibility' => $listingVisibility,
+            'posts' => $posts,
+            'listings' => $listings,
+            'brands' => $marketplaceRepository->getAvailableCategories(),
+            'importVehicles' => $this->mapMarketplaceImportVehicles($carsRepository->getMarketplaceImportVehicles($currentUserId)),
+            'bodyTypeOptions' => $this->getBodyTypeOptions(),
+            'fuelTypeOptions' => $this->getVehicleFuelTypeOptions(),
+            'transmissionOptions' => $this->getTransmissionOptions(),
+            'drivetrainOptions' => $this->getDrivetrainOptions(),
+            'styleFiles' => [
+                'base.css',
+                'layout.css',
+                'navi.css',
+                'header.css',
+                'dashboard.css',
+                'community.css',
+                'marketplace.css',
+                'my_cars.css',
+                'settings.css',
+                'vehicle_details.css',
+            ],
+            'scriptFiles' => ['community.js', 'marketplace.js'],
         ]);
     }
 
-    private function handlePostAction(CommunityRepository $repository, int $userId): void
+    protected function handlePostAction(CommunityRepository $repository, int $userId): void
     {
         $action = (string) ($_POST['action'] ?? '');
         $redirectTo = $this->sanitizeRedirectPath((string) ($_POST['redirect_to'] ?? '/community'));
@@ -131,7 +179,7 @@ class CommunityController extends AppController
                 $imagePaths = $this->handlePostImageUploads($userId);
 
                 try {
-                    $repository->createPost($userId, [
+                    $postId = $repository->createPost($userId, [
                         'brand_id' => $brandId,
                         'model_id' => $modelId,
                         'content' => $content,
@@ -140,6 +188,25 @@ class CommunityController extends AppController
                 } catch (Throwable $exception) {
                     $this->deleteUploadedFiles($imagePaths);
                     throw $exception;
+                }
+
+                if ($this->isAjaxRequest()) {
+                    $mappedPost = $this->findMappedPostById($repository, $userId, $postId);
+                    if ($mappedPost !== null) {
+                        $this->jsonResponse([
+                            'success' => true,
+                            'post_id' => $postId,
+                            'html' => $this->renderCommunityPostsHtml([$mappedPost]),
+                            'message' => 'Post został opublikowany.',
+                        ]);
+                    }
+
+                    $this->jsonResponse([
+                        'success' => true,
+                        'post_id' => $postId,
+                        'html' => '',
+                        'message' => 'Post został opublikowany.',
+                    ]);
                 }
 
                 $this->setFlash('success', 'Post został opublikowany.');
@@ -204,6 +271,25 @@ class CommunityController extends AppController
                     }
                 }
 
+                if ($this->isAjaxRequest()) {
+                    $mappedPost = $this->findMappedPostById($repository, $userId, $postId);
+                    if ($mappedPost !== null) {
+                        $this->jsonResponse([
+                            'success' => true,
+                            'post_id' => $postId,
+                            'html' => $this->renderCommunityPostsHtml([$mappedPost]),
+                            'message' => 'Post został zaktualizowany.',
+                        ]);
+                    }
+
+                    $this->jsonResponse([
+                        'success' => true,
+                        'post_id' => $postId,
+                        'html' => '',
+                        'message' => 'Post został zaktualizowany.',
+                    ]);
+                }
+
                 $this->setFlash('success', 'Post został zaktualizowany.');
                 $this->redirect($redirectTo);
                 return;
@@ -251,9 +337,9 @@ class CommunityController extends AppController
                 if ($postId > 0 && $content !== '') {
                     $comment = $repository->addComment($userId, $postId, $content);
 
-                    if ($this->isAjaxRequest()) {
-                        $state = $repository->getCommentState($userId, $postId);
+                    if ($comment !== null && $this->isAjaxRequest()) {
                         $comment['formatted_created_at'] = $this->formatDateTime($comment['created_at']);
+                        $state = $repository->getCommentState($userId, $postId);
                         $this->jsonResponse([
                             'success' => true,
                             'post_id' => $postId,
@@ -319,10 +405,26 @@ class CommunityController extends AppController
 
                 if ($postId > 0) {
                     $imagePaths = $repository->deletePostByOwner($userId, $postId);
-                    if ($imagePaths !== []) {
+                    if ($imagePaths !== null) {
                         $this->deleteUploadedFiles($imagePaths);
+
+                        if ($this->isAjaxRequest()) {
+                            $this->jsonResponse([
+                                'success' => true,
+                                'post_id' => $postId,
+                                'message' => 'Post został usunięty.',
+                            ]);
+                        }
+
                         $this->setFlash('success', 'Post został usunięty.');
                     } else {
+                        if ($this->isAjaxRequest()) {
+                            $this->jsonResponse([
+                                'success' => false,
+                                'message' => 'Nie udało się usunąć posta.',
+                            ], 400);
+                        }
+
                         $this->setFlash('error', 'Nie udało się usunąć posta.');
                     }
                 }
@@ -367,7 +469,6 @@ class CommunityController extends AppController
 
         $this->redirect($redirectTo);
     }
-
     private function resolveFilters(): array
     {
         return [
@@ -394,7 +495,7 @@ class CommunityController extends AppController
         return (string) ($_GET['feed_page'] ?? '') === '1';
     }
 
-    private function mapPosts(array $posts): array
+    protected function mapPosts(array $posts): array
     {
         return array_map(function (array $post): array {
             $post['formatted_created_at'] = $this->formatDateTime($post['created_at']);
@@ -407,7 +508,7 @@ class CommunityController extends AppController
         }, $posts);
     }
 
-    private function renderCommunityPostsHtml(array $posts): string
+    protected function renderCommunityPostsHtml(array $posts): string
     {
         if ($posts === []) {
             return '';
@@ -423,9 +524,112 @@ class CommunityController extends AppController
         return (string) ob_get_clean();
     }
 
+    protected function findMappedPostById(CommunityRepository $repository, int $userId, int $postId): ?array
+    {
+        $posts = $repository->getFeed($userId, [
+            'scope' => 'all',
+            'brand_id' => null,
+            'model_id' => null,
+        ]);
+
+        foreach ($this->mapPosts($posts) as $post) {
+            if ((int) $post['id'] === $postId) {
+                return $post;
+            }
+        }
+
+        return null;
+    }
+
+    protected function resolveProfileActivityScope(string $scope): string
+    {
+        return in_array($scope, ['posts', 'listings'], true) ? $scope : '';
+    }
+
+    protected function resolveProfileListingVisibility(string $visibility): string
+    {
+        return in_array($visibility, ['all', 'active', 'ended'], true) ? $visibility : 'all';
+    }
+
+    protected function mapProfileListings(array $listings): array
+    {
+        return array_map(function (array $listing): array {
+            $listing['formatted_created_at'] = $this->formatDateTime((string) $listing['created_at']);
+            $listing['formatted_price'] = number_format((float) $listing['price_amount'], 0, ',', ' ') . ' zl';
+            $listing['formatted_mileage'] = number_format((int) $listing['mileage_km'], 0, ',', ' ') . ' km';
+            $listing['formatted_fuel_type'] = match ($listing['fuel_type']) {
+                'petrol' => 'Benzyna',
+                'diesel' => 'Diesel',
+                'hybrid' => 'Hybryda',
+                'plug_in_hybrid' => 'Plug-in Hybrid',
+                'electric' => 'Elektryczny',
+                'lpg' => 'LPG',
+                'cng' => 'CNG',
+                'other' => 'Inne',
+                default => 'Brak danych',
+            };
+            $listing['formatted_transmission'] = match ($listing['transmission']) {
+                'manual' => 'Manualna',
+                'automatic' => 'Automatyczna',
+                'semi_automatic' => 'Polautomatyczna',
+                default => 'Brak danych',
+            };
+            $listing['formatted_engine'] = $listing['engine_capacity_cc'] !== null
+                ? number_format((float) $listing['engine_capacity_cc'] / 1000, 1, '.', '') . 'L'
+                : 'Brak danych';
+            $listing['formatted_power'] = $listing['power_hp'] !== null
+                ? number_format((int) $listing['power_hp'], 0, ',', ' ') . ' KM'
+                : 'Brak danych';
+            $listing['details_path'] = '/marketplace#listing-' . (int) $listing['id'];
+
+            return $listing;
+        }, $listings);
+    }
+
+    protected function mapMarketplaceImportVehicles(array $vehicles): array
+    {
+        return array_map(function (array $vehicle): array {
+            return [
+                'id' => (int) $vehicle['id'],
+                'display_name' => (string) ($vehicle['display_name'] ?? ''),
+                'trim_name' => (string) ($vehicle['trim_name'] ?? ''),
+                'production_year' => isset($vehicle['production_year']) ? (int) $vehicle['production_year'] : null,
+                'current_mileage_km' => isset($vehicle['current_mileage_km']) ? (int) $vehicle['current_mileage_km'] : null,
+                'image_path' => isset($vehicle['image_path']) ? (string) $vehicle['image_path'] : '',
+                'payload' => [
+                    'source_vehicle_id' => (int) $vehicle['id'],
+                    'title' => (string) ($vehicle['display_name'] ?? ''),
+                    'brand_id' => isset($vehicle['brand_id']) ? (int) $vehicle['brand_id'] : '',
+                    'model_id' => isset($vehicle['model_id']) ? (int) $vehicle['model_id'] : '',
+                    'brand_name' => (string) ($vehicle['brand_name'] ?? ''),
+                    'model_name' => (string) ($vehicle['model_name'] ?? ''),
+                    'trim_name' => (string) ($vehicle['trim_name'] ?? ''),
+                    'production_year' => isset($vehicle['production_year']) ? (int) $vehicle['production_year'] : '',
+                    'mileage_km' => isset($vehicle['current_mileage_km']) ? (int) $vehicle['current_mileage_km'] : '',
+                    'fuel_type' => (string) ($vehicle['fuel_type'] ?? ''),
+                    'transmission' => (string) ($vehicle['transmission'] ?? ''),
+                    'body_type' => (string) ($vehicle['body_type'] ?? ''),
+                    'drivetrain' => (string) ($vehicle['drivetrain'] ?? ''),
+                    'engine_capacity_cc' => isset($vehicle['engine_capacity_cc']) ? (int) $vehicle['engine_capacity_cc'] : '',
+                    'power_hp' => isset($vehicle['power_hp']) ? (int) $vehicle['power_hp'] : '',
+                    'exterior_color' => (string) ($vehicle['exterior_color'] ?? ''),
+                    'description' => (string) ($vehicle['notes'] ?? ''),
+                    'technical_condition' => '',
+                    'steering_side' => '',
+                    'price_amount' => '',
+                    'city' => '',
+                    'images' => array_values(array_filter(
+                        $vehicle['images'] ?? [],
+                        static fn ($path): bool => is_string($path) && $path !== ''
+                    )),
+                ],
+            ];
+        }, $vehicles);
+    }
+
     private function formatDateTime(string $value): string
     {
-        return (new DateTimeImmutable($value))->format('d.m.Y • H:i');
+        return (new DateTimeImmutable($value))->format('d.m.Y - H:i');
     }
 
     private function normalizeIntegerList(string|array|null $value): array
@@ -557,7 +761,7 @@ class CommunityController extends AppController
     {
         $fallbackUser = [
             'id' => $userId,
-            'full_name' => 'Użytkownik testowy',
+            'full_name' => 'Uzytkownik testowy',
             'membership_tier' => 'free',
         ];
 

@@ -1,4 +1,7 @@
 document.body.classList.add('is-community-page');
+if (document.querySelector('.community-profile-page')) {
+    document.body.classList.add('is-community-profile-page');
+}
 
 document.querySelectorAll('.community-brand-select').forEach((brandSelect) => {
     const targetModelId = brandSelect.getAttribute('data-target-model');
@@ -118,6 +121,7 @@ const showAppToast = (message, type = 'info') => {
         window.setTimeout(() => toast.remove(), 260);
     }, 5000);
 };
+window.showAppToast = showAppToast;
 
 const syncPostImagesInput = () => {
     if (!imagesInput) {
@@ -149,7 +153,7 @@ const buildPostImagePlaceholder = () => {
     const placeholderButton = document.createElement('button');
     placeholderButton.type = 'button';
     placeholderButton.className = 'community-post-images-edit-card community-post-images-edit-card-placeholder';
-    placeholderButton.setAttribute('aria-label', 'Dodaj zdjęcie do posta');
+    placeholderButton.setAttribute('aria-label', 'Dodaj zdjecie do posta');
     placeholderButton.addEventListener('click', openPostImagePicker);
 
     const placeholder = document.createElement('div');
@@ -182,13 +186,13 @@ const renderPostImagesGallery = () => {
 
         const photo = document.createElement('img');
         photo.className = 'community-post-images-edit-photo';
-        photo.alt = `Istniejące zdjęcie posta ${index + 1}`;
+        photo.alt = `Istniejace zdjecie posta ${index + 1}`;
         photo.src = String(image.path ?? '');
 
         const removeButton = document.createElement('button');
         removeButton.type = 'button';
         removeButton.className = 'community-post-images-edit-remove';
-        removeButton.setAttribute('aria-label', `Usuń zdjęcie ${index + 1}`);
+        removeButton.setAttribute('aria-label', `Usun zdjecie ${index + 1}`);
         removeButton.addEventListener('click', () => {
             if (image.id) {
                 removedExistingPostImageIds.push(Number(image.id));
@@ -210,12 +214,12 @@ const renderPostImagesGallery = () => {
 
         const photo = document.createElement('img');
         photo.className = 'community-post-images-edit-photo';
-        photo.alt = `Nowe zdjęcie posta ${index + 1}`;
+        photo.alt = `Nowe zdjecie posta ${index + 1}`;
 
         const removeButton = document.createElement('button');
         removeButton.type = 'button';
         removeButton.className = 'community-post-images-edit-remove';
-        removeButton.setAttribute('aria-label', `Usuń zdjęcie ${index + 1}`);
+        removeButton.setAttribute('aria-label', `Usun zdjecie ${index + 1}`);
         removeButton.addEventListener('click', () => {
             editablePostFiles = editablePostFiles.filter((_, fileIndex) => fileIndex !== index);
             syncPostImagesInput();
@@ -264,7 +268,7 @@ const resetCreatePostFormState = () => {
         createPostIdInput.value = '';
     }
     if (createPostModalTitle) {
-        createPostModalTitle.textContent = 'Utwórz post';
+        createPostModalTitle.textContent = 'Utworz post';
     }
     if (createPostSubmitButton) {
         createPostSubmitButton.textContent = 'Opublikuj';
@@ -304,7 +308,7 @@ const populateEditPostModal = (payload) => {
         createPostIdInput.value = String(payload.id ?? '');
     }
     if (createPostModalTitle) {
-        createPostModalTitle.textContent = 'Edytuj post';
+        createPostModalTitle.textContent = 'Utworz post';
     }
     if (createPostSubmitButton) {
         createPostSubmitButton.textContent = 'Zapisz zmiany';
@@ -409,6 +413,66 @@ if (imagesInput) {
         renderPostImagesGallery();
     });
 }
+
+createPostForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+
+    const formData = new FormData(createPostForm);
+    const action = String(formData.get('action') || 'create_post');
+    const postId = String(formData.get('post_id') || '');
+
+    try {
+        const response = await fetch(window.location.pathname + window.location.search, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Request failed');
+        }
+
+        const payload = await response.json();
+        if (!payload.success) {
+            throw new Error('Invalid payload');
+        }
+
+        if (typeof payload.html === 'string' && payload.html !== '') {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = payload.html;
+            const nextPost = wrapper.firstElementChild;
+
+            if (!(nextPost instanceof HTMLElement)) {
+                throw new Error('Invalid post markup');
+            }
+
+            if (action === 'update_post' && postId !== '') {
+                const currentPost = document.getElementById(`post-${postId}`);
+                if (currentPost) {
+                    currentPost.replaceWith(nextPost);
+                    initializeCommunityFeedChunk(nextPost);
+                    requestAnimationFrame(() => initializeCommunityFeedChunk(nextPost));
+                }
+            } else {
+                const feedRoot = document.querySelector('[data-community-feed]') ?? document.querySelector('.community-profile-feed');
+                if (feedRoot instanceof HTMLElement) {
+                    const emptyState = feedRoot.querySelector('.community-empty');
+                    emptyState?.remove();
+                    feedRoot.prepend(nextPost);
+                    initializeCommunityFeedChunk(nextPost);
+                    requestAnimationFrame(() => initializeCommunityFeedChunk(nextPost));
+                }
+            }
+        }
+
+        closeCreatePostModal();
+        showAppToast(payload.message || (action === 'update_post' ? 'Post został zaktualizowany.' : 'Post został opublikowany.'), 'success');
+    } catch (error) {
+        createPostForm.submit();
+    }
+});
 
 const initializeCommunityCarousel = (carousel) => {
     const track = carousel.querySelector('[data-community-carousel-track]');
@@ -667,7 +731,7 @@ document.querySelectorAll('[data-community-report-form]').forEach((form) => {
                 throw new Error('Invalid payload');
             }
 
-            showAppToast(payload.message || 'Zgłoszenie zostało przyjęte.', 'success');
+            showAppToast(payload.message || 'Zgloszenie zostalo przyjete.', 'success');
 
             const menu = form.closest('[data-community-post-menu]');
             if (menu) {
@@ -716,7 +780,7 @@ const buildCommunityCommentMarkup = (comment) => `
                             <input type="hidden" name="redirect_to" value="${escapeHtml(window.location.pathname + window.location.search)}">
                             <input type="hidden" name="action" value="delete_comment">
                             <button type="submit" class="community-post-menu-action is-danger">
-                                Usuń komentarz
+                                Usun komentarz
                             </button>
                         </form>
                     </div>
@@ -1018,7 +1082,7 @@ const bindCommunityReportForms = (root) => {
                     throw new Error('Invalid payload');
                 }
 
-                showAppToast(payload.message || 'Zgłoszenie zostało przyjęte.', 'success');
+            showAppToast(payload.message || 'Zgloszenie zostalo przyjete.', 'success');
 
                 const menu = form.closest('[data-community-post-menu]');
                 if (menu) {
@@ -1030,6 +1094,57 @@ const bindCommunityReportForms = (root) => {
         });
 
         form.dataset.boundReport = 'true';
+    });
+};
+
+const bindCommunityDeletePostForms = (root) => {
+    root.querySelectorAll('[data-community-delete-post-form]').forEach((form) => {
+        if (form.dataset.boundDeletePost === 'true') {
+            return;
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const post = form.closest('.community-post');
+            const formData = new FormData(form);
+
+            if (!(post instanceof HTMLElement)) {
+                form.submit();
+                return;
+            }
+
+            try {
+                const response = await fetch(window.location.pathname + window.location.search, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+
+                const payload = await response.json();
+                if (!payload.success) {
+                    throw new Error('Invalid payload');
+                }
+
+                post.remove();
+                showAppToast(payload.message || 'Post został usunięty.', 'success');
+
+                const menu = form.closest('[data-community-post-menu]');
+                if (menu) {
+                    closeCommunityPostMenu(menu);
+                }
+            } catch (error) {
+                form.submit();
+            }
+        });
+
+        form.dataset.boundDeletePost = 'true';
     });
 };
 
@@ -1185,7 +1300,7 @@ const bindCommunityCommentEditActions = (root) => {
                 content.hidden = false;
                 form.hidden = true;
                 syncCommunityCommentTriggerState(postId, payload.comment_count ?? 0, payload.commented_by_current_user);
-                showAppToast(payload.message || 'Komentarz został zaktualizowany.', 'success');
+                showAppToast(payload.message || 'Komentarz zostal zaktualizowany.', 'success');
             } catch (error) {
                 form.submit();
             } finally {
@@ -1237,11 +1352,11 @@ const bindCommunityCommentDeleteForms = (root) => {
 
                 comment.remove();
                 if (!commentsList.querySelector('[data-community-comment-id]')) {
-                    commentsList.innerHTML = '<p class="community-comments-empty" data-community-comments-empty>Brak komentarzy. Bądź pierwszy.</p>';
+                    commentsList.innerHTML = '<p class="community-comments-empty" data-community-comments-empty>Brak komentarzy. Badz pierwszy.</p>';
                 }
 
                 syncCommunityCommentTriggerState(postId, payload.comment_count ?? 0, payload.commented_by_current_user);
-                showAppToast(payload.message || 'Komentarz został usunięty.', 'success');
+                showAppToast(payload.message || 'Komentarz zostal usuniety.', 'success');
 
                 const menu = form.closest('[data-community-post-menu]');
                 if (menu) {
@@ -1323,12 +1438,14 @@ const initializeCommunityFeedChunk = (root) => {
     bindCommunityLikeForms(root);
     bindCommunitySaveForms(root);
     bindCommunityReportForms(root);
+    bindCommunityDeletePostForms(root);
     bindCommunityCommentForms(root);
     bindCommunityCommentEditActions(root);
     bindCommunityCommentDeleteForms(root);
     bindCommunityPostMenus(root);
 };
 
+window.initializeCommunityFeedChunk = initializeCommunityFeedChunk;
 document.querySelectorAll('[data-community-post-menu]').forEach((menu) => {
     const trigger = menu.querySelector('[data-community-post-menu-trigger]');
     const dropdown = menu.querySelector('[data-community-post-menu-dropdown]');
@@ -1360,8 +1477,12 @@ document.addEventListener('click', (event) => {
             closeCommunityPostMenu(menu);
         }
     });
-});
 
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) {
+        return;
+    }
+});
 const feed = document.querySelector('[data-community-feed]');
 const feedSentinel = document.querySelector('[data-community-feed-sentinel]');
 const feedLoader = document.querySelector('[data-community-feed-loader]');
@@ -1463,4 +1584,5 @@ if (feed && feedSentinel) {
 bindCommunityCommentEditActions(document);
 bindCommunityCommentDeleteForms(document);
 bindCommunityEditPostButtons(document);
+bindCommunityDeletePostForms(document);
 resetPostImagesGallery();

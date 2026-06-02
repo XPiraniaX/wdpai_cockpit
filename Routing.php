@@ -14,8 +14,8 @@ class Routing {
         "my-cars/details" => ["controller" => "CarsController", "action" => "details"],
         "marketplace" => ["controller" => "MarketplaceController", "action" => "index"],
         "community" => ["controller" => "CommunityController", "action" => "index"],
-        "profile" => ["controller" => "CommunityController", "action" => "profile"],
-        "community/profile" => ["controller" => "CommunityController", "action" => "profile"],
+        "profile" => ["controller" => "ProfileController", "action" => "index"],
+        "community/profile" => ["controller" => "ProfileController", "action" => "index"],
         "settings" => ["controller" => "SettingsController", "action" => "index"],
     ];
 

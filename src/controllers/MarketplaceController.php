@@ -156,14 +156,33 @@ class MarketplaceController extends AppController
 
                         $this->deleteUploadedFiles($updateResult['deleted_image_paths'] ?? []);
                     } else {
-                        $repository->createListing($userId, $payload);
+                        $listingId = $repository->createListing($userId, $payload);
                     }
                 } catch (Throwable $exception) {
                     $this->deleteUploadedFiles($payload['image_paths']);
                     throw $exception;
                 }
 
-                $this->setFlash('success', $isUpdate ? 'Ogłoszenie zostało zaktualizowane.' : 'Ogłoszenie zostało opublikowane.');
+                if ($this->isAjaxRequest()) {
+                    $mappedListing = $this->findMappedListingById($repository, $userId, $listingId);
+                    if ($mappedListing !== null) {
+                        $this->jsonResponse([
+                            'success' => true,
+                            'listing_id' => $listingId,
+                            'html' => $this->renderMarketplaceListingsHtml([$mappedListing]),
+                            'message' => $isUpdate ? 'Ogloszenie zostalo zaktualizowane.' : 'Ogloszenie zostalo opublikowane.',
+                        ]);
+                    }
+
+                    $this->jsonResponse([
+                        'success' => true,
+                        'listing_id' => $listingId,
+                        'html' => '',
+                            'message' => $isUpdate ? 'Ogloszenie zostalo zaktualizowane.' : 'Ogloszenie zostalo opublikowane.',
+                    ]);
+                }
+
+                $this->setFlash('success', $isUpdate ? 'Ogloszenie zostalo zaktualizowane.' : 'Ogloszenie zostalo opublikowane.');
                 $this->redirect($redirectTo);
                 return;
 
@@ -311,6 +330,20 @@ class MarketplaceController extends AppController
 
         return (string) ob_get_clean();
     }
+
+    private function findMappedListingById(MarketplaceRepository $repository, int $userId, int $listingId): ?array
+    {
+        $listings = $this->mapListings($repository->getListingsByUser($userId, $userId, 'all'));
+
+        foreach ($listings as $listing) {
+            if ((int) $listing['id'] === $listingId) {
+                return $listing;
+            }
+        }
+
+        return null;
+    }
+
     private function buildListingPayload(): array
     {
         return [

@@ -188,7 +188,7 @@ class CommunityRepository
         return array_values($brands);
     }
 
-    public function createPost(int $userId, array $data): void
+    public function createPost(int $userId, array $data): int
     {
         $this->connection->beginTransaction();
 
@@ -236,6 +236,7 @@ class CommunityRepository
             }
 
             $this->connection->commit();
+            return $postId;
         } catch (Throwable $exception) {
             $this->connection->rollBack();
             throw $exception;
@@ -628,7 +629,7 @@ class CommunityRepository
         ];
     }
 
-    public function deletePostByOwner(int $userId, int $postId): array
+    public function deletePostByOwner(int $userId, int $postId): ?array
     {
         $statement = $this->connection->prepare(
             'SELECT image_path
@@ -656,7 +657,7 @@ class CommunityRepository
         ]);
 
         if ($deleteStatement->rowCount() < 1) {
-            return [];
+            return null;
         }
 
         return $imagePaths;
@@ -682,7 +683,8 @@ class CommunityRepository
                 CONCAT(u.first_name, ' ', u.last_name) AS full_name,
                 u.membership_tier,
                 COALESCE(vehicle_counts.vehicle_count, 0) AS vehicle_count,
-                COALESCE(post_counts.post_count, 0) AS post_count
+                COALESCE(post_counts.post_count, 0) AS post_count,
+                COALESCE(listing_counts.listing_count, 0) AS listing_count
             FROM users u
             LEFT JOIN LATERAL (
                 SELECT COUNT(*)::INTEGER AS vehicle_count
@@ -696,6 +698,11 @@ class CommunityRepository
                 WHERE p.user_id = u.id
                     AND p.is_active = TRUE
             ) AS post_counts ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT COUNT(*)::INTEGER AS listing_count
+                FROM marketplace_listings l
+                WHERE l.user_id = u.id
+            ) AS listing_counts ON TRUE
             WHERE {$conditionSql}
                 AND u.is_active = TRUE
             LIMIT 1"
@@ -717,6 +724,7 @@ class CommunityRepository
             'membership_tier' => strtoupper((string) $row['membership_tier']) . ' MEMBER',
             'vehicle_count' => (int) $row['vehicle_count'],
             'post_count' => (int) $row['post_count'],
+            'listing_count' => (int) $row['listing_count'],
         ];
     }
 

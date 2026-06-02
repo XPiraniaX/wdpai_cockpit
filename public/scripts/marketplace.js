@@ -1,5 +1,8 @@
-document.documentElement.classList.add('is-marketplace-page-root');
-document.body.classList.add('is-marketplace-page');
+const isMarketplacePage = Boolean(document.querySelector('.marketplace-page'));
+if (isMarketplacePage) {
+    document.documentElement.classList.add('is-marketplace-page-root');
+    document.body.classList.add('is-marketplace-page');
+}
 
 const showAppToast = (message, type = 'info') => {
     const existingToast = document.querySelector('[data-app-toast]');
@@ -21,6 +24,7 @@ const showAppToast = (message, type = 'info') => {
         window.setTimeout(() => toast.remove(), 260);
     }, 5000);
 };
+window.showAppToast = showAppToast;
 
 let activeMarketplaceDetailsModal = null;
 let marketplaceLockedScrollY = 0;
@@ -1092,6 +1096,23 @@ const openMarketplaceEditModal = (payload) => {
     showMarketplaceCreateForm();
     openMarketplaceCreateModal();
 };
+window.openMarketplaceEditModal = openMarketplaceEditModal;
+window.addEventListener('marketplace:open-edit', (event) => {
+    const payload = event.detail;
+    if (!payload) {
+        return;
+    }
+
+    openMarketplaceEditModal(payload);
+});
+document.addEventListener('marketplace:open-edit', (event) => {
+    const payload = event.detail;
+    if (!payload) {
+        return;
+    }
+
+    openMarketplaceEditModal(payload);
+});
 
 const openMarketplaceCreateModal = () => {
     if (!marketplaceCreateBackdrop || !marketplaceCreateModal) {
@@ -1252,13 +1273,72 @@ marketplaceImageInput?.addEventListener('change', () => {
     renderMarketplaceGallery();
 });
 
-marketplaceCreateForm?.addEventListener('submit', (event) => {
+marketplaceCreateForm?.addEventListener('submit', async (event) => {
     for (let step = 1; step <= 4; step += 1) {
         if (!validateMarketplaceCreateStep(step)) {
             event.preventDefault();
             setMarketplaceCreateStep(step);
             return;
         }
+    }
+
+    event.preventDefault();
+
+    const formData = new FormData(marketplaceCreateForm);
+    const action = String(formData.get('action') || 'create_listing');
+
+    try {
+        const response = await fetch(resolveMarketplaceFormEndpoint(marketplaceCreateForm), {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Request failed');
+        }
+
+        const payload = await response.json();
+        if (!payload.success) {
+            throw new Error('Invalid payload');
+        }
+
+        const listingId = String(payload.listing_id || '');
+        const existingModal = listingId !== '' ? document.getElementById(`marketplace-details-modal-${listingId}`) : null;
+        existingModal?.remove();
+        if (activeMarketplaceDetailsModal === existingModal) {
+            activeMarketplaceDetailsModal = null;
+        }
+
+        if (typeof payload.html === 'string' && payload.html !== '') {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = payload.html;
+            initializeMarketplaceChunk(wrapper);
+
+            const nextListing = wrapper.querySelector('.marketplace-listing');
+            if (!(nextListing instanceof HTMLElement)) {
+                throw new Error('Invalid listing markup');
+            }
+
+            const currentListing = listingId !== '' ? document.getElementById(`listing-${listingId}`) : null;
+            if (currentListing instanceof HTMLElement) {
+                currentListing.replaceWith(nextListing);
+            } else {
+                const feedRoot = document.querySelector('.marketplace-feed') ?? document.querySelector('.community-profile-feed');
+                if (feedRoot instanceof HTMLElement) {
+                    const emptyState = feedRoot.querySelector('.community-empty, .marketplace-empty');
+                    emptyState?.remove();
+                    feedRoot.prepend(nextListing);
+                }
+            }
+        }
+
+        closeMarketplaceCreateModal();
+        showAppToast(payload.message || (action === 'update_listing' ? 'Ogłoszenie zostało zaktualizowane.' : 'Ogłoszenie zostało opublikowane.'), 'success');
+    } catch {
+        marketplaceCreateForm.submit();
     }
 });
 
@@ -1388,6 +1468,15 @@ const renderMarketplaceSaveIcon = (saved) => saved
     ? `<svg viewBox="0 0 24 24" class="marketplace-save-heart-svg is-filled"><path d="M12 21.35 10.55 20.03C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54Z"/></svg>`
     : `<svg viewBox="0 0 24 24" class="marketplace-save-heart-svg is-outline"><path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09A5.964 5.964 0 0 0 7.5 3C4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.31C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3Zm-4.4 15.55-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5 18.5 5 20 6.5 20 8.5c0 2.89-3.14 5.74-7.9 10.05Z"/></svg>`;
 
+const resolveMarketplaceFormEndpoint = (form) => {
+    const action = form.getAttribute('action');
+    if (action && action.trim() !== '') {
+        return action;
+    }
+
+    return window.location.pathname + window.location.search;
+};
+
 const syncMarketplaceSaveState = (listingId, saved) => {
     document.querySelectorAll(`[data-marketplace-save-form][data-marketplace-listing-id="${listingId}"]`).forEach((form) => {
         const button = form.querySelector('[data-marketplace-save-button]');
@@ -1443,7 +1532,7 @@ const bindMarketplaceSaveForms = (root) => {
             const formData = new FormData(form);
 
             try {
-                const response = await fetch(window.location.pathname + window.location.search, {
+                const response = await fetch(resolveMarketplaceFormEndpoint(form), {
                     method: 'POST',
                     body: formData,
                     headers: {
@@ -1514,7 +1603,7 @@ const bindMarketplaceReportForms = (root) => {
             const formData = new FormData(form);
 
             try {
-                const response = await fetch(window.location.pathname + window.location.search, {
+                const response = await fetch(resolveMarketplaceFormEndpoint(form), {
                     method: 'POST',
                     body: formData,
                     headers: {
@@ -1531,7 +1620,7 @@ const bindMarketplaceReportForms = (root) => {
                     throw new Error('Invalid payload');
                 }
 
-                showAppToast(payload.message || 'OgĹ‚oszenie zostaĹ‚o zgĹ‚oszone.', 'success');
+                showAppToast(payload.message || 'Ogloszenie zostalo zgloszone.', 'success');
                 closeMarketplaceMenus();
             } catch {
                 form.submit();
@@ -1556,7 +1645,7 @@ const bindMarketplaceDeleteForms = (root) => {
             const listingId = String(formData.get('listing_id') || '');
 
             try {
-                const response = await fetch(window.location.pathname + window.location.search, {
+                const response = await fetch(resolveMarketplaceFormEndpoint(form), {
                     method: 'POST',
                     body: formData,
                     headers: {
@@ -1580,7 +1669,7 @@ const bindMarketplaceDeleteForms = (root) => {
                     syncMarketplaceScrollLock();
                 }
 
-                showAppToast(payload.message || 'OgÄ‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąÄľĂ„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă‹â€ˇÄ‚â€žĂ˘â‚¬ĹˇÄ‚â€ąĂ‚ÂĂ„â€šĂ‹ÂÄ‚ËĂ˘â€šÂ¬ÄąË‡Ä‚â€šĂ‚Â¬Ä‚â€žĂ„â€¦Ä‚â€žĂ„ÄľĂ„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă„ÄľÄ‚â€žĂ˘â‚¬ĹˇÄ‚â€ąĂ‚ÂĂ„â€šĂ‹ÂÄ‚ËĂ˘â€šÂ¬ÄąË‡Ä‚â€šĂ‚Â¬Ă„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚Â¦Ä‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąÄľĂ„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă‹â€ˇÄ‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬Ă„â€¦Ă„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚ÂĂ„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ˘â‚¬Ä…Ä‚â€šĂ‚ÂÄ‚â€žĂ˘â‚¬ĹˇÄ‚â€ąĂ‚ÂĂ„â€šĂ‹ÂÄ‚ËĂ˘â€šÂ¬ÄąË‡Ä‚â€šĂ‚Â¬Ä‚â€žĂ„â€¦Ä‚â€ąĂ˘â‚¬Ë‡Ä‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚Â¬Ä‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąÄľĂ„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬Ă‚Â¦Ä‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬Ă„â€¦Ă„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ä‚â€ąĂ˘â‚¬Ë‡oszenie zostaÄ‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąÄľĂ„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă‹â€ˇÄ‚â€žĂ˘â‚¬ĹˇÄ‚â€ąĂ‚ÂĂ„â€šĂ‹ÂÄ‚ËĂ˘â€šÂ¬ÄąË‡Ä‚â€šĂ‚Â¬Ä‚â€žĂ„â€¦Ä‚â€žĂ„ÄľĂ„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă„ÄľÄ‚â€žĂ˘â‚¬ĹˇÄ‚â€ąĂ‚ÂĂ„â€šĂ‹ÂÄ‚ËĂ˘â€šÂ¬ÄąË‡Ä‚â€šĂ‚Â¬Ă„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚Â¦Ä‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąÄľĂ„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă‹â€ˇÄ‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬Ă„â€¦Ă„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚ÂĂ„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ˘â‚¬Ä…Ä‚â€šĂ‚ÂÄ‚â€žĂ˘â‚¬ĹˇÄ‚â€ąĂ‚ÂĂ„â€šĂ‹ÂÄ‚ËĂ˘â€šÂ¬ÄąË‡Ä‚â€šĂ‚Â¬Ä‚â€žĂ„â€¦Ä‚â€ąĂ˘â‚¬Ë‡Ä‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚Â¬Ä‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąÄľĂ„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬Ă‚Â¦Ä‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬Ă„â€¦Ă„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ä‚â€ąĂ˘â‚¬Ë‡o usuniĂ„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă„ÄľÄ‚â€žĂ˘â‚¬ĹˇÄ‚â€ąĂ‚ÂĂ„â€šĂ‹ÂÄ‚ËĂ˘â€šÂ¬ÄąË‡Ä‚â€šĂ‚Â¬Ä‚â€žĂ„â€¦Ä‚â€ąĂ˘â‚¬Ë‡Ă„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ˘â‚¬Ä…Ä‚â€šĂ‚ÂÄ‚â€žĂ˘â‚¬ĹˇÄ‚â€ąĂ‚ÂĂ„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă‹â€ˇĂ„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚Â¬Ă„â€šĂ˘â‚¬ĹľÄ‚â€žĂ˘â‚¬Â¦Ă„â€šĂ˘â‚¬ĹľÄ‚â€žĂ„ÄľÄ‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąÄľĂ„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă‹â€ˇÄ‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬Ă„â€¦Ă„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚ÂĂ„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ˘â‚¬Ä…Ä‚â€šĂ‚ÂÄ‚â€žĂ˘â‚¬ĹˇÄ‚â€ąĂ‚ÂĂ„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ă„Ä…Ă‹â€ˇĂ„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚Â¬Ă„â€šĂ˘â‚¬ĹľÄ‚â€žĂ˘â‚¬Â¦Ă„â€šĂ˘â‚¬ĹľÄ‚â€žĂ„ÄľĂ„â€šĂ˘â‚¬ĹľÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ‹ÂÄ‚ËĂ˘â‚¬ĹˇĂ‚Â¬Ä‚â€žĂ˘â‚¬Â¦Ä‚â€žĂ˘â‚¬ĹˇÄ‚ËĂ˘â€šÂ¬ÄąË‡Ă„â€šĂ˘â‚¬ĹˇÄ‚â€šĂ‚Âte.', 'success');
+                showAppToast(payload.message || 'Ogłoszenie zostało usunięte.', 'success');
                 closeMarketplaceMenus();
             } catch {
                 form.submit();
@@ -1683,14 +1772,14 @@ const bindMarketplaceContactToggles = (root) => {
         }
 
         button.addEventListener('click', () => {
-            const card = button.parentElement?.querySelector('[data-marketplace-contact-card]');
+            const card = button.closest('.marketplace-details-contact')?.querySelector('[data-marketplace-contact-card]');
             if (!card) {
                 return;
             }
 
             const isHidden = card.hidden;
             card.hidden = !isHidden;
-            button.textContent = isHidden ? 'Ukryj dane kontaktowe' : 'SprawdĹş dane kontaktowe';
+            button.textContent = isHidden ? 'Ukryj dane kontaktowe' : 'Sprawdz dane kontaktowe';
         });
 
         button.dataset.boundContact = 'true';
@@ -1712,10 +1801,93 @@ const initializeMarketplaceChunk = (root) => {
     bindMarketplaceDeleteForms(root);
     bindMarketplaceDetailModals(root);
     bindMarketplaceDetailOpeners(root);
-    bindMarketplaceContactToggles(root);
+    bindMarketplaceContactToggles(document);
 };
+window.initializeMarketplaceChunk = initializeMarketplaceChunk;
 
 document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+
+    if (target) {
+        const menuTrigger = target.closest('[data-marketplace-menu-trigger]');
+        if (menuTrigger) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const menu = menuTrigger.closest('[data-marketplace-menu]');
+            const dropdown = menu?.querySelector('[data-marketplace-menu-dropdown]');
+            if (menu && dropdown) {
+                const isOpen = menuTrigger.getAttribute('aria-expanded') === 'true';
+                closeMarketplaceMenus(isOpen ? null : menu);
+                menuTrigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+                dropdown.hidden = isOpen;
+            }
+            return;
+        }
+
+        const carouselControl = target.closest('[data-marketplace-carousel-prev], [data-marketplace-carousel-next]');
+        if (carouselControl) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const carousel = carouselControl.closest('[data-marketplace-carousel]');
+            if (carousel) {
+                initializeMarketplaceCarousel(carousel);
+                if (carousel.dataset.marketplaceCarouselReady === 'true') {
+                    carouselControl.dispatchEvent(new MouseEvent('click', {
+                        bubbles: false,
+                        cancelable: true,
+                        view: window,
+                    }));
+                }
+            }
+            return;
+        }
+
+        const detailsCloser = target.closest('[data-close-marketplace-details]');
+        if (detailsCloser) {
+            event.preventDefault();
+            const modal = detailsCloser.closest('[data-marketplace-details-modal]');
+            closeMarketplaceDetailsModal(modal);
+            return;
+        }
+
+        const detailsOpener = target.closest('[data-open-marketplace-details]');
+        if (detailsOpener
+            && !target.closest('[data-marketplace-save-form]')
+            && !target.closest('[data-marketplace-menu]')
+            && !target.closest('[data-marketplace-carousel-prev]')
+            && !target.closest('[data-marketplace-carousel-next]')
+            && !target.closest('[data-marketplace-contact-toggle]')
+            && !target.closest('[data-marketplace-details-seller-link]')) {
+            const modalId = detailsOpener.getAttribute('data-marketplace-details-id');
+            if (modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    openMarketplaceDetailsModal(modal);
+                    requestAnimationFrame(() => {
+                        modal.querySelectorAll('[data-marketplace-carousel]').forEach((carousel) => {
+                            initializeMarketplaceCarousel(carousel);
+                        });
+                    });
+                }
+            }
+            return;
+        }
+
+        const contactToggle = target.closest('[data-marketplace-contact-toggle]');
+        if (contactToggle) {
+            event.preventDefault();
+            const card = contactToggle.closest('.marketplace-details-contact')?.querySelector('[data-marketplace-contact-card]');
+            if (card) {
+                const isHidden = card.hidden;
+                card.hidden = !isHidden;
+                contactToggle.textContent = isHidden ? 'Ukryj dane kontaktowe' : 'Sprawdz dane kontaktowe';
+            }
+            return;
+        }
+    }
+
     closeMarketplaceMenus();
 
     if (marketplaceCreateBackdrop && event.target === marketplaceCreateBackdrop) {
@@ -1836,10 +2008,22 @@ if (feed && feedSentinel) {
     observer.observe(feedSentinel);
 }
 
-renderMarketplaceGallery();
-setMarketplaceCreateStep(1);
-initializeMarketplaceNumberInputs(document);
-initializeMarketplaceDecimalInputs(document);
-initializeMarketplaceChunk(document);
+const bootstrapMarketplaceInteractions = () => {
+    renderMarketplaceGallery();
+    setMarketplaceCreateStep(1);
+    initializeMarketplaceNumberInputs(document);
+    initializeMarketplaceDecimalInputs(document);
+    initializeMarketplaceChunk(document);
+};
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bootstrapMarketplaceInteractions, { once: true });
+} else {
+    bootstrapMarketplaceInteractions();
+}
+
+window.addEventListener('load', () => {
+    initializeMarketplaceChunk(document);
+});
 
 

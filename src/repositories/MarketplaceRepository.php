@@ -208,49 +208,7 @@ class MarketplaceRepository
             ];
         }
 
-        $listingIds = array_map(static fn (array $row): int => (int) $row['id'], $listings);
-        $imagesByListing = $this->getImagesForListings($listingIds);
-
-        $mappedListings = array_map(function (array $listing) use ($imagesByListing, $currentUserId): array {
-            $listingId = (int) $listing['id'];
-
-            return [
-                'id' => $listingId,
-                'user_id' => (int) $listing['user_id'],
-                'author_name' => (string) ($listing['pseudonym'] ?? $listing['full_name']),
-                'author_username' => (string) $listing['username'],
-                'author_tier' => strtoupper((string) $listing['membership_tier']) . ' MEMBER',
-                'profile_path' => $this->buildProfilePath($currentUserId, (int) $listing['user_id'], $listing['pseudonym'] ?? null),
-                'title' => (string) $listing['title'],
-                'trim_name' => (string) ($listing['trim_name'] ?? ''),
-                'description' => (string) $listing['description'],
-                'price_amount' => (float) $listing['price_amount'],
-                'production_year' => (int) $listing['production_year'],
-                'mileage_km' => (int) $listing['mileage_km'],
-                'fuel_type' => $listing['fuel_type'] !== null ? (string) $listing['fuel_type'] : null,
-                'transmission' => $listing['transmission'] !== null ? (string) $listing['transmission'] : null,
-                'body_type' => $listing['body_type'] !== null ? (string) $listing['body_type'] : null,
-                'drivetrain' => $listing['drivetrain'] !== null ? (string) $listing['drivetrain'] : null,
-                'steering_side' => $listing['steering_side'] !== null ? (string) $listing['steering_side'] : null,
-                'technical_condition' => $listing['technical_condition'] !== null ? (string) $listing['technical_condition'] : null,
-                'engine_capacity_cc' => $listing['engine_capacity_cc'] !== null ? (int) $listing['engine_capacity_cc'] : null,
-                'power_hp' => $listing['power_hp'] !== null ? (int) $listing['power_hp'] : null,
-                'exterior_color' => $listing['exterior_color'] !== null ? (string) $listing['exterior_color'] : null,
-                'city' => (string) $listing['city'],
-                'contact_name' => (string) $listing['contact_name'],
-                'contact_phone' => (string) $listing['contact_phone'],
-                'contact_email' => (string) $listing['contact_email'],
-                'created_at' => (string) $listing['created_at'],
-                'brand_id' => (int) $listing['brand_id'],
-                'model_id' => (int) $listing['model_id'],
-                'brand_name' => (string) $listing['brand_name'],
-                'model_name' => (string) $listing['model_name'],
-                'category_label' => (string) $listing['brand_name'] . ' / ' . (string) $listing['model_name'],
-                'save_count' => (int) $listing['save_count'],
-                'saved_by_current_user' => (bool) $listing['saved_by_current_user'],
-                'images' => $imagesByListing[$listingId] ?? [],
-            ];
-        }, $listings);
+        $mappedListings = $this->mapListingRows($listings, $currentUserId);
 
         return [
             'listings' => $mappedListings,
@@ -259,7 +217,80 @@ class MarketplaceRepository
         ];
     }
 
-    public function createListing(int $userId, array $data): void
+    public function getListingsByUser(int $currentUserId, int $profileUserId, string $visibility = 'active'): array
+    {
+        $conditions = ['l.user_id = :profile_user_id'];
+
+        if ($visibility === 'active') {
+            $conditions[] = 'l.is_active = TRUE';
+        } elseif ($visibility === 'ended') {
+            $conditions[] = 'l.is_active = FALSE';
+        }
+
+        $statement = $this->connection->prepare(
+            "SELECT
+                l.id,
+                l.user_id,
+                l.brand_id,
+                l.model_id,
+                l.title,
+                l.trim_name,
+                l.description,
+                l.price_amount,
+                l.production_year,
+                l.mileage_km,
+                l.fuel_type,
+                l.transmission,
+                l.body_type,
+                l.drivetrain,
+                l.engine_capacity_cc,
+                l.power_hp,
+                l.exterior_color,
+                l.city,
+                l.contact_name,
+                l.contact_phone,
+                l.contact_email,
+                l.created_at,
+                l.updated_at,
+                l.steering_side,
+                l.technical_condition,
+                l.is_active,
+                u.username,
+                u.pseudonym,
+                CONCAT(u.first_name, ' ', u.last_name) AS full_name,
+                u.membership_tier,
+                cb.name AS brand_name,
+                cm.name AS model_name,
+                COALESCE(saved.save_count, 0) AS save_count,
+                COALESCE(save_ref.is_saved, FALSE) AS saved_by_current_user
+            FROM marketplace_listings l
+            INNER JOIN users u ON u.id = l.user_id
+            INNER JOIN car_brands cb ON cb.id = l.brand_id
+            INNER JOIN car_models cm ON cm.id = l.model_id
+            LEFT JOIN LATERAL (
+                SELECT COUNT(*)::INTEGER AS save_count
+                FROM marketplace_listing_saves s
+                WHERE s.listing_id = l.id
+            ) AS saved ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT TRUE AS is_saved
+                FROM marketplace_listing_saves s
+                WHERE s.listing_id = l.id
+                    AND s.user_id = :current_user_id
+                LIMIT 1
+            ) AS save_ref ON TRUE
+            WHERE " . implode(' AND ', $conditions) . "
+            ORDER BY l.created_at DESC, l.id DESC"
+        );
+        $statement->execute([
+            'current_user_id' => $currentUserId,
+            'profile_user_id' => $profileUserId,
+        ]);
+
+        return $this->mapListingRows($statement->fetchAll(PDO::FETCH_ASSOC) ?: [], $currentUserId);
+    }
+
+    public function createListing(int $userId, array $data): int
     {
         $this->connection->beginTransaction();
 
@@ -361,6 +392,7 @@ class MarketplaceRepository
             }
 
             $this->connection->commit();
+            return $listingId;
         } catch (Throwable $exception) {
             $this->connection->rollBack();
             throw $exception;
@@ -654,6 +686,60 @@ class MarketplaceRepository
         }
 
         return $grouped;
+    }
+
+    private function mapListingRows(array $listings, int $currentUserId): array
+    {
+        if ($listings === []) {
+            return [];
+        }
+
+        $listingIds = array_map(static fn (array $row): int => (int) $row['id'], $listings);
+        $imagesByListing = $this->getImagesForListings($listingIds);
+
+        return array_map(function (array $listing) use ($imagesByListing, $currentUserId): array {
+            $listingId = (int) $listing['id'];
+
+            return [
+                'id' => $listingId,
+                'user_id' => (int) $listing['user_id'],
+                'author_name' => (string) ($listing['pseudonym'] ?? $listing['full_name']),
+                'author_username' => (string) $listing['username'],
+                'author_tier' => strtoupper((string) $listing['membership_tier']) . ' MEMBER',
+                'profile_path' => $this->buildProfilePath($currentUserId, (int) $listing['user_id'], $listing['pseudonym'] ?? null),
+                'title' => (string) $listing['title'],
+                'trim_name' => (string) ($listing['trim_name'] ?? ''),
+                'description' => (string) $listing['description'],
+                'price_amount' => (float) $listing['price_amount'],
+                'production_year' => (int) $listing['production_year'],
+                'mileage_km' => (int) $listing['mileage_km'],
+                'fuel_type' => $listing['fuel_type'] !== null ? (string) $listing['fuel_type'] : null,
+                'transmission' => $listing['transmission'] !== null ? (string) $listing['transmission'] : null,
+                'body_type' => $listing['body_type'] !== null ? (string) $listing['body_type'] : null,
+                'drivetrain' => $listing['drivetrain'] !== null ? (string) $listing['drivetrain'] : null,
+                'steering_side' => $listing['steering_side'] !== null ? (string) $listing['steering_side'] : null,
+                'technical_condition' => $listing['technical_condition'] !== null ? (string) $listing['technical_condition'] : null,
+                'engine_capacity_cc' => $listing['engine_capacity_cc'] !== null ? (int) $listing['engine_capacity_cc'] : null,
+                'power_hp' => $listing['power_hp'] !== null ? (int) $listing['power_hp'] : null,
+                'exterior_color' => $listing['exterior_color'] !== null ? (string) $listing['exterior_color'] : null,
+                'city' => (string) $listing['city'],
+                'contact_name' => (string) $listing['contact_name'],
+                'contact_phone' => (string) $listing['contact_phone'],
+                'contact_email' => (string) $listing['contact_email'],
+                'created_at' => (string) $listing['created_at'],
+                'is_active' => array_key_exists('is_active', $listing)
+                    ? (bool) $listing['is_active']
+                    : true,
+                'brand_id' => (int) $listing['brand_id'],
+                'model_id' => (int) $listing['model_id'],
+                'brand_name' => (string) $listing['brand_name'],
+                'model_name' => (string) $listing['model_name'],
+                'category_label' => (string) $listing['brand_name'] . ' / ' . (string) $listing['model_name'],
+                'save_count' => (int) $listing['save_count'],
+                'saved_by_current_user' => (bool) $listing['saved_by_current_user'],
+                'images' => $imagesByListing[$listingId] ?? [],
+            ];
+        }, $listings);
     }
 
     private function saveExists(int $userId, int $listingId): bool
