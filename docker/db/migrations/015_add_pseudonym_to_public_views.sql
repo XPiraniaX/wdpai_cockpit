@@ -81,7 +81,8 @@ SELECT
     cm.name AS model_name,
     COALESCE(saved.save_count, 0) AS save_count,
     l.steering_side,
-    l.technical_condition
+    l.technical_condition,
+    l.is_active
 FROM marketplace_listings l
 INNER JOIN users u
     ON u.id = l.user_id
@@ -93,4 +94,5 @@ LEFT JOIN LATERAL (
     SELECT COUNT(*)::INTEGER AS save_count
     FROM marketplace_listing_saves s
     WHERE s.listing_id = l.id
-) AS saved ON TRUE;
+) AS saved ON TRUE
+WHERE l.is_active = TRUE;

@@ -1,8 +1,124 @@
-const isProfilePage = Boolean(document.querySelector('.profile-page'));
+﻿const isProfilePage = Boolean(document.querySelector('.profile-page'));
 
 if (isProfilePage) {
     document.body.classList.add('is-profile-page');
 }
+
+let activeProfileMarketplaceConfirmResolver = null;
+let activeProfileMarketplaceConfirmKeyHandler = null;
+
+const ensureProfileMarketplaceConfirmModal = () => {
+    let modal = document.querySelector('[data-profile-marketplace-confirm-modal]');
+    if (modal) {
+        return modal;
+    }
+
+    modal = document.createElement('div');
+    modal.className = 'marketplace-confirm-backdrop';
+    modal.setAttribute('data-profile-marketplace-confirm-modal', '');
+    modal.hidden = true;
+    modal.innerHTML = `
+        <div class="marketplace-confirm-scrim" data-profile-marketplace-confirm-cancel></div>
+        <div class="marketplace-confirm-shell">
+            <section class="marketplace-confirm-panel">
+                <div class="marketplace-confirm-head">
+                    <div class="marketplace-confirm-title-wrap">
+                        <div class="marketplace-confirm-kicker" data-profile-marketplace-confirm-kicker></div>
+                        <h3 class="marketplace-confirm-title" data-profile-marketplace-confirm-title></h3>
+                    </div>
+                    <button type="button" class="community-modal-close" aria-label="Zamknij" data-profile-marketplace-confirm-cancel>
+                        <img src="/public/assets/icons/close.svg" alt="">
+                    </button>
+                </div>
+                <div class="marketplace-confirm-copy">
+                    <p class="marketplace-confirm-message" data-profile-marketplace-confirm-message></p>
+                </div>
+                <div class="marketplace-confirm-actions">
+                    <button type="button" class="marketplace-button marketplace-button-muted" data-profile-marketplace-confirm-cancel>Anuluj</button>
+                    <button type="button" class="marketplace-button marketplace-confirm-submit" data-profile-marketplace-confirm-submit></button>
+                </div>
+            </section>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    return modal;
+};
+
+const closeProfileMarketplaceConfirmModal = (accepted = false) => {
+    const modal = document.querySelector('[data-profile-marketplace-confirm-modal]');
+    if (!(modal instanceof HTMLElement)) {
+        return;
+    }
+
+    modal.hidden = true;
+    document.body.classList.remove('vehicle-modal-open');
+
+    if (activeProfileMarketplaceConfirmKeyHandler) {
+        document.removeEventListener('keydown', activeProfileMarketplaceConfirmKeyHandler);
+        activeProfileMarketplaceConfirmKeyHandler = null;
+    }
+
+    if (activeProfileMarketplaceConfirmResolver) {
+        const resolver = activeProfileMarketplaceConfirmResolver;
+        activeProfileMarketplaceConfirmResolver = null;
+        resolver(accepted);
+    }
+};
+
+const openProfileMarketplaceConfirmModal = ({
+    kicker = 'Potwierdzenie',
+    title = 'Potwierdź akcję',
+    message = '',
+    confirmLabel = 'Potwierdź',
+    tone = 'muted',
+} = {}) => {
+    const modal = ensureProfileMarketplaceConfirmModal();
+    const kickerElement = modal.querySelector('[data-profile-marketplace-confirm-kicker]');
+    const titleElement = modal.querySelector('[data-profile-marketplace-confirm-title]');
+    const messageElement = modal.querySelector('[data-profile-marketplace-confirm-message]');
+    const submitButton = modal.querySelector('[data-profile-marketplace-confirm-submit]');
+
+    if (!(kickerElement instanceof HTMLElement)
+        || !(titleElement instanceof HTMLElement)
+        || !(messageElement instanceof HTMLElement)
+        || !(submitButton instanceof HTMLButtonElement)) {
+        return Promise.resolve(window.confirm(message || title));
+    }
+
+    kickerElement.textContent = kicker;
+    titleElement.textContent = title;
+    messageElement.textContent = message;
+    submitButton.textContent = confirmLabel;
+    submitButton.classList.remove('is-danger', 'is-muted');
+    submitButton.classList.add(tone === 'danger' ? 'is-danger' : 'is-muted');
+
+    modal.querySelectorAll('[data-profile-marketplace-confirm-cancel]').forEach((button) => {
+        if (button instanceof HTMLElement && button.dataset.boundProfileMarketplaceConfirmCancel !== 'true') {
+            button.addEventListener('click', () => closeProfileMarketplaceConfirmModal(false));
+            button.dataset.boundProfileMarketplaceConfirmCancel = 'true';
+        }
+    });
+
+    if (submitButton.dataset.boundProfileMarketplaceConfirmSubmit !== 'true') {
+        submitButton.addEventListener('click', () => closeProfileMarketplaceConfirmModal(true));
+        submitButton.dataset.boundProfileMarketplaceConfirmSubmit = 'true';
+    }
+
+    modal.hidden = false;
+    document.body.classList.add('vehicle-modal-open');
+
+    activeProfileMarketplaceConfirmKeyHandler = (event) => {
+        if (event.key === 'Escape') {
+            closeProfileMarketplaceConfirmModal(false);
+        }
+    };
+    document.addEventListener('keydown', activeProfileMarketplaceConfirmKeyHandler);
+
+    return new Promise((resolve) => {
+        activeProfileMarketplaceConfirmResolver = resolve;
+    });
+};
 
 const renderProfileMarketplaceSaveIcon = (saved) => saved
     ? '<svg viewBox="0 0 24 24" class="marketplace-save-heart-svg is-filled"><path d="M12 21.35 10.55 20.03C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54Z"/></svg>'
@@ -412,7 +528,7 @@ const syncProfileMarketplaceFallbackCategoryFields = (payload) => {
     ) || null;
 
     brandSelect.innerHTML = '';
-    brandSelect.appendChild(buildProfileMarketplaceFallbackOption('', 'Wybierz markę', !brandName));
+    brandSelect.appendChild(buildProfileMarketplaceFallbackOption('', 'Wybierz markÄ™', !brandName));
     profileMarketplaceFallbackCatalog.forEach((brand) => {
         brandSelect.appendChild(buildProfileMarketplaceFallbackOption(
             brand.id,
@@ -965,6 +1081,7 @@ const bindProfileMarketplaceChunk = (root = document) => {
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
             event.stopPropagation();
+            event.stopImmediatePropagation();
 
             const confirmMessage = form.getAttribute('data-marketplace-confirm-message');
             if (confirmMessage && !window.confirm(confirmMessage)) {
@@ -997,7 +1114,7 @@ const bindProfileMarketplaceChunk = (root = document) => {
             } catch {
                 form.submit();
             }
-        });
+        }, true);
 
         form.dataset.boundProfileSave = 'true';
     });
@@ -1010,16 +1127,15 @@ const bindProfileMarketplaceChunk = (root = document) => {
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
             event.stopPropagation();
+            event.stopImmediatePropagation();
 
-            const confirmed = typeof window.openMarketplaceConfirmModal === 'function'
-                ? await window.openMarketplaceConfirmModal({
-                    kicker: 'Usuwanie ogłoszenia',
-                    title: 'Usunąć ogłoszenie?',
-                    message: 'Usunięcie ogłoszenia skasuje je na stałe wraz z jego zdjęciami. Tej operacji nie da się cofnąć.',
-                    confirmLabel: 'Usuń ogłoszenie',
-                    tone: 'danger',
-                })
-                : window.confirm('Czy na pewno chcesz usunąć to ogłoszenie?');
+            const confirmed = await openProfileMarketplaceConfirmModal({
+                kicker: 'Usuwanie ogĹ‚oszenia',
+                title: 'UsunÄ…Ä‡ ogĹ‚oszenie?',
+                message: 'UsuniÄ™cie ogĹ‚oszenia skasuje je na staĹ‚e wraz z jego zdjÄ™ciami. Tej operacji nie da siÄ™ cofnÄ…Ä‡.',
+                confirmLabel: 'UsuĹ„ ogĹ‚oszenie',
+                tone: 'danger',
+            });
             if (!confirmed) {
                 return;
             }
@@ -1052,7 +1168,7 @@ const bindProfileMarketplaceChunk = (root = document) => {
             } catch {
                 form.submit();
             }
-        });
+        }, true);
 
         form.dataset.boundProfileReport = 'true';
     });
@@ -1065,25 +1181,15 @@ const bindProfileMarketplaceChunk = (root = document) => {
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
             event.stopPropagation();
+            event.stopImmediatePropagation();
 
-            const action = String(form.querySelector('input[name="action"]')?.value || '');
-            const confirmed = typeof window.openMarketplaceConfirmModal === 'function'
-                ? await window.openMarketplaceConfirmModal(action === 'resume_listing'
-                    ? {
-                        kicker: 'Zmiana statusu',
-                        title: 'Wznowić ogłoszenie?',
-                        message: 'Ogłoszenie znowu będzie widoczne w marketplace i na Twoim profilu jako aktywne.',
-                        confirmLabel: 'Wznów ogłoszenie',
-                        tone: 'muted',
-                    }
-                    : {
-                        kicker: 'Zmiana statusu',
-                        title: 'Zakończyć ogłoszenie?',
-                        message: 'Ogłoszenie zniknie z marketplace i z profili innych użytkowników, ale nadal będzie widoczne na Twoim profilu.',
-                        confirmLabel: 'Zakończ ogłoszenie',
-                        tone: 'muted',
-                    })
-                : window.confirm(form.getAttribute('data-marketplace-confirm-message') || 'Czy na pewno chcesz zmienić status ogłoszenia?');
+            const confirmed = await openProfileMarketplaceConfirmModal({
+                kicker: 'Usuwanie ogłoszenia',
+                title: 'Usunąć ogłoszenie?',
+                message: 'Usunięcie ogłoszenia skasuje je na stałe wraz z jego zdjęciami. Tej operacji nie da się cofnąć.',
+                confirmLabel: 'Usuń ogłoszenie',
+                tone: 'danger',
+            });
             if (!confirmed) {
                 return;
             }
@@ -1132,6 +1238,27 @@ const bindProfileMarketplaceChunk = (root = document) => {
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
             event.stopPropagation();
+            event.stopImmediatePropagation();
+
+            const action = String(form.querySelector('input[name="action"]')?.value || '');
+            const confirmed = await openProfileMarketplaceConfirmModal(action === 'resume_listing'
+                ? {
+                    kicker: 'Zmiana statusu',
+                    title: 'Wznowić ogłoszenie?',
+                    message: 'Ogłoszenie znowu będzie widoczne w marketplace i na Twoim profilu jako aktywne.',
+                    confirmLabel: 'Wznów ogłoszenie',
+                    tone: 'muted',
+                }
+                : {
+                    kicker: 'Zmiana statusu',
+                    title: 'Zakończyć ogłoszenie?',
+                    message: 'Ogłoszenie zniknie z marketplace i z profili innych użytkowników, ale nadal będzie widoczne na Twoim profilu.',
+                    confirmLabel: 'Zakończ ogłoszenie',
+                    tone: 'muted',
+                });
+            if (!confirmed) {
+                return;
+            }
 
             const formData = new FormData(form);
             const endpoint = form.getAttribute('action') || '/marketplace';
@@ -1186,7 +1313,7 @@ const bindProfileMarketplaceChunk = (root = document) => {
             } catch {
                 form.submit();
             }
-        });
+        }, true);
 
         form.dataset.boundProfileVisibility = 'true';
     });
@@ -1347,7 +1474,7 @@ if (isProfilePage) {
 
             const shouldShow = card.hidden;
             card.hidden = !shouldShow;
-            contactToggle.textContent = shouldShow ? 'Ukryj dane kontaktowe' : 'Sprawdź dane kontaktowe';
+            contactToggle.textContent = shouldShow ? 'Ukryj dane kontaktowe' : 'SprawdĹş dane kontaktowe';
             return;
         }
     });

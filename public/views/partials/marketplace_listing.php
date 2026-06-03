@@ -40,7 +40,7 @@ $editPayload = htmlspecialchars(json_encode([
         data-marketplace-details-id="<?= htmlspecialchars($detailsModalId, ENT_QUOTES, 'UTF-8'); ?>"
     >
         <?php if ($hasImages): ?>
-            <div class="marketplace-listing-carousel<?= count($listing['images']) > 1 ? ' has-controls' : ''; ?>" data-marketplace-carousel>
+            <div class="marketplace-listing-carousel<?= count($listing['images']) > 1 ? ' has-controls' : ''; ?><?= !$isActiveListing ? ' is-ended' : ''; ?>" data-marketplace-carousel>
                 <div class="marketplace-post-menu marketplace-post-menu-overlay" data-marketplace-menu>
                     <button type="button" class="marketplace-post-menu-trigger" aria-label="Opcje ogłoszenia" aria-expanded="false" data-marketplace-menu-trigger>
                         <span></span>
@@ -89,6 +89,12 @@ $editPayload = htmlspecialchars(json_encode([
 
                 <?php if (count($listing['images']) > 1): ?>
                     <span class="marketplace-listing-carousel-control is-next" data-marketplace-carousel-next></span>
+                <?php endif; ?>
+
+                <?php if (!$isActiveListing): ?>
+                    <div class="marketplace-listing-status-overlay">
+                        <span class="marketplace-listing-status-pill">ZAKOŃCZONE</span>
+                    </div>
                 <?php endif; ?>
             </div>
         <?php endif; ?>
@@ -151,7 +157,7 @@ $editPayload = htmlspecialchars(json_encode([
 
         <div class="marketplace-details-modal-body">
             <?php if ($hasImages): ?>
-                <div class="marketplace-details-gallery<?= count($listing['images']) > 1 ? ' has-controls' : ''; ?>" data-marketplace-carousel>
+                <div class="marketplace-details-gallery<?= count($listing['images']) > 1 ? ' has-controls' : ''; ?><?= !$isActiveListing ? ' is-ended' : ''; ?>" data-marketplace-carousel>
                     <div class="marketplace-post-menu marketplace-post-menu-overlay" data-marketplace-menu>
                         <button type="button" class="marketplace-post-menu-trigger" aria-label="Opcje ogłoszenia" aria-expanded="false" data-marketplace-menu-trigger>
                             <span></span>
@@ -200,6 +206,12 @@ $editPayload = htmlspecialchars(json_encode([
 
                     <?php if (count($listing['images']) > 1): ?>
                         <button type="button" class="marketplace-listing-carousel-control is-next" aria-label="Następne zdjęcie" data-marketplace-carousel-next></button>
+                    <?php endif; ?>
+
+                    <?php if (!$isActiveListing): ?>
+                        <div class="marketplace-listing-status-overlay">
+                            <span class="marketplace-listing-status-pill">ZAKOŃCZONE</span>
+                        </div>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>

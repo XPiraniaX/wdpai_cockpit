@@ -48,8 +48,8 @@ const ensureMarketplaceConfirmModal = () => {
                         <div class="marketplace-confirm-kicker" data-marketplace-confirm-kicker></div>
                         <h3 class="marketplace-confirm-title" data-marketplace-confirm-title></h3>
                     </div>
-                    <button type="button" class="marketplace-confirm-close" aria-label="Zamknij" data-marketplace-confirm-cancel>
-                        <span class="marketplace-confirm-close-icon" aria-hidden="true"></span>
+                    <button type="button" class="community-modal-close" aria-label="Zamknij" data-marketplace-confirm-cancel>
+                        <img src="/public/assets/icons/close.svg" alt="">
                     </button>
                 </div>
                 <div class="marketplace-confirm-copy">
