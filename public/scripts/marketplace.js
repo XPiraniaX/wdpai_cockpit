@@ -124,6 +124,7 @@ const syncMarketplacePhoneInput = () => {
 
     marketplacePhoneInput.value = formatMarketplacePhoneValue(marketplacePhoneInput.value);
 };
+window.syncMarketplacePhoneInput = syncMarketplacePhoneInput;
 
 if (marketplacePhoneInput instanceof HTMLInputElement) {
     marketplacePhoneInput.addEventListener('input', syncMarketplacePhoneInput);
@@ -399,8 +400,9 @@ const syncMarketplaceCategoryFields = (selectedBrandName = '', selectedModelName
     syncMarketplaceCustomCategoryMode();
     syncMarketplaceCategoryHiddenValues();
 };
+window.syncMarketplaceCategoryFields = syncMarketplaceCategoryFields;
 
-const applyMarketplaceImportedCategoryState = (brandName = '', modelName = '') => {
+const applyMarketplaceLockedCategoryState = (brandName = '', modelName = '') => {
     const nextBrandName = String(brandName || '').trim();
     const nextModelName = String(modelName || '').trim();
     const brandEntry = marketplaceApprovedBrandCatalog.find((brand) => brand.name === nextBrandName) || null;
@@ -726,6 +728,7 @@ const initializeMarketplaceNumberInputs = (root = document) => {
         }
     });
 };
+window.initializeMarketplaceNumberInputs = initializeMarketplaceNumberInputs;
 
 const showMarketplaceCreateModeChoice = () => {
     if (marketplaceCreateEntry) {
@@ -872,6 +875,7 @@ const initializeMarketplaceDecimalInputs = (root = document) => {
         }
     });
 };
+window.initializeMarketplaceDecimalInputs = initializeMarketplaceDecimalInputs;
 
 const getMarketplaceCreateStepElement = (stepNumber) => marketplaceCreateSteps.find(
     (step) => Number(step.getAttribute('data-marketplace-create-step')) === stepNumber,
@@ -895,6 +899,7 @@ const setMarketplaceCreateStep = (stepNumber) => {
     }
     activeStep?.querySelector('input, select, textarea, button')?.focus({ preventScroll: true });
 };
+window.setMarketplaceCreateStep = setMarketplaceCreateStep;
 
 const getMarketplaceFieldLabel = (field) => {
     const wrapper = field.closest('label, .vehicle-modal-field');
@@ -1028,9 +1033,11 @@ const fillMarketplaceCreateForm = (payload) => {
     const selectedBrandName = String(payload.brand_name || '').trim();
     const selectedModelName = String(payload.model_name || '').trim();
     const isImportedVehicle = Number.parseInt(String(payload.source_vehicle_id || ''), 10) > 0;
+    const isEditMode = marketplaceCreateActionInput?.value === 'update_listing';
+    const shouldLockCategoryFields = isImportedVehicle || isEditMode;
 
-    if (isImportedVehicle) {
-        applyMarketplaceImportedCategoryState(selectedBrandName, selectedModelName);
+    if (shouldLockCategoryFields) {
+        applyMarketplaceLockedCategoryState(selectedBrandName, selectedModelName);
     } else {
         syncMarketplaceCategoryFields(selectedBrandName, selectedModelName);
     }
@@ -1051,8 +1058,8 @@ const fillMarketplaceCreateForm = (payload) => {
     });
 
     initializeMarketplaceNumberInputs(marketplaceCreateModal);
-    if (isImportedVehicle) {
-        applyMarketplaceImportedCategoryState(selectedBrandName, selectedModelName);
+    if (shouldLockCategoryFields) {
+        applyMarketplaceLockedCategoryState(selectedBrandName, selectedModelName);
     } else {
         syncMarketplaceCategoryFields(selectedBrandName, selectedModelName);
     }
@@ -1440,6 +1447,7 @@ const initializeMarketplaceCarousel = (carousel) => {
 
     carousel.dataset.marketplaceCarouselReady = 'true';
 };
+window.initializeMarketplaceCarousel = initializeMarketplaceCarousel;
 
 const openMarketplaceDetailsModal = (modalElement) => {
     if (!modalElement) {
@@ -1450,6 +1458,7 @@ const openMarketplaceDetailsModal = (modalElement) => {
     modalElement.hidden = false;
     syncMarketplaceScrollLock();
 };
+window.openMarketplaceDetailsModal = openMarketplaceDetailsModal;
 
 const closeMarketplaceDetailsModal = (modalElement = activeMarketplaceDetailsModal) => {
     if (!modalElement) {
@@ -1463,6 +1472,7 @@ const closeMarketplaceDetailsModal = (modalElement = activeMarketplaceDetailsMod
 
     syncMarketplaceScrollLock();
 };
+window.closeMarketplaceDetailsModal = closeMarketplaceDetailsModal;
 
 const renderMarketplaceSaveIcon = (saved) => saved
     ? `<svg viewBox="0 0 24 24" class="marketplace-save-heart-svg is-filled"><path d="M12 21.35 10.55 20.03C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54Z"/></svg>`
@@ -1506,6 +1516,7 @@ const closeMarketplaceMenus = (exceptMenu = null) => {
         dropdown.hidden = true;
     });
 };
+window.closeMarketplaceMenus = closeMarketplaceMenus;
 
 const bindMarketplaceSaveForms = (root) => {
     root.querySelectorAll('[data-marketplace-save-form]').forEach((form) => {
@@ -1779,7 +1790,7 @@ const bindMarketplaceContactToggles = (root) => {
 
             const isHidden = card.hidden;
             card.hidden = !isHidden;
-            button.textContent = isHidden ? 'Ukryj dane kontaktowe' : 'Sprawdz dane kontaktowe';
+            button.textContent = isHidden ? 'Ukryj dane kontaktowe' : 'Sprawdź dane kontaktowe';
         });
 
         button.dataset.boundContact = 'true';
@@ -1882,7 +1893,7 @@ document.addEventListener('click', (event) => {
             if (card) {
                 const isHidden = card.hidden;
                 card.hidden = !isHidden;
-                contactToggle.textContent = isHidden ? 'Ukryj dane kontaktowe' : 'Sprawdz dane kontaktowe';
+                contactToggle.textContent = isHidden ? 'Ukryj dane kontaktowe' : 'Sprawdź dane kontaktowe';
             }
             return;
         }
