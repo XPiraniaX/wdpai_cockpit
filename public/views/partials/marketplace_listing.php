@@ -2,6 +2,7 @@
 $detailsModalId = 'marketplace-details-modal-' . (int) $listing['id'];
 $hasImages = !empty($listing['images']);
 $isOwnListing = ((int) ($currentUser['id'] ?? 0)) === (int) $listing['user_id'];
+$isActiveListing = (bool) ($listing['is_active'] ?? true);
 $editPayload = htmlspecialchars(json_encode([
     'id' => (int) $listing['id'],
     'title' => (string) $listing['title'],
@@ -49,6 +50,12 @@ $editPayload = htmlspecialchars(json_encode([
                     <div class="marketplace-post-menu-dropdown" hidden data-marketplace-menu-dropdown>
                         <?php if ($isOwnListing): ?>
                             <button type="button" class="marketplace-post-menu-action is-primary" data-marketplace-edit-trigger data-marketplace-edit-payload="<?= $editPayload; ?>">Edytuj ogłoszenie</button>
+                            <form method="post" action="/marketplace" class="marketplace-post-menu-form" data-marketplace-visibility-form data-marketplace-confirm-message="<?= htmlspecialchars($isActiveListing ? 'Czy na pewno chcesz zakończyć to ogłoszenie?' : 'Czy na pewno chcesz wznowić to ogłoszenie?', ENT_QUOTES, 'UTF-8'); ?>">
+                                <input type="hidden" name="action" value="<?= $isActiveListing ? 'end_listing' : 'resume_listing'; ?>">
+                                <input type="hidden" name="listing_id" value="<?= (int) $listing['id']; ?>">
+                                <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/marketplace', ENT_QUOTES, 'UTF-8'); ?>">
+                                <button type="submit" class="marketplace-post-menu-action is-muted"><?= $isActiveListing ? 'Zakończ ogłoszenie' : 'Wznów ogłoszenie'; ?></button>
+                            </form>
                             <form method="post" action="/marketplace" class="marketplace-post-menu-form" data-marketplace-delete-form>
                                 <input type="hidden" name="action" value="delete_listing">
                                 <input type="hidden" name="listing_id" value="<?= (int) $listing['id']; ?>">
@@ -151,25 +158,31 @@ $editPayload = htmlspecialchars(json_encode([
                             <span></span>
                             <span></span>
                         </button>
-                    <div class="marketplace-post-menu-dropdown" hidden data-marketplace-menu-dropdown>
-                        <?php if ($isOwnListing): ?>
-                            <button type="button" class="marketplace-post-menu-action is-primary" data-marketplace-edit-trigger data-marketplace-edit-payload="<?= $editPayload; ?>">Edytuj ogłoszenie</button>
-                            <form method="post" action="/marketplace" class="marketplace-post-menu-form" data-marketplace-delete-form>
-                                <input type="hidden" name="action" value="delete_listing">
-                                <input type="hidden" name="listing_id" value="<?= (int) $listing['id']; ?>">
-                                <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/marketplace', ENT_QUOTES, 'UTF-8'); ?>">
-                                <button type="submit" class="marketplace-post-menu-action is-danger">Usuń ogłoszenie</button>
-                            </form>
-                        <?php else: ?>
-                            <form method="post" action="/marketplace" class="marketplace-post-menu-form" data-marketplace-report-form>
-                                <input type="hidden" name="action" value="report_listing">
-                                <input type="hidden" name="listing_id" value="<?= (int) $listing['id']; ?>">
-                                <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/marketplace', ENT_QUOTES, 'UTF-8'); ?>">
-                                <button type="submit" class="marketplace-post-menu-action is-danger">Zgłoś ogłoszenie</button>
-                            </form>
-                        <?php endif; ?>
+                        <div class="marketplace-post-menu-dropdown" hidden data-marketplace-menu-dropdown>
+                            <?php if ($isOwnListing): ?>
+                                <button type="button" class="marketplace-post-menu-action is-primary" data-marketplace-edit-trigger data-marketplace-edit-payload="<?= $editPayload; ?>">Edytuj ogłoszenie</button>
+                                <form method="post" action="/marketplace" class="marketplace-post-menu-form" data-marketplace-visibility-form data-marketplace-confirm-message="<?= htmlspecialchars($isActiveListing ? 'Czy na pewno chcesz zakończyć to ogłoszenie?' : 'Czy na pewno chcesz wznowić to ogłoszenie?', ENT_QUOTES, 'UTF-8'); ?>">
+                                    <input type="hidden" name="action" value="<?= $isActiveListing ? 'end_listing' : 'resume_listing'; ?>">
+                                    <input type="hidden" name="listing_id" value="<?= (int) $listing['id']; ?>">
+                                    <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/marketplace', ENT_QUOTES, 'UTF-8'); ?>">
+                                    <button type="submit" class="marketplace-post-menu-action is-muted"><?= $isActiveListing ? 'Zakończ ogłoszenie' : 'Wznów ogłoszenie'; ?></button>
+                                </form>
+                                <form method="post" action="/marketplace" class="marketplace-post-menu-form" data-marketplace-delete-form>
+                                    <input type="hidden" name="action" value="delete_listing">
+                                    <input type="hidden" name="listing_id" value="<?= (int) $listing['id']; ?>">
+                                    <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/marketplace', ENT_QUOTES, 'UTF-8'); ?>">
+                                    <button type="submit" class="marketplace-post-menu-action is-danger">Usuń ogłoszenie</button>
+                                </form>
+                            <?php else: ?>
+                                <form method="post" action="/marketplace" class="marketplace-post-menu-form" data-marketplace-report-form>
+                                    <input type="hidden" name="action" value="report_listing">
+                                    <input type="hidden" name="listing_id" value="<?= (int) $listing['id']; ?>">
+                                    <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/marketplace', ENT_QUOTES, 'UTF-8'); ?>">
+                                    <button type="submit" class="marketplace-post-menu-action is-danger">Zgłoś ogłoszenie</button>
+                                </form>
+                            <?php endif; ?>
+                        </div>
                     </div>
-                </div>
 
                     <?php if (count($listing['images']) > 1): ?>
                         <button type="button" class="marketplace-listing-carousel-control is-prev" aria-label="Poprzednie zdjęcie" data-marketplace-carousel-prev></button>
@@ -220,7 +233,7 @@ $editPayload = htmlspecialchars(json_encode([
 
                 <h3 class="marketplace-details-title"><?= htmlspecialchars($listing['title'], ENT_QUOTES, 'UTF-8'); ?></h3>
                 <div class="marketplace-details-subtitle">
-                    <?= htmlspecialchars($listing['category_label'], ENT_QUOTES, 'UTF-8'); ?>
+                    <span><?= htmlspecialchars(trim(((string) ($listing['brand_name'] ?? '')) . ' ' . ((string) ($listing['model_name'] ?? ''))), ENT_QUOTES, 'UTF-8'); ?></span>
                     <span>•</span>
                     <span><?= htmlspecialchars($listing['city'], ENT_QUOTES, 'UTF-8'); ?></span>
                 </div>

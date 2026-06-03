@@ -555,7 +555,7 @@ class CommunityController extends AppController
     {
         return array_map(function (array $listing): array {
             $listing['formatted_created_at'] = $this->formatDateTime((string) $listing['created_at']);
-            $listing['formatted_price'] = number_format((float) $listing['price_amount'], 0, ',', ' ') . ' zl';
+            $listing['formatted_price'] = number_format((float) $listing['price_amount'], 0, ',', ' ') . ' zł';
             $listing['formatted_mileage'] = number_format((int) $listing['mileage_km'], 0, ',', ' ') . ' km';
             $listing['formatted_fuel_type'] = match ($listing['fuel_type']) {
                 'petrol' => 'Benzyna',
@@ -629,7 +629,7 @@ class CommunityController extends AppController
 
     private function formatDateTime(string $value): string
     {
-        return (new DateTimeImmutable($value))->format('d.m.Y - H:i');
+        return (new DateTimeImmutable($value))->format('d.m.Y • H:i');
     }
 
     private function normalizeIntegerList(string|array|null $value): array

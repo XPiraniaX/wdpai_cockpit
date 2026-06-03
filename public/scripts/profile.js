@@ -966,6 +966,11 @@ const bindProfileMarketplaceChunk = (root = document) => {
             event.preventDefault();
             event.stopPropagation();
 
+            const confirmMessage = form.getAttribute('data-marketplace-confirm-message');
+            if (confirmMessage && !window.confirm(confirmMessage)) {
+                return;
+            }
+
             const formData = new FormData(form);
             const endpoint = form.getAttribute('action') || '/marketplace';
             const listingId = String(form.getAttribute('data-marketplace-listing-id') || formData.get('listing_id') || '');
@@ -1005,6 +1010,19 @@ const bindProfileMarketplaceChunk = (root = document) => {
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
             event.stopPropagation();
+
+            const confirmed = typeof window.openMarketplaceConfirmModal === 'function'
+                ? await window.openMarketplaceConfirmModal({
+                    kicker: 'Usuwanie ogłoszenia',
+                    title: 'Usunąć ogłoszenie?',
+                    message: 'Usunięcie ogłoszenia skasuje je na stałe wraz z jego zdjęciami. Tej operacji nie da się cofnąć.',
+                    confirmLabel: 'Usuń ogłoszenie',
+                    tone: 'danger',
+                })
+                : window.confirm('Czy na pewno chcesz usunąć to ogłoszenie?');
+            if (!confirmed) {
+                return;
+            }
 
             const formData = new FormData(form);
             const endpoint = form.getAttribute('action') || '/marketplace';
@@ -1048,6 +1066,28 @@ const bindProfileMarketplaceChunk = (root = document) => {
             event.preventDefault();
             event.stopPropagation();
 
+            const action = String(form.querySelector('input[name="action"]')?.value || '');
+            const confirmed = typeof window.openMarketplaceConfirmModal === 'function'
+                ? await window.openMarketplaceConfirmModal(action === 'resume_listing'
+                    ? {
+                        kicker: 'Zmiana statusu',
+                        title: 'Wznowić ogłoszenie?',
+                        message: 'Ogłoszenie znowu będzie widoczne w marketplace i na Twoim profilu jako aktywne.',
+                        confirmLabel: 'Wznów ogłoszenie',
+                        tone: 'muted',
+                    }
+                    : {
+                        kicker: 'Zmiana statusu',
+                        title: 'Zakończyć ogłoszenie?',
+                        message: 'Ogłoszenie zniknie z marketplace i z profili innych użytkowników, ale nadal będzie widoczne na Twoim profilu.',
+                        confirmLabel: 'Zakończ ogłoszenie',
+                        tone: 'muted',
+                    })
+                : window.confirm(form.getAttribute('data-marketplace-confirm-message') || 'Czy na pewno chcesz zmienić status ogłoszenia?');
+            if (!confirmed) {
+                return;
+            }
+
             const formData = new FormData(form);
             const endpoint = form.getAttribute('action') || '/marketplace';
             const listingId = String(formData.get('listing_id') || '');
@@ -1082,6 +1122,73 @@ const bindProfileMarketplaceChunk = (root = document) => {
         });
 
         form.dataset.boundProfileDelete = 'true';
+    });
+
+    interactionRoot.querySelectorAll('[data-marketplace-visibility-form]').forEach((form) => {
+        if (!(form instanceof HTMLFormElement) || form.dataset.boundProfileVisibility === 'true') {
+            return;
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const formData = new FormData(form);
+            const endpoint = form.getAttribute('action') || '/marketplace';
+            const listingId = String(formData.get('listing_id') || '');
+            const currentVisibility = new URL(window.location.href).searchParams.get('listing_visibility') || 'all';
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+
+                const payload = await response.json();
+                if (!payload.success) {
+                    throw new Error('Invalid payload');
+                }
+
+                document.querySelectorAll(`#marketplace-details-modal-${listingId}`).forEach((element) => element.remove());
+
+                const shouldKeepVisible = currentVisibility === 'all'
+                    || (currentVisibility === 'active' && payload.is_active)
+                    || (currentVisibility === 'ended' && !payload.is_active);
+
+                if (shouldKeepVisible && typeof payload.html === 'string' && payload.html !== '') {
+                    const wrapper = document.createElement('div');
+                    wrapper.innerHTML = payload.html;
+                    bindProfileMarketplaceChunk(wrapper);
+
+                    const nextListing = wrapper.querySelector(`#listing-${listingId}`);
+                    const currentListing = document.querySelector(`#listing-${listingId}`);
+                    if (nextListing instanceof HTMLElement && currentListing instanceof HTMLElement) {
+                        currentListing.replaceWith(nextListing);
+                        bindProfileMarketplaceChunk(nextListing.parentElement ?? nextListing);
+                    } else {
+                        document.querySelectorAll(`#listing-${listingId}`).forEach((element) => element.remove());
+                    }
+                } else {
+                    document.querySelectorAll(`#listing-${listingId}`).forEach((element) => element.remove());
+                }
+
+                if (typeof window.showAppToast === 'function') {
+                    window.showAppToast(payload.message || (payload.is_active ? 'Ogłoszenie zostało wznowione.' : 'Ogłoszenie zostało zakończone.'), 'success');
+                }
+                closeProfileMarketplaceMenus();
+            } catch {
+                form.submit();
+            }
+        });
+
+        form.dataset.boundProfileVisibility = 'true';
     });
 };
 
@@ -1240,7 +1347,7 @@ if (isProfilePage) {
 
             const shouldShow = card.hidden;
             card.hidden = !shouldShow;
-            contactToggle.textContent = shouldShow ? 'Ukryj dane kontaktowe' : 'Sprawdz dane kontaktowe';
+            contactToggle.textContent = shouldShow ? 'Ukryj dane kontaktowe' : 'Sprawdź dane kontaktowe';
             return;
         }
     });

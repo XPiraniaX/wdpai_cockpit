@@ -251,6 +251,48 @@ class MarketplaceController extends AppController
                 $this->setFlash('error', 'Nie udało się usunąć ogłoszenia.');
                 $this->redirect($redirectTo);
                 return;
+
+            case 'end_listing':
+            case 'resume_listing':
+                $listingId = (int) ($_POST['listing_id'] ?? 0);
+                $shouldBeActive = $action === 'resume_listing';
+                if ($listingId > 0) {
+                    $updated = $repository->setListingActiveState($userId, $listingId, $shouldBeActive);
+                    if ($updated) {
+                        $mappedListing = $this->findMappedListingById($repository, $userId, $listingId);
+                        $message = $shouldBeActive
+                            ? 'Ogłoszenie zostało wznowione.'
+                            : 'Ogłoszenie zostało zakończone.';
+
+                        if ($this->isAjaxRequest()) {
+                            $this->jsonResponse([
+                                'success' => true,
+                                'listing_id' => $listingId,
+                                'is_active' => $shouldBeActive,
+                                'html' => $mappedListing !== null ? $this->renderMarketplaceListingsHtml([$mappedListing]) : '',
+                                'message' => $message,
+                            ]);
+                        }
+
+                        $this->setFlash('success', $message);
+                        $this->redirect($redirectTo);
+                    }
+                }
+
+                if ($this->isAjaxRequest()) {
+                    $this->jsonResponse([
+                        'success' => false,
+                        'message' => $shouldBeActive
+                            ? 'Nie udało się wznowić ogłoszenia.'
+                            : 'Nie udało się zakończyć ogłoszenia.',
+                    ], 400);
+                }
+
+                $this->setFlash('error', $shouldBeActive
+                    ? 'Nie udało się wznowić ogłoszenia.'
+                    : 'Nie udało się zakończyć ogłoszenia.');
+                $this->redirect($redirectTo);
+                return;
         }
 
         $this->redirect($redirectTo);

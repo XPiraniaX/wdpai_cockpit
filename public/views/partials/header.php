@@ -8,6 +8,7 @@ $isOwnProfile = isset($profile['id'], $currentUser['id']) && (int) $profile['id'
 $profileSubtitle = $isOwnProfile
     ? 'Mój profil'
     : (string) ($profile['display_name'] ?? ($title ?? 'Profil użytkownika'));
+
 $pageMap = [
     'dashboard' => ['title' => 'Dashboard', 'subtitle' => 'Przegląd'],
     'my-cars' => ['title' => 'Moje samochody', 'subtitle' => 'Garaż'],
@@ -16,13 +17,15 @@ $pageMap = [
     'community' => ['title' => 'Społeczność', 'subtitle' => 'Feed'],
     'settings' => ['title' => 'Ustawienia', 'subtitle' => 'Preferencje'],
 ];
+
 $pageMeta = $pageMap[$currentPath] ?? ['title' => 'Cockpit', 'subtitle' => 'Panel'];
 if ($isVehicleDetailsRoute) {
-    $pageMeta = ['title' => 'Moje samochody', 'subtitle' => $vehicle['title'] ?? ($title ?? 'SzczegĂłĹ‚y pojazdu')];
+    $pageMeta = ['title' => 'Moje samochody', 'subtitle' => $vehicle['title'] ?? ($title ?? 'Szczegóły pojazdu')];
 }
 if ($isProfileRoute) {
     $pageMeta = ['title' => 'Profil', 'subtitle' => $profileSubtitle];
 }
+
 $headerUserName = trim((string) ($currentUser['pseudonym'] ?? '')) !== ''
     ? (string) $currentUser['pseudonym']
     : (string) ($currentUser['full_name'] ?? 'Użytkownik testowy');
@@ -54,4 +57,3 @@ $ownProfilePath = trim((string) ($currentUser['pseudonym'] ?? '')) !== ''
         </a>
     </div>
 </header>
-

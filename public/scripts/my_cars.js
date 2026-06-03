@@ -56,7 +56,7 @@ window.initMyCarsPage = () => {
 
         const tooltip = document.createElement('span');
         tooltip.className = 'dashboard-card-tooltip';
-        tooltip.textContent = 'Wejdz w szczegoly pojazdu';
+        tooltip.textContent = 'Wejdź w szczegóły pojazdu';
         arrow.appendChild(tooltip);
     });
 
@@ -69,7 +69,7 @@ window.initMyCarsPage = () => {
 
         const tooltip = document.createElement('span');
         tooltip.className = 'dashboard-card-tooltip';
-        tooltip.textContent = button.getAttribute('aria-label') || 'Ustaw jako pojazd glowny';
+        tooltip.textContent = button.getAttribute('aria-label') || 'Ustaw jako pojazd główny';
         button.appendChild(tooltip);
     });
 
@@ -80,7 +80,7 @@ window.initMyCarsPage = () => {
 
         const tooltip = document.createElement('span');
         tooltip.className = 'dashboard-card-tooltip';
-        tooltip.textContent = 'Wejdz w szczegoly pojazdu';
+        tooltip.textContent = 'Wejdź w szczegóły pojazdu';
         arrow.appendChild(tooltip);
     });
 

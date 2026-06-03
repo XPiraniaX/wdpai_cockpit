@@ -178,6 +178,47 @@ body.is-marketplace-page {
     box-sizing: border-box;
 }
 
+.marketplace-scope-card {
+    gap: 12px;
+}
+
+.marketplace-scope-switch {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.marketplace-scope-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 42px;
+    padding: 0 16px;
+    border-radius: 999px;
+    border: 1px solid rgba(56, 189, 248, 0.18);
+    background: rgba(8, 15, 30, 0.58);
+    color: rgba(226, 232, 240, 0.84);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+}
+
+.marketplace-scope-chip:hover {
+    color: #eef4ff;
+    border-color: rgba(56, 189, 248, 0.42);
+    transform: translateY(-1px);
+}
+
+.marketplace-scope-chip.is-active {
+    background: #38bdf8;
+    border-color: #38bdf8;
+    color: #06253c;
+    box-shadow: 0 12px 24px rgba(56, 189, 248, 0.18);
+}
+
 .marketplace-filter-form {
     display: contents;
 }
@@ -583,6 +624,16 @@ body.is-marketplace-page {
 .marketplace-post-menu-action.is-primary:hover {
     background: #8be0ff;
     color: #0b0f17;
+}
+
+.marketplace-post-menu-action.is-muted {
+    background: rgba(148, 163, 184, 0.22);
+    color: #eef4ff;
+}
+
+.marketplace-post-menu-action.is-muted:hover {
+    background: rgba(148, 163, 184, 0.34);
+    color: #f8fbff;
 }
 
 .marketplace-post-menu-action.is-danger {
@@ -1278,4 +1329,145 @@ body.is-marketplace-page {
     .marketplace-create-summary-gallery {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+}
+
+.marketplace-confirm-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1600;
+}
+
+.marketplace-confirm-backdrop[hidden] {
+    display: none !important;
+}
+
+.marketplace-confirm-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(3, 8, 18, 0.72);
+    backdrop-filter: blur(6px);
+}
+
+.marketplace-confirm-shell {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.marketplace-confirm-panel {
+    position: relative;
+    z-index: 1;
+    width: min(520px, calc(100vw - 32px));
+    border-radius: 28px;
+    background: #0f1930;
+    border: 1px solid rgba(29, 41, 66, 0.9);
+    box-shadow: 0 30px 60px rgba(2, 8, 23, 0.46);
+    display: flex;
+    flex-direction: column;
+}
+
+.marketplace-confirm-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 24px 24px 12px;
+}
+
+.marketplace-confirm-title-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.marketplace-confirm-kicker {
+    color: #38bdf8;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.marketplace-confirm-title {
+    margin: 0;
+    color: #eef4ff;
+    font-size: 28px;
+    font-family: var(--font-serif);
+}
+
+.marketplace-confirm-close {
+    width: 42px;
+    height: 42px;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    position: relative;
+    transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.marketplace-confirm-close:hover {
+    background: rgba(255, 255, 255, 0.12);
+    transform: translateY(-1px);
+}
+
+.marketplace-confirm-close-icon,
+.marketplace-confirm-close-icon::before,
+.marketplace-confirm-close-icon::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 2px;
+    background: #eef4ff;
+    border-radius: 999px;
+    content: "";
+}
+
+.marketplace-confirm-close-icon {
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.marketplace-confirm-close-icon::before {
+    transform: translate(-50%, -50%) rotate(90deg);
+}
+
+.marketplace-confirm-copy {
+    padding: 0 24px 20px;
+}
+
+.marketplace-confirm-message {
+    margin: 0;
+    color: rgba(226, 232, 240, 0.82);
+    line-height: 1.6;
+}
+
+.marketplace-confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    padding: 0 24px 24px;
+}
+
+.marketplace-confirm-submit.is-muted {
+    background: rgba(148, 163, 184, 0.28);
+    color: #eef4ff;
+}
+
+.marketplace-confirm-submit.is-muted:hover {
+    background: rgba(148, 163, 184, 0.4);
+    color: #f8fbff;
+}
+
+.marketplace-confirm-submit.is-danger {
+    background: #ef4444;
+    color: #0b0f17;
+}
+
+.marketplace-confirm-submit.is-danger:hover {
+    background: #f87171;
+    color: #0b0f17;
 }

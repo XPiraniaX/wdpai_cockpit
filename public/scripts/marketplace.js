@@ -26,6 +26,123 @@ const showAppToast = (message, type = 'info') => {
 };
 window.showAppToast = showAppToast;
 
+let activeMarketplaceConfirmResolver = null;
+let activeMarketplaceConfirmKeyHandler = null;
+
+const ensureMarketplaceConfirmModal = () => {
+    let modal = document.querySelector('[data-marketplace-confirm-modal]');
+    if (modal) {
+        return modal;
+    }
+
+    modal = document.createElement('div');
+    modal.className = 'marketplace-confirm-backdrop';
+    modal.setAttribute('data-marketplace-confirm-modal', '');
+    modal.hidden = true;
+    modal.innerHTML = `
+        <div class="marketplace-confirm-scrim" data-marketplace-confirm-cancel></div>
+        <div class="marketplace-confirm-shell">
+            <section class="marketplace-confirm-panel">
+                <div class="marketplace-confirm-head">
+                    <div class="marketplace-confirm-title-wrap">
+                        <div class="marketplace-confirm-kicker" data-marketplace-confirm-kicker></div>
+                        <h3 class="marketplace-confirm-title" data-marketplace-confirm-title></h3>
+                    </div>
+                    <button type="button" class="marketplace-confirm-close" aria-label="Zamknij" data-marketplace-confirm-cancel>
+                        <span class="marketplace-confirm-close-icon" aria-hidden="true"></span>
+                    </button>
+                </div>
+                <div class="marketplace-confirm-copy">
+                    <p class="marketplace-confirm-message" data-marketplace-confirm-message></p>
+                </div>
+                <div class="marketplace-confirm-actions">
+                    <button type="button" class="marketplace-button marketplace-button-muted" data-marketplace-confirm-cancel>Anuluj</button>
+                    <button type="button" class="marketplace-button marketplace-confirm-submit" data-marketplace-confirm-submit></button>
+                </div>
+            </section>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    return modal;
+};
+
+const closeMarketplaceConfirmModal = (accepted = false) => {
+    const modal = document.querySelector('[data-marketplace-confirm-modal]');
+    if (!(modal instanceof HTMLElement)) {
+        return;
+    }
+
+    modal.hidden = true;
+    document.body.classList.remove('vehicle-modal-open');
+
+    if (activeMarketplaceConfirmKeyHandler) {
+        document.removeEventListener('keydown', activeMarketplaceConfirmKeyHandler);
+        activeMarketplaceConfirmKeyHandler = null;
+    }
+
+    if (activeMarketplaceConfirmResolver) {
+        const resolver = activeMarketplaceConfirmResolver;
+        activeMarketplaceConfirmResolver = null;
+        resolver(accepted);
+    }
+};
+
+const openMarketplaceConfirmModal = ({
+    kicker = 'Potwierdzenie',
+    title = 'Potwierdź akcję',
+    message = '',
+    confirmLabel = 'Potwierdź',
+    tone = 'muted',
+} = {}) => {
+    const modal = ensureMarketplaceConfirmModal();
+    const kickerElement = modal.querySelector('[data-marketplace-confirm-kicker]');
+    const titleElement = modal.querySelector('[data-marketplace-confirm-title]');
+    const messageElement = modal.querySelector('[data-marketplace-confirm-message]');
+    const submitButton = modal.querySelector('[data-marketplace-confirm-submit]');
+
+    if (!(kickerElement instanceof HTMLElement)
+        || !(titleElement instanceof HTMLElement)
+        || !(messageElement instanceof HTMLElement)
+        || !(submitButton instanceof HTMLButtonElement)) {
+        return Promise.resolve(window.confirm(message || title));
+    }
+
+    kickerElement.textContent = kicker;
+    titleElement.textContent = title;
+    messageElement.textContent = message;
+    submitButton.textContent = confirmLabel;
+    submitButton.classList.remove('is-danger', 'is-muted');
+    submitButton.classList.add(tone === 'danger' ? 'is-danger' : 'is-muted');
+
+    modal.querySelectorAll('[data-marketplace-confirm-cancel]').forEach((button) => {
+        if (button instanceof HTMLElement && button.dataset.boundMarketplaceConfirmCancel !== 'true') {
+            button.addEventListener('click', () => closeMarketplaceConfirmModal(false));
+            button.dataset.boundMarketplaceConfirmCancel = 'true';
+        }
+    });
+
+    if (submitButton.dataset.boundMarketplaceConfirmSubmit !== 'true') {
+        submitButton.addEventListener('click', () => closeMarketplaceConfirmModal(true));
+        submitButton.dataset.boundMarketplaceConfirmSubmit = 'true';
+    }
+
+    modal.hidden = false;
+    document.body.classList.add('vehicle-modal-open');
+
+    activeMarketplaceConfirmKeyHandler = (event) => {
+        if (event.key === 'Escape') {
+            closeMarketplaceConfirmModal(false);
+        }
+    };
+    document.addEventListener('keydown', activeMarketplaceConfirmKeyHandler);
+
+    return new Promise((resolve) => {
+        activeMarketplaceConfirmResolver = resolve;
+    });
+};
+window.openMarketplaceConfirmModal = openMarketplaceConfirmModal;
+
 let activeMarketplaceDetailsModal = null;
 let marketplaceLockedScrollY = 0;
 
@@ -1652,6 +1769,19 @@ const bindMarketplaceDeleteForms = (root) => {
             event.preventDefault();
             event.stopPropagation();
 
+            const confirmed = typeof window.openMarketplaceConfirmModal === 'function'
+                ? await window.openMarketplaceConfirmModal({
+                    kicker: 'Usuwanie ogłoszenia',
+                    title: 'Usunąć ogłoszenie?',
+                    message: 'Usunięcie ogłoszenia skasuje je na stałe wraz z jego zdjęciami. Tej operacji nie da się cofnąć.',
+                    confirmLabel: 'Usuń ogłoszenie',
+                    tone: 'danger',
+                })
+                : window.confirm('Czy na pewno chcesz usunąć to ogłoszenie?');
+            if (!confirmed) {
+                return;
+            }
+
             const formData = new FormData(form);
             const listingId = String(formData.get('listing_id') || '');
 
@@ -1688,6 +1818,91 @@ const bindMarketplaceDeleteForms = (root) => {
         });
 
         form.dataset.boundDelete = 'true';
+    });
+};
+
+const bindMarketplaceVisibilityForms = (root) => {
+    root.querySelectorAll('[data-marketplace-visibility-form]').forEach((form) => {
+        if (form.dataset.boundVisibility === 'true') {
+            return;
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const action = String(form.querySelector('input[name="action"]')?.value || '');
+            const confirmed = typeof window.openMarketplaceConfirmModal === 'function'
+                ? await window.openMarketplaceConfirmModal(action === 'resume_listing'
+                    ? {
+                        kicker: 'Zmiana statusu',
+                        title: 'Wznowić ogłoszenie?',
+                        message: 'Ogłoszenie znowu będzie widoczne w marketplace i na Twoim profilu jako aktywne.',
+                        confirmLabel: 'Wznów ogłoszenie',
+                        tone: 'muted',
+                    }
+                    : {
+                        kicker: 'Zmiana statusu',
+                        title: 'Zakończyć ogłoszenie?',
+                        message: 'Ogłoszenie zniknie z marketplace i z profili innych użytkowników, ale nadal będzie widoczne na Twoim profilu.',
+                        confirmLabel: 'Zakończ ogłoszenie',
+                        tone: 'muted',
+                    })
+                : window.confirm(form.getAttribute('data-marketplace-confirm-message') || 'Czy na pewno chcesz zmienić status ogłoszenia?');
+            if (!confirmed) {
+                return;
+            }
+
+            const formData = new FormData(form);
+            const listingId = String(formData.get('listing_id') || '');
+
+            try {
+                const response = await fetch(resolveMarketplaceFormEndpoint(form), {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+
+                const payload = await response.json();
+                if (!payload.success) {
+                    throw new Error('Invalid payload');
+                }
+
+                document.querySelectorAll(`[id="marketplace-details-modal-${listingId}"]`).forEach((element) => element.remove());
+                if (activeMarketplaceDetailsModal?.id === `marketplace-details-modal-${listingId}`) {
+                    activeMarketplaceDetailsModal = null;
+                    syncMarketplaceScrollLock();
+                }
+
+                if (payload.is_active && typeof payload.html === 'string' && payload.html !== '') {
+                    const wrapper = document.createElement('div');
+                    wrapper.innerHTML = payload.html;
+                    initializeMarketplaceChunk(wrapper);
+                    const nextListing = wrapper.querySelector(`#listing-${listingId}`);
+                    const currentListing = document.querySelector(`#listing-${listingId}`);
+                    if (nextListing instanceof HTMLElement && currentListing instanceof HTMLElement) {
+                        currentListing.replaceWith(nextListing);
+                    } else {
+                        document.querySelectorAll(`#listing-${listingId}`).forEach((element) => element.remove());
+                    }
+                } else {
+                    document.querySelectorAll(`#listing-${listingId}`).forEach((element) => element.remove());
+                }
+
+                showAppToast(payload.message || (payload.is_active ? 'Ogłoszenie zostało wznowione.' : 'Ogłoszenie zostało zakończone.'), 'success');
+                closeMarketplaceMenus();
+            } catch {
+                form.submit();
+            }
+        });
+
+        form.dataset.boundVisibility = 'true';
     });
 };
 
@@ -1810,6 +2025,7 @@ const initializeMarketplaceChunk = (root) => {
     bindMarketplaceEditTriggers(root);
     bindMarketplaceReportForms(root);
     bindMarketplaceDeleteForms(root);
+    bindMarketplaceVisibilityForms(root);
     bindMarketplaceDetailModals(root);
     bindMarketplaceDetailOpeners(root);
     bindMarketplaceContactToggles(document);

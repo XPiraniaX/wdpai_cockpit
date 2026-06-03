@@ -542,6 +542,23 @@ class MarketplaceRepository
         return $statement->rowCount() > 0;
     }
 
+    public function setListingActiveState(int $userId, int $listingId, bool $isActive): bool
+    {
+        $statement = $this->connection->prepare(
+            'UPDATE marketplace_listings
+            SET is_active = :is_active,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :listing_id
+                AND user_id = :user_id'
+        );
+        $statement->bindValue(':listing_id', $listingId, PDO::PARAM_INT);
+        $statement->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        $statement->bindValue(':is_active', $isActive, PDO::PARAM_BOOL);
+        $statement->execute();
+
+        return $statement->rowCount() > 0;
+    }
+
     public function getListingImagePaths(int $listingId): array
     {
         $statement = $this->connection->prepare(

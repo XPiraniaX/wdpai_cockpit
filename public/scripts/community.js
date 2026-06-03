@@ -268,7 +268,7 @@ const resetCreatePostFormState = () => {
         createPostIdInput.value = '';
     }
     if (createPostModalTitle) {
-        createPostModalTitle.textContent = 'Utworz post';
+        createPostModalTitle.textContent = 'Utwórz post';
     }
     if (createPostSubmitButton) {
         createPostSubmitButton.textContent = 'Opublikuj';
@@ -308,7 +308,7 @@ const populateEditPostModal = (payload) => {
         createPostIdInput.value = String(payload.id ?? '');
     }
     if (createPostModalTitle) {
-        createPostModalTitle.textContent = 'Utworz post';
+        createPostModalTitle.textContent = 'Edytuj post';
     }
     if (createPostSubmitButton) {
         createPostSubmitButton.textContent = 'Zapisz zmiany';

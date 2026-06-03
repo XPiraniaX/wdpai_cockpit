@@ -828,7 +828,7 @@ class CommunityRepository
 
     private function normalizeScope(string $scope): string
     {
-        return in_array($scope, ['all', 'mine', 'saved', 'liked', 'commented'], true)
+        return in_array($scope, ['all', 'saved', 'liked', 'commented'], true)
             ? $scope
             : 'all';
     }

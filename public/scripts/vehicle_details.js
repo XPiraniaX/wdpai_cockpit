@@ -402,13 +402,13 @@ window.initVehicleDetailsPage = () => {
             const increaseButton = document.createElement('button');
             increaseButton.type = 'button';
             increaseButton.className = 'vehicle-number-stepper-button';
-            increaseButton.setAttribute('aria-label', 'Zwieksz wartosc');
+            increaseButton.setAttribute('aria-label', 'Zwiększ wartość');
             increaseButton.textContent = '+';
 
             const decreaseButton = document.createElement('button');
             decreaseButton.type = 'button';
             decreaseButton.className = 'vehicle-number-stepper-button';
-            decreaseButton.setAttribute('aria-label', 'Zmniejsz wartosc');
+            decreaseButton.setAttribute('aria-label', 'Zmniejsz wartość');
             decreaseButton.textContent = '-';
 
             const dispatchInputEvents = () => {
@@ -513,13 +513,13 @@ window.initVehicleDetailsPage = () => {
             const increaseButton = document.createElement('button');
             increaseButton.type = 'button';
             increaseButton.className = 'vehicle-number-stepper-button';
-            increaseButton.setAttribute('aria-label', 'Zwieksz wartosc');
+            increaseButton.setAttribute('aria-label', 'Zwiększ wartość');
             increaseButton.textContent = '+';
 
             const decreaseButton = document.createElement('button');
             decreaseButton.type = 'button';
             decreaseButton.className = 'vehicle-number-stepper-button';
-            decreaseButton.setAttribute('aria-label', 'Zmniejsz wartosc');
+            decreaseButton.setAttribute('aria-label', 'Zmniejsz wartość');
             decreaseButton.textContent = '-';
 
             const dispatchInputEvents = () => {
