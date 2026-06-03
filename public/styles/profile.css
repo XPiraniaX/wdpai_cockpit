@@ -20,6 +20,33 @@
     gap: 14px;
 }
 
+.profile-page .community-profile-head {
+    justify-content: center;
+}
+
+.profile-page .community-profile-identity {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 16px;
+}
+
+.profile-page .community-profile-copy {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+}
+
+.profile-page .community-profile-copy .community-title,
+.profile-page .community-profile-copy .community-subtitle {
+    text-align: center;
+}
+
 .profile-page .community-profile-scope-list {
     justify-content: center;
     flex-wrap: wrap;
@@ -31,7 +58,9 @@
 
 .profile-page .community-profile-stats {
     margin-top: 20px;
-    justify-content: flex-start;
+    display: flex;
+    justify-content: center;
+    align-items: stretch;
     gap: 16px;
     flex-wrap: wrap;
 }
@@ -44,6 +73,8 @@
     border: 1px solid rgba(148, 163, 184, 0.18);
     display: flex;
     flex-direction: column;
+    align-items: center;
+    text-align: center;
     gap: 10px;
 }
 
@@ -52,6 +83,7 @@
     font-size: 28px;
     line-height: 1;
     font-family: var(--font-serif);
+    text-align: center;
 }
 
 .profile-page .community-profile-stat-label {
