@@ -2,6 +2,9 @@
 
 class ProfileController extends CommunityController
 {
+    private const PROFILE_POST_PAGE_SIZE = 10;
+    private const PROFILE_LISTING_PAGE_SIZE = 10;
+
     public function index(): void
     {
         $this->requireAuthentication();
@@ -53,30 +56,83 @@ class ProfileController extends CommunityController
             ? $this->resolveProfileListingVisibility((string) ($_GET['listing_visibility'] ?? 'all'))
             : 'active';
 
-        $posts = [];
-        if ($activityScope === 'posts') {
-            $posts = $repository->getFeed($currentUserId, [
-                'scope' => 'all',
-                'brand_id' => null,
-                'model_id' => null,
+        if ($this->isAjaxRequest() && (string) ($_GET['profile_stats'] ?? '') === '1') {
+            $this->jsonResponse([
+                'success' => true,
+                'vehicle_count' => (int) ($profile['vehicle_count'] ?? 0),
+                'post_count' => (int) ($profile['post_count'] ?? 0),
+                'listing_count' => (int) ($profile['listing_count'] ?? 0),
             ]);
-            $posts = array_values(array_filter($posts, static fn (array $post): bool => $post['user_id'] === $profileUserId));
-            usort($posts, static function (array $left, array $right): int {
-                $createdAtComparison = strcmp((string) $right['created_at'], (string) $left['created_at']);
-                if ($createdAtComparison !== 0) {
-                    return $createdAtComparison;
-                }
+        }
 
-                return ((int) $right['id']) <=> ((int) $left['id']);
-            });
-            $posts = $this->mapPosts($posts);
+        if ($this->isAjaxRequest() && $this->isProfileFeedPageRequest()) {
+            if ($activityScope === 'posts') {
+                $feedPage = $repository->getFeedPageByUser(
+                    $currentUserId,
+                    $profileUserId,
+                    self::PROFILE_POST_PAGE_SIZE,
+                    $this->resolveCursorCreatedAt(),
+                    $this->resolveCursorId()
+                );
+                $mappedPosts = $this->mapPosts($feedPage['posts']);
+
+                $this->jsonResponse([
+                    'success' => true,
+                    'html' => $this->renderCommunityPostsHtml($mappedPosts),
+                    'has_more' => $feedPage['has_more'],
+                    'next_cursor_created_at' => $feedPage['next_cursor_created_at'],
+                    'next_cursor_id' => $feedPage['next_cursor_id'],
+                ]);
+            }
+
+            if ($activityScope === 'listings') {
+                $feedPage = $marketplaceRepository->getListingsByUserPage(
+                    $currentUserId,
+                    $profileUserId,
+                    $listingVisibility,
+                    self::PROFILE_LISTING_PAGE_SIZE,
+                    $this->resolveOffset()
+                );
+                $mappedListings = $this->mapProfileListings($feedPage['listings']);
+
+                $this->jsonResponse([
+                    'success' => true,
+                    'html' => $this->renderProfileMarketplaceListingsHtml($mappedListings),
+                    'has_more' => $feedPage['has_more'],
+                    'next_offset' => $feedPage['next_offset'],
+                ]);
+            }
+        }
+
+        $posts = [];
+        $hasMorePosts = false;
+        $nextCursorCreatedAt = null;
+        $nextCursorId = null;
+        if ($activityScope === 'posts') {
+            $feedPage = $repository->getFeedPageByUser(
+                $currentUserId,
+                $profileUserId,
+                self::PROFILE_POST_PAGE_SIZE
+            );
+            $posts = $this->mapPosts($feedPage['posts']);
+            $hasMorePosts = $feedPage['has_more'];
+            $nextCursorCreatedAt = $feedPage['next_cursor_created_at'];
+            $nextCursorId = $feedPage['next_cursor_id'];
         }
 
         $listings = [];
+        $hasMoreListings = false;
+        $nextListingOffset = null;
         if ($activityScope === 'listings') {
-            $listings = $this->mapProfileListings(
-                $marketplaceRepository->getListingsByUser($currentUserId, $profileUserId, $listingVisibility)
+            $feedPage = $marketplaceRepository->getListingsByUserPage(
+                $currentUserId,
+                $profileUserId,
+                $listingVisibility,
+                self::PROFILE_LISTING_PAGE_SIZE
             );
+            $listings = $this->mapProfileListings($feedPage['listings']);
+            $hasMoreListings = $feedPage['has_more'];
+            $nextListingOffset = $feedPage['next_offset'];
         }
 
         $this->render('profile', [
@@ -87,6 +143,11 @@ class ProfileController extends CommunityController
             'listingVisibility' => $listingVisibility,
             'posts' => $posts,
             'listings' => $listings,
+            'hasMorePosts' => $hasMorePosts,
+            'nextCursorCreatedAt' => $nextCursorCreatedAt,
+            'nextCursorId' => $nextCursorId,
+            'hasMoreListings' => $hasMoreListings,
+            'nextListingOffset' => $nextListingOffset,
             'brands' => $marketplaceRepository->getAvailableCategories(),
             'importVehicles' => $this->mapMarketplaceImportVehicles($carsRepository->getMarketplaceImportVehicles($currentUserId)),
             'bodyTypeOptions' => $this->getBodyTypeOptions(),
@@ -108,6 +169,62 @@ class ProfileController extends CommunityController
             ],
             'scriptFiles' => ['community.js', 'marketplace.js', 'profile.js'],
         ]);
+    }
+
+    private function isProfileFeedPageRequest(): bool
+    {
+        return (string) ($_GET['profile_feed_page'] ?? '') === '1'
+            || (string) ($_GET['feed_page'] ?? '') === '1';
+    }
+
+    private function resolveCursorCreatedAt(): ?string
+    {
+        $cursorCreatedAt = trim((string) ($_GET['cursor_created_at'] ?? ''));
+        return $cursorCreatedAt !== '' ? $cursorCreatedAt : null;
+    }
+
+    private function resolveCursorId(): ?int
+    {
+        return $this->normalizeNullableInt($_GET['cursor_id'] ?? null);
+    }
+
+    private function resolveOffset(): int
+    {
+        return max(0, $this->normalizeNullableInt($_GET['offset'] ?? 0) ?? 0);
+    }
+
+    private function renderProfileMarketplaceListingsHtml(array $listings): string
+    {
+        if ($listings === []) {
+            return '';
+        }
+
+        $currentUser = $this->resolveProfileMarketplaceRenderUser($this->getCurrentUserId());
+
+        ob_start();
+        foreach ($listings as $listing) {
+            include 'public/views/partials/marketplace_listing.php';
+        }
+
+        return (string) ob_get_clean();
+    }
+
+    private function resolveProfileMarketplaceRenderUser(int $userId): array
+    {
+        $fallbackUser = [
+            'id' => $userId,
+            'full_name' => 'Użytkownik testowy',
+            'membership_tier' => 'free',
+        ];
+
+        try {
+            $repository = new UserRepository(Database::getConnection());
+            $user = $repository->getById($userId);
+
+            return $user ?: $fallbackUser;
+        } catch (Throwable) {
+            return $fallbackUser;
+        }
     }
 
     private function handleAvatarUpload(

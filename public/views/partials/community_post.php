@@ -12,11 +12,15 @@ $editPostPayload = htmlspecialchars(json_encode([
     ], $post['images'] ?? []),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8');
 $authorAvatarPath = trim((string) ($post['author_avatar_path'] ?? ''));
+$postImages = array_values(array_filter(
+    $post['images'] ?? [],
+    static fn (array $image): bool => trim((string) ($image['path'] ?? '')) !== ''
+));
 ?>
 <article class="community-post card" id="post-<?= (int) $post['id']; ?>">
     <div class="community-post-top">
         <div class="community-post-author">
-            <a href="<?= htmlspecialchars($post['profile_path'], ENT_QUOTES, 'UTF-8'); ?>" class="community-avatar<?= $authorAvatarPath !== '' ? ' has-image' : ''; ?>" aria-label="Profil uĹĽytkownika">
+            <a href="<?= htmlspecialchars($post['profile_path'], ENT_QUOTES, 'UTF-8'); ?>" class="community-avatar<?= $authorAvatarPath !== '' ? ' has-image' : ''; ?>" aria-label="Profil użytkownika">
                 <?php if ($authorAvatarPath !== ''): ?>
                     <img src="<?= htmlspecialchars($authorAvatarPath, ENT_QUOTES, 'UTF-8'); ?>" alt="<?= htmlspecialchars($post['author_name'], ENT_QUOTES, 'UTF-8'); ?>" class="community-avatar-image">
                 <?php endif; ?>
@@ -68,7 +72,7 @@ $authorAvatarPath = trim((string) ($post['author_avatar_path'] ?? ''));
                         <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/community', ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="action" value="<?= $isOwnPost ? 'delete_post' : 'report_post'; ?>">
                         <button type="submit" class="community-post-menu-action is-danger">
-                            <?= $isOwnPost ? 'UsuĹ„ post' : 'Zgłoś post'; ?>
+                            <?= $isOwnPost ? 'Usuń post' : 'Zgłoś post'; ?>
                         </button>
                     </form>
                 </div>
@@ -78,15 +82,15 @@ $authorAvatarPath = trim((string) ($post['author_avatar_path'] ?? ''));
 
     <p class="community-post-content"><?= nl2br(htmlspecialchars($post['content'], ENT_QUOTES, 'UTF-8')); ?></p>
 
-    <?php if (!empty($post['images'])): ?>
-        <div class="community-post-carousel<?= count($post['images']) > 1 ? ' has-controls' : ''; ?>" data-community-carousel>
-            <?php if (count($post['images']) > 1): ?>
+    <?php if ($postImages !== []): ?>
+        <div class="community-post-carousel<?= count($postImages) > 1 ? ' has-controls' : ''; ?>" data-community-carousel>
+            <?php if (count($postImages) > 1): ?>
                 <button type="button" class="community-post-carousel-control is-prev" aria-label="Poprzednie zdjÄ™cie" data-community-carousel-prev></button>
             <?php endif; ?>
 
             <div class="community-post-carousel-viewport">
                 <div class="community-post-carousel-track" data-community-carousel-track>
-                    <?php foreach ($post['images'] as $image): ?>
+                    <?php foreach ($postImages as $image): ?>
                         <div class="community-post-carousel-slide">
                             <img
                                 src="<?= htmlspecialchars($image['path'], ENT_QUOTES, 'UTF-8'); ?>"
@@ -98,7 +102,7 @@ $authorAvatarPath = trim((string) ($post['author_avatar_path'] ?? ''));
                 </div>
             </div>
 
-            <?php if (count($post['images']) > 1): ?>
+            <?php if (count($postImages) > 1): ?>
                 <button type="button" class="community-post-carousel-control is-next" aria-label="NastÄ™pne zdjÄ™cie" data-community-carousel-next></button>
             <?php endif; ?>
         </div>
@@ -187,7 +191,7 @@ $authorAvatarPath = trim((string) ($post['author_avatar_path'] ?? ''));
             <article class="community-comments-preview card">
                 <div class="community-post-top">
                     <div class="community-post-author">
-                        <a href="<?= htmlspecialchars($post['profile_path'], ENT_QUOTES, 'UTF-8'); ?>" class="community-avatar<?= $authorAvatarPath !== '' ? ' has-image' : ''; ?>" aria-label="Profil uĹĽytkownika">
+                        <a href="<?= htmlspecialchars($post['profile_path'], ENT_QUOTES, 'UTF-8'); ?>" class="community-avatar<?= $authorAvatarPath !== '' ? ' has-image' : ''; ?>" aria-label="Profil użytkownika">
                             <?php if ($authorAvatarPath !== ''): ?>
                                 <img src="<?= htmlspecialchars($authorAvatarPath, ENT_QUOTES, 'UTF-8'); ?>" alt="<?= htmlspecialchars($post['author_name'], ENT_QUOTES, 'UTF-8'); ?>" class="community-avatar-image">
                             <?php endif; ?>
@@ -208,15 +212,15 @@ $authorAvatarPath = trim((string) ($post['author_avatar_path'] ?? ''));
 
                 <p class="community-post-content"><?= nl2br(htmlspecialchars($post['content'], ENT_QUOTES, 'UTF-8')); ?></p>
 
-                <?php if (!empty($post['images'])): ?>
-                    <div class="community-post-carousel<?= count($post['images']) > 1 ? ' has-controls' : ''; ?>" data-community-carousel>
-                        <?php if (count($post['images']) > 1): ?>
+                <?php if ($postImages !== []): ?>
+                    <div class="community-post-carousel<?= count($postImages) > 1 ? ' has-controls' : ''; ?>" data-community-carousel>
+                        <?php if (count($postImages) > 1): ?>
                             <button type="button" class="community-post-carousel-control is-prev" aria-label="Poprzednie zdjÄ™cie" data-community-carousel-prev></button>
                         <?php endif; ?>
 
                         <div class="community-post-carousel-viewport">
                             <div class="community-post-carousel-track" data-community-carousel-track>
-                                <?php foreach ($post['images'] as $image): ?>
+                                <?php foreach ($postImages as $image): ?>
                                     <div class="community-post-carousel-slide">
                                         <img
                                             src="<?= htmlspecialchars($image['path'], ENT_QUOTES, 'UTF-8'); ?>"
@@ -228,7 +232,7 @@ $authorAvatarPath = trim((string) ($post['author_avatar_path'] ?? ''));
                             </div>
                         </div>
 
-                        <?php if (count($post['images']) > 1): ?>
+                        <?php if (count($postImages) > 1): ?>
                             <button type="button" class="community-post-carousel-control is-next" aria-label="NastÄ™pne zdjÄ™cie" data-community-carousel-next></button>
                         <?php endif; ?>
                     </div>

@@ -648,7 +648,7 @@ class CommunityController extends AppController
         )));
     }
 
-    private function normalizeNullableInt(mixed $value): ?int
+    protected function normalizeNullableInt(mixed $value): ?int
     {
         if ($value === null || $value === '') {
             return null;

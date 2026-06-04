@@ -2,6 +2,7 @@
 $communityModalRedirectTo = $communityModalRedirectTo ?? ($_SERVER['REQUEST_URI'] ?? '/community');
 $communityComposerUserName = $composerUserName
     ?? ($currentUser['display_name'] ?? ($currentUser['full_name'] ?? 'Użytkownik'));
+$communityComposerAvatarPath = trim((string) ($currentUser['avatar_path'] ?? ''));
 ?>
 <div class="community-modal-backdrop" hidden data-community-modal-backdrop></div>
 <section class="community-modal" hidden data-community-modal>
@@ -19,7 +20,14 @@ $communityComposerUserName = $composerUserName
         </header>
 
         <div class="community-modal-author">
-            <div class="community-avatar" aria-hidden="true">
+            <div class="community-avatar<?= $communityComposerAvatarPath !== '' ? ' has-image' : ''; ?>" aria-hidden="true">
+                <?php if ($communityComposerAvatarPath !== ''): ?>
+                    <img
+                        src="<?= htmlspecialchars($communityComposerAvatarPath, ENT_QUOTES, 'UTF-8'); ?>"
+                        alt="<?= htmlspecialchars((string) $communityComposerUserName, ENT_QUOTES, 'UTF-8'); ?>"
+                        class="community-avatar-image"
+                    >
+                <?php endif; ?>
                 <span class="community-avatar-ring"></span>
             </div>
             <div class="community-modal-author-meta">

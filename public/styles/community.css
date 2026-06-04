@@ -78,9 +78,12 @@
 .community-composer-launcher,
 .community-profile-hero,
 .community-profile-filters,
-.community-post,
 .community-empty {
     padding: clamp(20px, 2vw, 26px);
+}
+
+.community-post {
+    padding: 14px 18px;
 }
 
 .community-filter-form {
@@ -419,7 +422,7 @@
 .community-feed {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 0px;
 }
 
 .community-feed-loader {
@@ -432,6 +435,10 @@
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
+}
+
+.community-feed-loader[hidden] {
+    display: none !important;
 }
 
 .community-feed-sentinel {
@@ -458,6 +465,12 @@
 .community-post-author,
 .community-modal-author {
     justify-content: flex-start;
+}
+
+.community-post-author > .community-avatar,
+.community-modal-author > .community-avatar {
+    width: 52px;
+    height: 52px;
 }
 
 .community-post-top-actions {
@@ -553,6 +566,7 @@
 
 .community-avatar {
     position: relative;
+    display: block;
     flex: 0 0 auto;
     width: 52px;
     height: 52px;

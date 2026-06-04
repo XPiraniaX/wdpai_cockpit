@@ -2144,82 +2144,87 @@ document.addEventListener('keydown', (event) => {
     }
 });
 
-const feed = document.querySelector('[data-marketplace-feed]');
-const feedSentinel = document.querySelector('[data-marketplace-feed-sentinel]');
-const feedLoader = document.querySelector('[data-marketplace-feed-loader]');
-let isLoadingNextFeedPage = false;
-
-const setFeedPaginationState = (hasMore, nextOffset) => {
-    if (!feed) {
+const initializeMarketplaceInfiniteFeed = (root = document) => {
+    if (root === document && document.querySelector('.profile-page')) {
         return;
     }
 
-    feed.dataset.hasMore = hasMore ? '1' : '0';
-    feed.dataset.nextOffset = nextOffset ? String(nextOffset) : '0';
-};
+    const feed = root.querySelector('[data-marketplace-feed]');
+    const feedSentinel = root.querySelector('[data-marketplace-feed-sentinel]');
+    const feedLoader = root.querySelector('[data-marketplace-feed-loader]');
 
-const buildMarketplaceFeedPageUrl = () => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('feed_page', '1');
-    url.searchParams.set('offset', feed?.dataset.nextOffset ?? '0');
-    return url.toString();
-};
-
-const loadNextMarketplaceFeedPage = async () => {
-    if (!feed || !feedSentinel || !feedLoader) {
+    if (!(feed instanceof HTMLElement) || !(feedSentinel instanceof HTMLElement) || !(feedLoader instanceof HTMLElement)) {
         return;
     }
 
-    if (isLoadingNextFeedPage || feed.dataset.hasMore !== '1') {
+    if (feed.dataset.feedObserverBound === 'true') {
         return;
     }
 
-    const nextOffset = feed.dataset.nextOffset ?? '0';
+    let isLoadingNextFeedPage = false;
 
-    if (!nextOffset) {
-        setFeedPaginationState(false, 0);
-        return;
-    }
+    const setFeedPaginationState = (hasMore, nextOffset) => {
+        feed.dataset.hasMore = hasMore ? '1' : '0';
+        feed.dataset.nextOffset = nextOffset ? String(nextOffset) : '0';
+    };
 
-    isLoadingNextFeedPage = true;
-    feedLoader.hidden = false;
+    const buildMarketplaceFeedPageUrl = () => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('feed_page', '1');
+        url.searchParams.set('offset', feed.dataset.nextOffset ?? '0');
+        return url.toString();
+    };
 
-    try {
-        const response = await fetch(buildMarketplaceFeedPageUrl(), {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error('Request failed');
+    const loadNextMarketplaceFeedPage = async () => {
+        if (isLoadingNextFeedPage || feed.dataset.hasMore !== '1') {
+            return;
         }
 
-        const payload = await response.json();
-        if (!payload.success) {
-            throw new Error('Invalid payload');
+        const nextOffset = feed.dataset.nextOffset ?? '0';
+
+        if (!nextOffset) {
+            setFeedPaginationState(false, 0);
+            return;
         }
 
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = payload.html || '';
-        initializeMarketplaceChunk(wrapper);
+        isLoadingNextFeedPage = true;
+        feedLoader.hidden = false;
 
-        const fragment = document.createDocumentFragment();
-        while (wrapper.firstChild) {
-            fragment.appendChild(wrapper.firstChild);
+        try {
+            const response = await fetch(buildMarketplaceFeedPageUrl(), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Request failed');
+            }
+
+            const payload = await response.json();
+            if (!payload.success) {
+                throw new Error('Invalid payload');
+            }
+
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = payload.html || '';
+            initializeMarketplaceChunk(wrapper);
+
+            const fragment = document.createDocumentFragment();
+            while (wrapper.firstChild) {
+                fragment.appendChild(wrapper.firstChild);
+            }
+
+            feed.insertBefore(fragment, feedLoader);
+            setFeedPaginationState(Boolean(payload.has_more), payload.next_offset || 0);
+        } catch {
+            setFeedPaginationState(false, 0);
+        } finally {
+            feedLoader.hidden = true;
+            isLoadingNextFeedPage = false;
         }
+    };
 
-        feed.insertBefore(fragment, feedLoader);
-        setFeedPaginationState(Boolean(payload.has_more), payload.next_offset || 0);
-    } catch {
-        setFeedPaginationState(false, 0);
-    } finally {
-        feedLoader.hidden = true;
-        isLoadingNextFeedPage = false;
-    }
-};
-
-if (feed && feedSentinel) {
     const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
             if (entry.isIntersecting) {
@@ -2233,7 +2238,9 @@ if (feed && feedSentinel) {
     });
 
     observer.observe(feedSentinel);
-}
+    feed.dataset.feedObserverBound = 'true';
+};
+window.initializeMarketplaceInfiniteFeed = initializeMarketplaceInfiniteFeed;
 
 const bootstrapMarketplaceInteractions = () => {
     renderMarketplaceGallery();
@@ -2241,6 +2248,7 @@ const bootstrapMarketplaceInteractions = () => {
     initializeMarketplaceNumberInputs(document);
     initializeMarketplaceDecimalInputs(document);
     initializeMarketplaceChunk(document);
+    initializeMarketplaceInfiniteFeed(document);
 };
 
 if (document.readyState === 'loading') {
@@ -2251,6 +2259,7 @@ if (document.readyState === 'loading') {
 
 window.addEventListener('load', () => {
     initializeMarketplaceChunk(document);
+    initializeMarketplaceInfiniteFeed(document);
 });
 
 

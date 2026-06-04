@@ -13,6 +13,125 @@ class CommunityRepository
         return $this->getFeedPage($currentUserId, $filters)['posts'];
     }
 
+    public function getFeedPageByUser(
+        int $currentUserId,
+        int $profileUserId,
+        int $limit = self::DEFAULT_FEED_PAGE_SIZE,
+        ?string $cursorCreatedAt = null,
+        ?int $cursorId = null
+    ): array {
+        $conditions = ['feed.user_id = :profile_user_id'];
+        $params = [
+            'current_user_id' => $currentUserId,
+            'profile_user_id' => $profileUserId,
+        ];
+
+        if ($cursorCreatedAt !== null && $cursorId !== null && $cursorId > 0) {
+            $conditions[] = '(feed.created_at < :cursor_created_at OR (feed.created_at = :cursor_created_at AND feed.id < :cursor_id))';
+            $params['cursor_created_at'] = $cursorCreatedAt;
+            $params['cursor_id'] = $cursorId;
+        }
+
+        $whereSql = 'WHERE ' . implode(' AND ', $conditions);
+
+        $statement = $this->connection->prepare(
+            "SELECT
+                feed.*,
+                COALESCE(like_ref.is_liked, FALSE) AS liked_by_current_user,
+                COALESCE(save_ref.is_saved, FALSE) AS saved_by_current_user,
+                COALESCE(comment_ref.has_comment, FALSE) AS commented_by_current_user
+            FROM vw_community_feed feed
+            LEFT JOIN LATERAL (
+                SELECT TRUE AS is_liked
+                FROM community_post_likes l
+                WHERE l.post_id = feed.id
+                    AND l.user_id = :current_user_id
+                LIMIT 1
+            ) AS like_ref ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT TRUE AS is_saved
+                FROM community_post_saves s
+                WHERE s.post_id = feed.id
+                    AND s.user_id = :current_user_id
+                LIMIT 1
+            ) AS save_ref ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT TRUE AS has_comment
+                FROM community_comments c
+                WHERE c.post_id = feed.id
+                    AND c.user_id = :current_user_id
+                    AND c.is_active = TRUE
+                LIMIT 1
+            ) AS comment_ref ON TRUE
+            {$whereSql}
+            ORDER BY feed.created_at DESC, feed.id DESC
+            LIMIT :limit_plus_one"
+        );
+        $statement->bindValue(':limit_plus_one', $limit + 1, PDO::PARAM_INT);
+        foreach ($params as $name => $value) {
+            $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $statement->bindValue(':' . $name, $value, $type);
+        }
+        $statement->execute();
+
+        $posts = $statement->fetchAll(PDO::FETCH_ASSOC);
+        $hasMore = count($posts) > $limit;
+        if ($hasMore) {
+            $posts = array_slice($posts, 0, $limit);
+        }
+
+        if ($posts === []) {
+            return [
+                'posts' => [],
+                'has_more' => false,
+                'next_cursor_created_at' => null,
+                'next_cursor_id' => null,
+            ];
+        }
+
+        $postIds = array_column($posts, 'id');
+        $commentsByPost = $this->getCommentsForPosts($postIds, $currentUserId);
+        $imagesByPost = $this->getImagesForPosts($postIds);
+
+        $mappedPosts = array_map(function (array $post) use ($commentsByPost, $imagesByPost, $currentUserId): array {
+            $postId = (int) $post['id'];
+            $brandName = $post['brand_name'] ?? null;
+            $modelName = $post['model_name'] ?? null;
+
+            return [
+                'id' => $postId,
+                'user_id' => (int) $post['user_id'],
+                'author_name' => (string) ($post['pseudonym'] ?? $post['full_name']),
+                'author_username' => $post['username'],
+                'author_avatar_path' => $post['avatar_path'] ?? null,
+                'author_tier' => strtoupper((string) $post['membership_tier']) . ' MEMBER',
+                'profile_path' => $this->buildProfilePath($currentUserId, (int) $post['user_id'], $post['pseudonym'] ?? null),
+                'content' => $post['content'],
+                'created_at' => $post['created_at'],
+                'category_label' => $this->buildCategoryLabel($brandName, $modelName),
+                'brand_id' => $post['brand_id'] !== null ? (int) $post['brand_id'] : null,
+                'model_id' => $post['model_id'] !== null ? (int) $post['model_id'] : null,
+                'like_count' => (int) $post['like_count'],
+                'save_count' => (int) $post['save_count'],
+                'comment_count' => (int) $post['comment_count'],
+                'liked_by_current_user' => (bool) $post['liked_by_current_user'],
+                'saved_by_current_user' => (bool) $post['saved_by_current_user'],
+                'commented_by_current_user' => (bool) $post['commented_by_current_user'],
+                'comments' => $commentsByPost[$postId] ?? [],
+                'images' => $imagesByPost[$postId] ?? [],
+            ];
+        }, $posts);
+
+        $lastPost = end($mappedPosts) ?: null;
+
+        return [
+            'posts' => $mappedPosts,
+            'has_more' => $hasMore,
+            'next_cursor_created_at' => $hasMore && $lastPost ? (string) $lastPost['created_at'] : null,
+            'next_cursor_id' => $hasMore && $lastPost ? (int) $lastPost['id'] : null,
+        ];
+    }
+
     public function getFeedPage(int $currentUserId, array $filters, int $limit = self::DEFAULT_FEED_PAGE_SIZE, ?string $cursorCreatedAt = null, ?int $cursorId = null): array
     {
         $scope = $this->normalizeScope($filters['scope'] ?? 'all');
@@ -706,6 +825,7 @@ class CommunityRepository
                 SELECT COUNT(*)::INTEGER AS listing_count
                 FROM marketplace_listings l
                 WHERE l.user_id = u.id
+                    AND l.is_active = TRUE
             ) AS listing_counts ON TRUE
             WHERE {$conditionSql}
                 AND u.is_active = TRUE

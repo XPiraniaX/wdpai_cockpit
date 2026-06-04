@@ -123,6 +123,10 @@ const showAppToast = (message, type = 'info') => {
 };
 window.showAppToast = showAppToast;
 
+const dispatchProfileStatsRefresh = () => {
+    document.dispatchEvent(new CustomEvent('profile:stats-refresh'));
+};
+
 let activeCommunityConfirmResolver = null;
 let activeCommunityConfirmKeyHandler = null;
 
@@ -501,6 +505,7 @@ imagesTrigger?.addEventListener('click', openPostImagePicker);
 document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && createPostModal && !createPostModal.hidden) {
         closeCreatePostModal();
+        dispatchProfileStatsRefresh();
     }
 
     if (event.key === 'Escape' && activeCommentsModal) {
@@ -1266,6 +1271,7 @@ const bindCommunityDeletePostForms = (root) => {
                 }
 
                 post.remove();
+                dispatchProfileStatsRefresh();
                 showAppToast(payload.message || 'Post został usunięty.', 'success');
 
                 const menu = form.closest('[data-community-post-menu]');
@@ -1616,89 +1622,94 @@ document.addEventListener('click', (event) => {
         return;
     }
 });
-const feed = document.querySelector('[data-community-feed]');
-const feedSentinel = document.querySelector('[data-community-feed-sentinel]');
-const feedLoader = document.querySelector('[data-community-feed-loader]');
-let isLoadingNextFeedPage = false;
-
-const setFeedPaginationState = (hasMore, nextCreatedAt, nextId) => {
-    if (!feed) {
+const initializeCommunityInfiniteFeed = (root = document) => {
+    if (root === document && document.querySelector('.profile-page')) {
         return;
     }
 
-    feed.dataset.hasMore = hasMore ? '1' : '0';
-    feed.dataset.nextCursorCreatedAt = nextCreatedAt || '';
-    feed.dataset.nextCursorId = nextId ? String(nextId) : '';
-};
+    const feed = root.querySelector('[data-community-feed]');
+    const feedSentinel = root.querySelector('[data-community-feed-sentinel]');
+    const feedLoader = root.querySelector('[data-community-feed-loader]');
 
-const buildCommunityFeedPageUrl = () => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('feed_page', '1');
-    url.searchParams.set('cursor_created_at', feed?.dataset.nextCursorCreatedAt ?? '');
-    url.searchParams.set('cursor_id', feed?.dataset.nextCursorId ?? '');
-    return url.toString();
-};
-
-const loadNextCommunityFeedPage = async () => {
-    if (!feed || !feedSentinel || !feedLoader) {
+    if (!(feed instanceof HTMLElement) || !(feedSentinel instanceof HTMLElement) || !(feedLoader instanceof HTMLElement)) {
         return;
     }
 
-    if (isLoadingNextFeedPage || feed.dataset.hasMore !== '1') {
+    if (feed.dataset.feedObserverBound === 'true') {
         return;
     }
 
-    const cursorCreatedAt = feed.dataset.nextCursorCreatedAt ?? '';
-    const cursorId = feed.dataset.nextCursorId ?? '';
+    let isLoadingNextFeedPage = false;
 
-    if (!cursorCreatedAt || !cursorId) {
-        setFeedPaginationState(false, '', '');
-        return;
-    }
+    const setFeedPaginationState = (hasMore, nextCreatedAt, nextId) => {
+        feed.dataset.hasMore = hasMore ? '1' : '0';
+        feed.dataset.nextCursorCreatedAt = nextCreatedAt || '';
+        feed.dataset.nextCursorId = nextId ? String(nextId) : '';
+    };
 
-    isLoadingNextFeedPage = true;
-    feedLoader.hidden = false;
+    const buildCommunityFeedPageUrl = () => {
+        const url = new URL(window.location.href);
+        url.searchParams.set('feed_page', '1');
+        url.searchParams.set('cursor_created_at', feed.dataset.nextCursorCreatedAt ?? '');
+        url.searchParams.set('cursor_id', feed.dataset.nextCursorId ?? '');
+        return url.toString();
+    };
 
-    try {
-        const response = await fetch(buildCommunityFeedPageUrl(), {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-            },
-        });
-
-        if (!response.ok) {
-            throw new Error('Request failed');
+    const loadNextCommunityFeedPage = async () => {
+        if (isLoadingNextFeedPage || feed.dataset.hasMore !== '1') {
+            return;
         }
 
-        const payload = await response.json();
-        if (!payload.success) {
-            throw new Error('Invalid payload');
+        const cursorCreatedAt = feed.dataset.nextCursorCreatedAt ?? '';
+        const cursorId = feed.dataset.nextCursorId ?? '';
+
+        if (!cursorCreatedAt || !cursorId) {
+            setFeedPaginationState(false, '', '');
+            return;
         }
 
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = payload.html || '';
-        initializeCommunityFeedChunk(wrapper);
+        isLoadingNextFeedPage = true;
+        feedLoader.hidden = false;
 
-        const fragment = document.createDocumentFragment();
-        while (wrapper.firstChild) {
-            fragment.appendChild(wrapper.firstChild);
+        try {
+            const response = await fetch(buildCommunityFeedPageUrl(), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error('Request failed');
+            }
+
+            const payload = await response.json();
+            if (!payload.success) {
+                throw new Error('Invalid payload');
+            }
+
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = payload.html || '';
+            initializeCommunityFeedChunk(wrapper);
+
+            const fragment = document.createDocumentFragment();
+            while (wrapper.firstChild) {
+                fragment.appendChild(wrapper.firstChild);
+            }
+
+            feed.insertBefore(fragment, feedLoader);
+            setFeedPaginationState(
+                Boolean(payload.has_more),
+                payload.next_cursor_created_at || '',
+                payload.next_cursor_id || ''
+            );
+        } catch (error) {
+            setFeedPaginationState(false, '', '');
+        } finally {
+            feedLoader.hidden = true;
+            isLoadingNextFeedPage = false;
         }
+    };
 
-        feed.insertBefore(fragment, feedLoader);
-        setFeedPaginationState(
-            Boolean(payload.has_more),
-            payload.next_cursor_created_at || '',
-            payload.next_cursor_id || ''
-        );
-    } catch (error) {
-        setFeedPaginationState(false, '', '');
-    } finally {
-        feedLoader.hidden = true;
-        isLoadingNextFeedPage = false;
-    }
-};
-
-if (feed && feedSentinel) {
     const feedObserver = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
             if (entry.isIntersecting) {
@@ -1712,7 +1723,11 @@ if (feed && feedSentinel) {
     });
 
     feedObserver.observe(feedSentinel);
-}
+    feed.dataset.feedObserverBound = 'true';
+};
+
+window.initializeCommunityInfiniteFeed = initializeCommunityInfiniteFeed;
+initializeCommunityInfiniteFeed(document);
 
 bindCommunityCommentEditActions(document);
 bindCommunityCommentDeleteForms(document);

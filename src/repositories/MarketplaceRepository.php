@@ -291,6 +291,98 @@ class MarketplaceRepository
         return $this->mapListingRows($statement->fetchAll(PDO::FETCH_ASSOC) ?: [], $currentUserId);
     }
 
+    public function getListingsByUserPage(
+        int $currentUserId,
+        int $profileUserId,
+        string $visibility = 'active',
+        int $limit = self::DEFAULT_FEED_PAGE_SIZE,
+        int $offset = 0
+    ): array {
+        $conditions = ['l.user_id = :profile_user_id'];
+
+        if ($visibility === 'active') {
+            $conditions[] = 'l.is_active = TRUE';
+        } elseif ($visibility === 'ended') {
+            $conditions[] = 'l.is_active = FALSE';
+        }
+
+        $statement = $this->connection->prepare(
+            "SELECT
+                l.id,
+                l.user_id,
+                l.brand_id,
+                l.model_id,
+                l.title,
+                l.trim_name,
+                l.description,
+                l.price_amount,
+                l.production_year,
+                l.mileage_km,
+                l.fuel_type,
+                l.transmission,
+                l.body_type,
+                l.drivetrain,
+                l.engine_capacity_cc,
+                l.power_hp,
+                l.exterior_color,
+                l.city,
+                l.contact_name,
+                l.contact_phone,
+                l.contact_email,
+                l.created_at,
+                l.updated_at,
+                l.steering_side,
+                l.technical_condition,
+                l.is_active,
+                u.username,
+                u.pseudonym,
+                u.avatar_path,
+                CONCAT(u.first_name, ' ', u.last_name) AS full_name,
+                u.membership_tier,
+                cb.name AS brand_name,
+                cm.name AS model_name,
+                COALESCE(saved.save_count, 0) AS save_count,
+                COALESCE(save_ref.is_saved, FALSE) AS saved_by_current_user
+            FROM marketplace_listings l
+            INNER JOIN users u ON u.id = l.user_id
+            INNER JOIN car_brands cb ON cb.id = l.brand_id
+            INNER JOIN car_models cm ON cm.id = l.model_id
+            LEFT JOIN LATERAL (
+                SELECT COUNT(*)::INTEGER AS save_count
+                FROM marketplace_listing_saves s
+                WHERE s.listing_id = l.id
+            ) AS saved ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT TRUE AS is_saved
+                FROM marketplace_listing_saves s
+                WHERE s.listing_id = l.id
+                    AND s.user_id = :current_user_id
+                LIMIT 1
+            ) AS save_ref ON TRUE
+            WHERE " . implode(' AND ', $conditions) . "
+            ORDER BY l.created_at DESC, l.id DESC
+            OFFSET :offset
+            LIMIT :limit_plus_one"
+        );
+        $statement->bindValue(':current_user_id', $currentUserId, PDO::PARAM_INT);
+        $statement->bindValue(':profile_user_id', $profileUserId, PDO::PARAM_INT);
+        $statement->bindValue(':offset', max(0, $offset), PDO::PARAM_INT);
+        $statement->bindValue(':limit_plus_one', $limit + 1, PDO::PARAM_INT);
+        $statement->execute();
+
+        $listings = $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
+        $hasMore = count($listings) > $limit;
+        if ($hasMore) {
+            $listings = array_slice($listings, 0, $limit);
+        }
+
+        return [
+            'listings' => $this->mapListingRows($listings, $currentUserId),
+            'has_more' => $hasMore,
+            'next_offset' => $hasMore ? $offset + count($listings) : null,
+        ];
+    }
+
     public function createListing(int $userId, array $data): int
     {
         $this->connection->beginTransaction();

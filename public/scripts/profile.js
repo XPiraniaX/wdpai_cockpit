@@ -7,6 +7,87 @@ if (isProfilePage) {
 let activeProfileMarketplaceConfirmResolver = null;
 let activeProfileMarketplaceConfirmKeyHandler = null;
 let activeProfileAvatarPreviewUrl = null;
+let activeProfileFeedObserver = null;
+let isProfileFeedRequestInFlight = false;
+let activeProfileFeedElement = null;
+let activeProfileFeedCheckInterval = null;
+let activeProfileInfiniteScrollTarget = null;
+let activeProfileInfiniteScrollHandler = null;
+
+const getProfileScrollContainer = () => {
+    const content = document.querySelector('.content');
+    if (content instanceof HTMLElement) {
+        const style = window.getComputedStyle(content);
+        const overflowY = style.overflowY;
+        if ((overflowY === 'auto' || overflowY === 'scroll') && content.scrollHeight > content.clientHeight) {
+            return content;
+        }
+    }
+
+    return window;
+};
+
+const refreshProfileStats = async () => {
+    if (!isProfilePage) {
+        return;
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('profile_stats', '1');
+
+    try {
+        const response = await fetch(url.toString(), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Request failed');
+        }
+
+        const payload = parseProfileJsonResponse(await response.text());
+        if (!payload.success) {
+            throw new Error('Invalid payload');
+        }
+
+        const statsMap = {
+            vehicles: Number(payload.vehicle_count ?? 0),
+            posts: Number(payload.post_count ?? 0),
+            listings: Number(payload.listing_count ?? 0),
+        };
+
+        Object.entries(statsMap).forEach(([key, value]) => {
+            document.querySelectorAll(`[data-profile-stat="${key}"]`).forEach((element) => {
+                element.textContent = String(value);
+            });
+        });
+    } catch {
+        // Keep current values when refresh fails.
+    }
+};
+
+const parseProfileJsonResponse = (responseText) => {
+    const normalized = String(responseText || '').trim();
+    if (normalized === '') {
+        throw new Error('Empty response');
+    }
+
+    try {
+        return JSON.parse(normalized);
+    } catch {
+        const firstBrace = normalized.indexOf('{');
+        const lastBrace = normalized.lastIndexOf('}');
+        if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+            throw new Error('Invalid response payload');
+        }
+
+        return JSON.parse(normalized.slice(firstBrace, lastBrace + 1));
+    }
+};
+
+const updateProfileDebugIndicator = () => {};
 
 const ensureProfileMarketplaceConfirmModal = () => {
     let modal = document.querySelector('[data-profile-marketplace-confirm-modal]');
@@ -331,6 +412,192 @@ const closeProfileTransientUi = () => {
         modal.hidden = true;
     });
     closeProfileMarketplaceMenus();
+};
+
+const disconnectProfileFeedObserver = () => {
+    if (activeProfileFeedObserver) {
+        activeProfileFeedObserver.disconnect();
+        activeProfileFeedObserver = null;
+    }
+    activeProfileFeedElement = null;
+};
+
+const clearProfileFeedCheckInterval = () => {
+    if (activeProfileFeedCheckInterval !== null) {
+        window.clearInterval(activeProfileFeedCheckInterval);
+        activeProfileFeedCheckInterval = null;
+    }
+};
+
+const ensureProfileFeedSentinel = (feed) => {
+    if (!(feed instanceof HTMLElement)) {
+        return null;
+    }
+
+    let sentinel = feed.parentElement?.querySelector(':scope > [data-profile-feed-sentinel]');
+    if (sentinel instanceof HTMLElement) {
+        return sentinel;
+    }
+
+    sentinel = document.createElement('div');
+    sentinel.className = 'community-feed-sentinel';
+    sentinel.setAttribute('data-profile-feed-sentinel', '');
+    feed.insertAdjacentElement('afterend', sentinel);
+    return sentinel;
+};
+
+const loadNextProfileFeedPage = async (feed) => {
+    if (!(feed instanceof HTMLElement) || isProfileFeedRequestInFlight) {
+        return;
+    }
+
+    const feedType = feed.getAttribute('data-profile-feed-type') || '';
+    const hasMore = feed.getAttribute('data-profile-has-more') === '1';
+    if (!hasMore) {
+        disconnectProfileFeedObserver();
+        return;
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('profile_feed_page', '1');
+    url.searchParams.set('scope', feedType);
+
+    if (feedType === 'posts') {
+        const cursorCreatedAt = feed.getAttribute('data-profile-next-cursor-created-at') || '';
+        const cursorId = feed.getAttribute('data-profile-next-cursor-id') || '';
+        if (cursorCreatedAt === '' || cursorId === '' || cursorId === '0') {
+            feed.setAttribute('data-profile-has-more', '0');
+            disconnectProfileFeedObserver();
+            return;
+        }
+        url.searchParams.set('cursor_created_at', cursorCreatedAt);
+        url.searchParams.set('cursor_id', cursorId);
+    } else if (feedType === 'listings') {
+        const nextOffset = feed.getAttribute('data-profile-next-offset') || '';
+        if (nextOffset === '') {
+            feed.setAttribute('data-profile-has-more', '0');
+            disconnectProfileFeedObserver();
+            return;
+        }
+        url.searchParams.set('offset', nextOffset);
+    } else {
+        return;
+    }
+
+    isProfileFeedRequestInFlight = true;
+
+    try {
+        const response = await fetch(url.toString(), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Request failed');
+        }
+
+        const payload = await response.json();
+        if (!payload.success) {
+            throw new Error('Invalid payload');
+        }
+
+        if (typeof payload.html === 'string' && payload.html !== '') {
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = payload.html;
+            const fragment = document.createDocumentFragment();
+
+            while (wrapper.firstChild) {
+                fragment.appendChild(wrapper.firstChild);
+            }
+
+            feed.appendChild(fragment);
+
+            if (feedType === 'posts') {
+                if (typeof window.initializeCommunityFeedChunk === 'function') {
+                    window.initializeCommunityFeedChunk(feed);
+                    window.requestAnimationFrame(() => window.initializeCommunityFeedChunk(feed));
+                }
+            } else if (feedType === 'listings') {
+                bindProfileMarketplaceChunk(feed);
+                window.requestAnimationFrame(() => bindProfileMarketplaceChunk(feed));
+            }
+        }
+
+        if (feedType === 'posts') {
+            feed.setAttribute('data-profile-has-more', payload.has_more ? '1' : '0');
+            feed.setAttribute('data-profile-next-cursor-created-at', String(payload.next_cursor_created_at || ''));
+            feed.setAttribute('data-profile-next-cursor-id', String(payload.next_cursor_id || ''));
+        } else {
+            feed.setAttribute('data-profile-has-more', payload.has_more ? '1' : '0');
+            feed.setAttribute('data-profile-next-offset', payload.next_offset === null || payload.next_offset === undefined ? '' : String(payload.next_offset));
+        }
+
+        if (feed.getAttribute('data-profile-has-more') === '1') {
+            ensureProfileFeedSentinel(feed);
+            window.requestAnimationFrame(() => setupProfileInfiniteScroll(feed.parentElement ?? document));
+            window.requestAnimationFrame(() => runProfileInfiniteScrollCheck());
+        } else {
+            feed.parentElement?.querySelector(':scope > [data-profile-feed-sentinel]')?.remove();
+            disconnectProfileFeedObserver();
+        }
+    } finally {
+        isProfileFeedRequestInFlight = false;
+    }
+};
+
+const setupProfileInfiniteScroll = (root = document) => {
+    disconnectProfileFeedObserver();
+    clearProfileFeedCheckInterval();
+
+    const feed = root.querySelector('[data-profile-feed]');
+    if (!(feed instanceof HTMLElement)) {
+        return;
+    }
+
+    if (feed.getAttribute('data-profile-has-more') !== '1') {
+        root.querySelector('[data-profile-feed-sentinel]')?.remove();
+        return;
+    }
+
+    const sentinel = ensureProfileFeedSentinel(feed);
+    if (!(sentinel instanceof HTMLElement)) {
+        return;
+    }
+
+    activeProfileFeedElement = feed;
+    activeProfileFeedCheckInterval = window.setInterval(() => {
+        runProfileInfiniteScrollCheck();
+    }, 500);
+
+    activeProfileFeedObserver = new IntersectionObserver((entries) => {
+        const firstEntry = entries[0];
+        if (!firstEntry?.isIntersecting) {
+            return;
+        }
+
+        loadNextProfileFeedPage(feed).catch(() => {
+            disconnectProfileFeedObserver();
+        });
+    }, {
+        rootMargin: '240px 0px',
+    });
+
+    activeProfileFeedObserver.observe(sentinel);
+
+    window.requestAnimationFrame(() => {
+        const rect = sentinel.getBoundingClientRect();
+        if (rect.top <= window.innerHeight + 240) {
+            loadNextProfileFeedPage(feed).catch(() => {
+                disconnectProfileFeedObserver();
+            });
+        }
+    });
+};
+
+const runProfileInfiniteScrollCheck = () => {
+    maybeLoadNextProfilePage(document).catch(() => {});
 };
 
 const syncProfileMarketplaceSaveState = (listingId, saved) => {
@@ -1211,6 +1478,7 @@ const bindProfileMarketplaceCreateForm = () => {
             }
 
             closeProfileMarketplaceEditFallback();
+            refreshProfileStats();
             if (typeof window.showAppToast === 'function') {
                 window.showAppToast(
                     payload.message || (action === 'update_listing' ? 'Ogloszenie zostalo zaktualizowane.' : 'Ogloszenie zostalo opublikowane.'),
@@ -1400,6 +1668,7 @@ const bindProfileMarketplaceChunk = (root = document) => {
 
                 document.querySelectorAll(`#listing-${listingId}`).forEach((element) => element.remove());
                 document.querySelectorAll(`#marketplace-details-modal-${listingId}`).forEach((element) => element.remove());
+                refreshProfileStats();
                 if (typeof window.showAppToast === 'function') {
                     window.showAppToast(payload.message || 'Ogloszenie zostalo usuniete.', 'success');
                 }
@@ -1488,6 +1757,7 @@ const bindProfileMarketplaceChunk = (root = document) => {
                     document.querySelectorAll(`#listing-${listingId}`).forEach((element) => element.remove());
                 }
 
+                refreshProfileStats();
                 if (typeof window.showAppToast === 'function') {
                     window.showAppToast(payload.message || (payload.is_active ? 'Ogłoszenie zostało wznowione.' : 'Ogłoszenie zostało zakończone.'), 'success');
                 }
@@ -1501,12 +1771,241 @@ const bindProfileMarketplaceChunk = (root = document) => {
     });
 };
 
+let isProfilePostsPageLoading = false;
+let isProfileListingsPageLoading = false;
+
+const teardownProfileInfiniteScrollListeners = () => {
+    if (activeProfileInfiniteScrollTarget && activeProfileInfiniteScrollHandler) {
+        activeProfileInfiniteScrollTarget.removeEventListener('scroll', activeProfileInfiniteScrollHandler);
+    }
+
+    window.removeEventListener('resize', runProfileInfiniteScrollCheck);
+    activeProfileInfiniteScrollTarget = null;
+    activeProfileInfiniteScrollHandler = null;
+};
+
+const getActiveProfileFeed = (root = document) => {
+    const postsFeed = root.querySelector('[data-community-feed]');
+    if (postsFeed instanceof HTMLElement) {
+        return { type: 'posts', feed: postsFeed };
+    }
+
+    const listingsFeed = root.querySelector('[data-marketplace-feed]');
+    if (listingsFeed instanceof HTMLElement) {
+        return { type: 'listings', feed: listingsFeed };
+    }
+
+    return null;
+};
+
+const isNearBottomOfProfileScroll = () => {
+    const scrollContainer = getProfileScrollContainer();
+
+    if (scrollContainer instanceof Window) {
+        const scrollBottom = window.scrollY + window.innerHeight;
+        const pageBottom = document.documentElement.scrollHeight;
+        return scrollBottom >= pageBottom - 180;
+    }
+
+    const scrollBottom = scrollContainer.scrollTop + scrollContainer.clientHeight;
+    return scrollBottom >= scrollContainer.scrollHeight - 180;
+};
+
+const maybeLoadNextProfilePage = async (root = document) => {
+    const activeFeed = getActiveProfileFeed(root);
+    if (!activeFeed || !isNearBottomOfProfileScroll()) {
+        return;
+    }
+
+    if (activeFeed.type === 'posts') {
+        await loadNextProfilePostsPage(activeFeed.feed);
+        return;
+    }
+
+    await loadNextProfileListingsPage(activeFeed.feed);
+};
+
+const loadNextProfilePostsPage = async (feed) => {
+    if (!(feed instanceof HTMLElement) || isProfilePostsPageLoading || feed.dataset.hasMore !== '1') {
+        return;
+    }
+
+    const cursorCreatedAt = feed.dataset.nextCursorCreatedAt ?? '';
+    const cursorId = feed.dataset.nextCursorId ?? '';
+    if (!cursorCreatedAt || !cursorId) {
+        feed.dataset.hasMore = '0';
+        return;
+    }
+
+    const loader = feed.querySelector('[data-community-feed-loader]');
+    if (loader instanceof HTMLElement) {
+        loader.hidden = false;
+    }
+
+    isProfilePostsPageLoading = true;
+
+    try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('scope', 'posts');
+        url.searchParams.set('feed_page', '1');
+        url.searchParams.set('cursor_created_at', cursorCreatedAt);
+        url.searchParams.set('cursor_id', cursorId);
+
+        const response = await fetch(url.toString(), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Request failed');
+        }
+
+        const payload = parseProfileJsonResponse(await response.text());
+        if (!payload.success) {
+            throw new Error('Invalid payload');
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = payload.html || '';
+        if (typeof window.initializeCommunityFeedChunk === 'function') {
+            window.initializeCommunityFeedChunk(wrapper);
+        }
+
+        const fragment = document.createDocumentFragment();
+        while (wrapper.firstChild) {
+            fragment.appendChild(wrapper.firstChild);
+        }
+
+        const sentinel = feed.querySelector('[data-community-feed-sentinel]');
+        const referenceNode = sentinel ?? loader ?? null;
+        feed.insertBefore(fragment, referenceNode);
+
+        feed.dataset.hasMore = payload.has_more ? '1' : '0';
+        feed.dataset.nextCursorCreatedAt = String(payload.next_cursor_created_at || '');
+        feed.dataset.nextCursorId = payload.next_cursor_id ? String(payload.next_cursor_id) : '';
+    } catch {
+        feed.dataset.hasMore = '0';
+    } finally {
+        if (loader instanceof HTMLElement) {
+            loader.hidden = true;
+        }
+        isProfilePostsPageLoading = false;
+
+        if (feed.dataset.hasMore === '1' && isNearBottomOfProfileScroll()) {
+            window.setTimeout(() => {
+                loadNextProfilePostsPage(feed).catch(() => {});
+            }, 80);
+        }
+    }
+};
+
+const loadNextProfileListingsPage = async (feed) => {
+    if (!(feed instanceof HTMLElement) || isProfileListingsPageLoading || feed.dataset.hasMore !== '1') {
+        return;
+    }
+
+    const nextOffset = feed.dataset.nextOffset ?? '0';
+    if (!nextOffset) {
+        feed.dataset.hasMore = '0';
+        return;
+    }
+
+    const loader = feed.querySelector('[data-marketplace-feed-loader]');
+    if (loader instanceof HTMLElement) {
+        loader.hidden = false;
+    }
+
+    isProfileListingsPageLoading = true;
+
+    try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('scope', 'listings');
+        url.searchParams.set('feed_page', '1');
+        url.searchParams.set('offset', nextOffset);
+
+        const response = await fetch(url.toString(), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Request failed');
+        }
+
+        const payload = parseProfileJsonResponse(await response.text());
+        if (!payload.success) {
+            throw new Error('Invalid payload');
+        }
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = payload.html || '';
+        if (typeof window.initializeMarketplaceChunk === 'function') {
+            window.initializeMarketplaceChunk(wrapper);
+        }
+        bindProfileMarketplaceChunk(wrapper);
+
+        const fragment = document.createDocumentFragment();
+        while (wrapper.firstChild) {
+            fragment.appendChild(wrapper.firstChild);
+        }
+
+        const sentinel = feed.querySelector('[data-marketplace-feed-sentinel]');
+        const referenceNode = sentinel ?? loader ?? null;
+        feed.insertBefore(fragment, referenceNode);
+
+        feed.dataset.hasMore = payload.has_more ? '1' : '0';
+        feed.dataset.nextOffset = payload.next_offset ? String(payload.next_offset) : '0';
+    } catch {
+        feed.dataset.hasMore = '0';
+    } finally {
+        if (loader instanceof HTMLElement) {
+            loader.hidden = true;
+        }
+        isProfileListingsPageLoading = false;
+
+        if (feed.dataset.hasMore === '1') {
+            window.setTimeout(() => {
+                loadNextProfileListingsPage(feed).catch(() => {});
+            }, 80);
+        }
+    }
+};
+
+const initializeProfileFeedPagination = (root = document) => {
+    teardownProfileInfiniteScrollListeners();
+
+    const activeFeed = getActiveProfileFeed(root);
+    if (!activeFeed || activeFeed.feed.dataset.hasMore !== '1') {
+        return;
+    }
+
+    const scrollContainer = getProfileScrollContainer();
+    const scrollTarget = scrollContainer instanceof Window ? window : scrollContainer;
+    const handler = () => {
+        maybeLoadNextProfilePage(root).catch(() => {});
+    };
+
+    scrollTarget.addEventListener('scroll', handler, { passive: true });
+    window.addEventListener('resize', runProfileInfiniteScrollCheck, { passive: true });
+    activeProfileInfiniteScrollTarget = scrollTarget;
+    activeProfileInfiniteScrollHandler = handler;
+
+    window.setTimeout(() => {
+        maybeLoadNextProfilePage(root).catch(() => {});
+    }, 80);
+};
+
 const reinitializeProfileActivityChunk = (root = document) => {
     if (typeof window.initializeCommunityFeedChunk === 'function') {
         window.initializeCommunityFeedChunk(root);
     }
 
     bindProfileMarketplaceChunk(root);
+    initializeProfileFeedPagination(root);
 };
 
 const loadProfileActivityChunk = async (url) => {
@@ -1546,6 +2045,9 @@ const loadProfileActivityChunk = async (url) => {
 if (isProfilePage) {
     bindProfileAvatarModal();
     reinitializeProfileActivityChunk(document.querySelector('[data-profile-activity-root]') ?? document);
+    document.addEventListener('profile:stats-refresh', () => {
+        refreshProfileStats();
+    });
 
     document.addEventListener('click', (event) => {
         const target = event.target instanceof Element ? event.target : null;
