@@ -1207,6 +1207,112 @@ body.vehicle-modal-open .content {
     height: 100%;
 }
 
+.community-confirm-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.community-confirm-backdrop[hidden] {
+    display: none;
+}
+
+.community-confirm-scrim {
+    position: absolute;
+    inset: 0;
+    background: rgba(3, 8, 20, 0.78);
+    backdrop-filter: blur(10px);
+}
+
+.community-confirm-shell {
+    position: relative;
+    width: min(100%, 520px);
+    z-index: 1;
+}
+
+.community-confirm-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+    padding: 24px;
+    border-radius: 30px;
+    background: #0f1930;
+    border: 1px solid rgba(29, 41, 66, 0.94);
+    box-shadow: 0 24px 60px rgba(2, 10, 24, 0.42);
+}
+
+.community-confirm-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.community-confirm-title-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.community-confirm-kicker {
+    color: rgba(148, 163, 184, 0.84);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.community-confirm-title {
+    margin: 0;
+    color: #eef4ff;
+    font-size: clamp(24px, 2vw, 30px);
+    line-height: 1;
+    font-family: var(--font-serif);
+}
+
+.community-confirm-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.community-confirm-message {
+    margin: 0;
+    color: rgba(226, 232, 240, 0.9);
+    font-size: 15px;
+    line-height: 1.65;
+}
+
+.community-confirm-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.community-confirm-submit.is-danger {
+    background: #ef4444;
+    color: #fff5f5;
+    box-shadow: 0 12px 24px rgba(239, 68, 68, 0.22);
+}
+
+.community-confirm-submit.is-danger:hover {
+    background: #f87171;
+}
+
+.community-confirm-submit.is-muted {
+    background: rgba(148, 163, 184, 0.16);
+    color: #e5edf9;
+}
+
+.community-confirm-submit.is-muted:hover {
+    background: rgba(148, 163, 184, 0.24);
+}
+
 .community-modal-textarea {
     width: 100%;
     min-width: 0;

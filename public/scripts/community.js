@@ -123,6 +123,122 @@ const showAppToast = (message, type = 'info') => {
 };
 window.showAppToast = showAppToast;
 
+let activeCommunityConfirmResolver = null;
+let activeCommunityConfirmKeyHandler = null;
+
+const ensureCommunityConfirmModal = () => {
+    let modal = document.querySelector('[data-community-confirm-modal]');
+    if (modal) {
+        return modal;
+    }
+
+    modal = document.createElement('div');
+    modal.className = 'community-confirm-backdrop';
+    modal.setAttribute('data-community-confirm-modal', '');
+    modal.hidden = true;
+    modal.innerHTML = `
+        <div class="community-confirm-scrim" data-community-confirm-cancel></div>
+        <div class="community-confirm-shell">
+            <section class="community-confirm-panel">
+                <div class="community-confirm-head">
+                    <div class="community-confirm-title-wrap">
+                        <div class="community-confirm-kicker" data-community-confirm-kicker></div>
+                        <h3 class="community-confirm-title" data-community-confirm-title></h3>
+                    </div>
+                    <button type="button" class="community-modal-close" aria-label="Zamknij" data-community-confirm-cancel>
+                        <img src="/public/assets/icons/close.svg" alt="">
+                    </button>
+                </div>
+                <div class="community-confirm-copy">
+                    <p class="community-confirm-message" data-community-confirm-message></p>
+                </div>
+                <div class="community-confirm-actions">
+                    <button type="button" class="community-button community-button-muted" data-community-confirm-cancel>Anuluj</button>
+                    <button type="button" class="community-button community-confirm-submit" data-community-confirm-submit></button>
+                </div>
+            </section>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    return modal;
+};
+
+const closeCommunityConfirmModal = (accepted = false) => {
+    const modal = document.querySelector('[data-community-confirm-modal]');
+    if (!(modal instanceof HTMLElement)) {
+        return;
+    }
+
+    modal.hidden = true;
+    document.body.classList.remove('vehicle-modal-open');
+
+    if (activeCommunityConfirmKeyHandler) {
+        document.removeEventListener('keydown', activeCommunityConfirmKeyHandler);
+        activeCommunityConfirmKeyHandler = null;
+    }
+
+    if (activeCommunityConfirmResolver) {
+        const resolver = activeCommunityConfirmResolver;
+        activeCommunityConfirmResolver = null;
+        resolver(accepted);
+    }
+};
+
+const openCommunityConfirmModal = ({
+    kicker = 'Potwierdzenie',
+    title = 'Potwierdź akcję',
+    message = '',
+    confirmLabel = 'Potwierdź',
+    tone = 'danger',
+} = {}) => {
+    const modal = ensureCommunityConfirmModal();
+    const kickerElement = modal.querySelector('[data-community-confirm-kicker]');
+    const titleElement = modal.querySelector('[data-community-confirm-title]');
+    const messageElement = modal.querySelector('[data-community-confirm-message]');
+    const submitButton = modal.querySelector('[data-community-confirm-submit]');
+
+    if (!(kickerElement instanceof HTMLElement)
+        || !(titleElement instanceof HTMLElement)
+        || !(messageElement instanceof HTMLElement)
+        || !(submitButton instanceof HTMLButtonElement)) {
+        return Promise.resolve(window.confirm(message || title));
+    }
+
+    kickerElement.textContent = kicker;
+    titleElement.textContent = title;
+    messageElement.textContent = message;
+    submitButton.textContent = confirmLabel;
+    submitButton.classList.remove('is-danger', 'is-muted');
+    submitButton.classList.add(tone === 'danger' ? 'is-danger' : 'is-muted');
+
+    modal.querySelectorAll('[data-community-confirm-cancel]').forEach((button) => {
+        if (button instanceof HTMLElement && button.dataset.boundCommunityConfirmCancel !== 'true') {
+            button.addEventListener('click', () => closeCommunityConfirmModal(false));
+            button.dataset.boundCommunityConfirmCancel = 'true';
+        }
+    });
+
+    if (submitButton.dataset.boundCommunityConfirmSubmit !== 'true') {
+        submitButton.addEventListener('click', () => closeCommunityConfirmModal(true));
+        submitButton.dataset.boundCommunityConfirmSubmit = 'true';
+    }
+
+    modal.hidden = false;
+    document.body.classList.add('vehicle-modal-open');
+
+    activeCommunityConfirmKeyHandler = (event) => {
+        if (event.key === 'Escape') {
+            closeCommunityConfirmModal(false);
+        }
+    };
+    document.addEventListener('keydown', activeCommunityConfirmKeyHandler);
+
+    return new Promise((resolve) => {
+        activeCommunityConfirmResolver = resolve;
+    });
+};
+
 const syncPostImagesInput = () => {
     if (!imagesInput) {
         return;
@@ -1107,12 +1223,29 @@ const bindCommunityDeletePostForms = (root) => {
             event.preventDefault();
 
             const post = form.closest('.community-post');
-            const formData = new FormData(form);
 
             if (!(post instanceof HTMLElement)) {
                 form.submit();
                 return;
             }
+
+            const confirmed = await openCommunityConfirmModal({
+                kicker: 'Usuwanie posta',
+                title: 'Usunąć post?',
+                message: 'Usunięcie posta skasuje go na stałe wraz z jego zdjęciami i komentarzami. Tej operacji nie da się cofnąć.',
+                confirmLabel: 'Usuń post',
+                tone: 'danger',
+            });
+
+            if (!confirmed) {
+                const menu = form.closest('[data-community-post-menu]');
+                if (menu) {
+                    closeCommunityPostMenu(menu);
+                }
+                return;
+            }
+
+            const formData = new FormData(form);
 
             try {
                 const response = await fetch(window.location.pathname + window.location.search, {
