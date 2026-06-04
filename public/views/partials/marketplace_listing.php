@@ -3,6 +3,7 @@ $detailsModalId = 'marketplace-details-modal-' . (int) $listing['id'];
 $hasImages = !empty($listing['images']);
 $isOwnListing = ((int) ($currentUser['id'] ?? 0)) === (int) $listing['user_id'];
 $isActiveListing = (bool) ($listing['is_active'] ?? true);
+$authorAvatarPath = trim((string) ($listing['author_avatar_path'] ?? ''));
 $editPayload = htmlspecialchars(json_encode([
     'id' => (int) $listing['id'],
     'title' => (string) $listing['title'],
@@ -266,7 +267,11 @@ $editPayload = htmlspecialchars(json_encode([
 
                 <div class="marketplace-details-contact">
                     <a href="<?= htmlspecialchars($listing['profile_path'], ENT_QUOTES, 'UTF-8'); ?>" class="marketplace-details-seller-link">
-                        <span class="marketplace-details-seller-avatar" aria-hidden="true"></span>
+                        <span class="marketplace-details-seller-avatar<?= $authorAvatarPath !== '' ? ' has-image' : ''; ?>" aria-hidden="true">
+                            <?php if ($authorAvatarPath !== ''): ?>
+                                <img src="<?= htmlspecialchars($authorAvatarPath, ENT_QUOTES, 'UTF-8'); ?>" alt="<?= htmlspecialchars($listing['author_name'], ENT_QUOTES, 'UTF-8'); ?>" class="marketplace-details-seller-avatar-image">
+                            <?php endif; ?>
+                        </span>
                         <span class="marketplace-details-seller-copy">
                             <span class="marketplace-details-seller-name"><?= htmlspecialchars($listing['author_name'], ENT_QUOTES, 'UTF-8'); ?></span>
                             <span class="marketplace-details-seller-role"><?= htmlspecialchars($listing['author_tier'], ENT_QUOTES, 'UTF-8'); ?></span>

@@ -33,6 +33,7 @@ $headerUserRole = strtoupper((string) ($currentUser['membership_tier'] ?? 'free'
 $ownProfilePath = trim((string) ($currentUser['pseudonym'] ?? '')) !== ''
     ? '/profile/' . rawurlencode((string) $currentUser['pseudonym'])
     : '/profile';
+$headerAvatarPath = trim((string) ($currentUser['avatar_path'] ?? ''));
 ?>
 <header class="topbar">
     <div class="breadcrumbs">
@@ -51,7 +52,10 @@ $ownProfilePath = trim((string) ($currentUser['pseudonym'] ?? '')) !== ''
                 <span class="user-name"><?= htmlspecialchars($headerUserName, ENT_QUOTES, 'UTF-8'); ?></span>
                 <span class="user-role"><?= htmlspecialchars($headerUserRole, ENT_QUOTES, 'UTF-8'); ?></span>
             </div>
-            <div class="avatar">
+            <div class="avatar<?= $headerAvatarPath !== '' ? ' has-image' : ''; ?>">
+                <?php if ($headerAvatarPath !== ''): ?>
+                    <img src="<?= htmlspecialchars($headerAvatarPath, ENT_QUOTES, 'UTF-8'); ?>" alt="<?= htmlspecialchars($headerUserName, ENT_QUOTES, 'UTF-8'); ?>" class="avatar-image">
+                <?php endif; ?>
                 <span class="avatar-ring"></span>
             </div>
         </a>

@@ -16,6 +16,7 @@ class UserRepository
                 first_name,
                 last_name,
                 pseudonym,
+                avatar_path,
                 CONCAT(first_name, ' ', last_name) AS full_name,
                 membership_tier,
                 created_at
@@ -208,5 +209,22 @@ class UserRepository
             'user_id' => $userId,
             'pseudonym' => $pseudonym,
         ]);
+    }
+
+    public function updateAvatarPath(int $userId, ?string $avatarPath): void
+    {
+        $statement = $this->connection->prepare(
+            'UPDATE users
+            SET avatar_path = :avatar_path,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :user_id'
+        );
+        $statement->bindValue(':user_id', $userId, PDO::PARAM_INT);
+        if ($avatarPath === null || $avatarPath === '') {
+            $statement->bindValue(':avatar_path', null, PDO::PARAM_NULL);
+        } else {
+            $statement->bindValue(':avatar_path', $avatarPath, PDO::PARAM_STR);
+        }
+        $statement->execute();
     }
 }

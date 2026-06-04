@@ -1485,7 +1485,7 @@ const bindCommunityCommentDeleteForms = (root) => {
 
                 comment.remove();
                 if (!commentsList.querySelector('[data-community-comment-id]')) {
-                    commentsList.innerHTML = '<p class="community-comments-empty" data-community-comments-empty>Brak komentarzy. Badz pierwszy.</p>';
+                    commentsList.innerHTML = '<p class="community-comments-empty" data-community-comments-empty>Brak komentarzy. Bądź pierwszy.</p>';
                 }
 
                 syncCommunityCommentTriggerState(postId, payload.comment_count ?? 0, payload.commented_by_current_user);

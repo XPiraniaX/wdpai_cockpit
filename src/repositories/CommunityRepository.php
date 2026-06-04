@@ -120,6 +120,7 @@ class CommunityRepository
                 'user_id' => (int) $post['user_id'],
                 'author_name' => (string) ($post['pseudonym'] ?? $post['full_name']),
                 'author_username' => $post['username'],
+                'author_avatar_path' => $post['avatar_path'] ?? null,
                 'author_tier' => strtoupper((string) $post['membership_tier']) . ' MEMBER',
                 'profile_path' => $this->buildProfilePath($currentUserId, (int) $post['user_id'], $post['pseudonym'] ?? null),
                 'content' => $post['content'],
@@ -510,7 +511,7 @@ class CommunityRepository
         $inserted = $statement->fetch(PDO::FETCH_ASSOC) ?: [];
 
         $authorStatement = $this->connection->prepare(
-            'SELECT username, pseudonym, CONCAT(first_name, \' \', last_name) AS full_name
+            'SELECT username, pseudonym, avatar_path, CONCAT(first_name, \' \', last_name) AS full_name
             FROM users
             WHERE id = :user_id
             LIMIT 1'
@@ -526,6 +527,7 @@ class CommunityRepository
             'user_id' => $userId,
             'author_name' => (string) (($author['pseudonym'] ?? '') !== '' ? $author['pseudonym'] : ($author['full_name'] ?? '')),
             'author_username' => (string) ($author['username'] ?? ''),
+            'author_avatar_path' => $author['avatar_path'] ?? null,
             'content' => $content,
             'created_at' => (string) ($inserted['created_at'] ?? ''),
             'profile_path' => '/profile',
@@ -555,7 +557,7 @@ class CommunityRepository
         }
 
         $authorStatement = $this->connection->prepare(
-            'SELECT username, pseudonym, CONCAT(first_name, \' \', last_name) AS full_name
+            'SELECT username, pseudonym, avatar_path, CONCAT(first_name, \' \', last_name) AS full_name
             FROM users
             WHERE id = :user_id
             LIMIT 1'
@@ -571,6 +573,7 @@ class CommunityRepository
             'user_id' => (int) $updated['user_id'],
             'author_name' => (string) (($author['pseudonym'] ?? '') !== '' ? $author['pseudonym'] : ($author['full_name'] ?? '')),
             'author_username' => (string) ($author['username'] ?? ''),
+            'author_avatar_path' => $author['avatar_path'] ?? null,
             'content' => (string) $updated['content'],
             'created_at' => (string) $updated['created_at'],
             'profile_path' => '/profile',
@@ -680,6 +683,7 @@ class CommunityRepository
                 u.id,
                 u.username,
                 u.pseudonym,
+                u.avatar_path,
                 CONCAT(u.first_name, ' ', u.last_name) AS full_name,
                 u.membership_tier,
                 COALESCE(vehicle_counts.vehicle_count, 0) AS vehicle_count,
@@ -719,6 +723,7 @@ class CommunityRepository
             'id' => (int) $row['id'],
             'username' => $row['username'],
             'pseudonym' => $row['pseudonym'],
+            'avatar_path' => $row['avatar_path'],
             'full_name' => $row['full_name'],
             'display_name' => $row['pseudonym'] ?: $row['full_name'],
             'membership_tier' => strtoupper((string) $row['membership_tier']) . ' MEMBER',
@@ -754,6 +759,7 @@ class CommunityRepository
                 u.id AS user_id,
                 u.username,
                 u.pseudonym,
+                u.avatar_path,
                 CONCAT(u.first_name, \' \', u.last_name) AS full_name
             FROM community_comments c
             INNER JOIN users u ON u.id = c.user_id
@@ -773,6 +779,7 @@ class CommunityRepository
                 'user_id' => (int) $row['user_id'],
                 'author_name' => (string) ($row['pseudonym'] ?: $row['full_name']),
                 'author_username' => $row['username'],
+                'author_avatar_path' => $row['avatar_path'] ?? null,
                 'content' => $row['content'],
                 'created_at' => $row['created_at'],
                 'profile_path' => $this->buildProfilePath($currentUserId, (int) $row['user_id'], $row['pseudonym'] ?? null),

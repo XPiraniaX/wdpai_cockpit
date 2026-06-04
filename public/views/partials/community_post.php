@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 $isOwnPost = ((int) ($currentUser['id'] ?? 0)) === (int) $post['user_id'];
 $commentsModalId = 'community-comments-modal-' . (int) $post['id'];
 $editPostPayload = htmlspecialchars(json_encode([
@@ -11,11 +11,15 @@ $editPostPayload = htmlspecialchars(json_encode([
         'path' => (string) ($image['path'] ?? ''),
     ], $post['images'] ?? []),
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8');
+$authorAvatarPath = trim((string) ($post['author_avatar_path'] ?? ''));
 ?>
 <article class="community-post card" id="post-<?= (int) $post['id']; ?>">
     <div class="community-post-top">
         <div class="community-post-author">
-            <a href="<?= htmlspecialchars($post['profile_path'], ENT_QUOTES, 'UTF-8'); ?>" class="community-avatar" aria-label="Profil użytkownika">
+            <a href="<?= htmlspecialchars($post['profile_path'], ENT_QUOTES, 'UTF-8'); ?>" class="community-avatar<?= $authorAvatarPath !== '' ? ' has-image' : ''; ?>" aria-label="Profil uĹĽytkownika">
+                <?php if ($authorAvatarPath !== ''): ?>
+                    <img src="<?= htmlspecialchars($authorAvatarPath, ENT_QUOTES, 'UTF-8'); ?>" alt="<?= htmlspecialchars($post['author_name'], ENT_QUOTES, 'UTF-8'); ?>" class="community-avatar-image">
+                <?php endif; ?>
                 <span class="community-avatar-ring"></span>
             </a>
             <div class="community-post-author-meta">
@@ -64,7 +68,7 @@ $editPostPayload = htmlspecialchars(json_encode([
                         <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/community', ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="action" value="<?= $isOwnPost ? 'delete_post' : 'report_post'; ?>">
                         <button type="submit" class="community-post-menu-action is-danger">
-                            <?= $isOwnPost ? 'Usuń post' : 'Zgłoś post'; ?>
+                            <?= $isOwnPost ? 'UsuĹ„ post' : 'ZgĹ‚oĹ› post'; ?>
                         </button>
                     </form>
                 </div>
@@ -77,7 +81,7 @@ $editPostPayload = htmlspecialchars(json_encode([
     <?php if (!empty($post['images'])): ?>
         <div class="community-post-carousel<?= count($post['images']) > 1 ? ' has-controls' : ''; ?>" data-community-carousel>
             <?php if (count($post['images']) > 1): ?>
-                <button type="button" class="community-post-carousel-control is-prev" aria-label="Poprzednie zdjęcie" data-community-carousel-prev></button>
+                <button type="button" class="community-post-carousel-control is-prev" aria-label="Poprzednie zdjÄ™cie" data-community-carousel-prev></button>
             <?php endif; ?>
 
             <div class="community-post-carousel-viewport">
@@ -86,7 +90,7 @@ $editPostPayload = htmlspecialchars(json_encode([
                         <div class="community-post-carousel-slide">
                             <img
                                 src="<?= htmlspecialchars($image['path'], ENT_QUOTES, 'UTF-8'); ?>"
-                                alt="Zdjęcie w poście"
+                                alt="ZdjÄ™cie w poĹ›cie"
                                 class="community-post-image"
                             >
                         </div>
@@ -95,7 +99,7 @@ $editPostPayload = htmlspecialchars(json_encode([
             </div>
 
             <?php if (count($post['images']) > 1): ?>
-                <button type="button" class="community-post-carousel-control is-next" aria-label="Następne zdjęcie" data-community-carousel-next></button>
+                <button type="button" class="community-post-carousel-control is-next" aria-label="NastÄ™pne zdjÄ™cie" data-community-carousel-next></button>
             <?php endif; ?>
         </div>
     <?php endif; ?>
@@ -130,7 +134,7 @@ $editPostPayload = htmlspecialchars(json_encode([
         <button
             type="button"
             class="community-post-action-icon community-post-action-media<?= $post['commented_by_current_user'] ? ' is-active' : ''; ?>"
-            aria-label="Otwórz komentarze"
+            aria-label="OtwĂłrz komentarze"
             data-open-comments-modal
             data-comments-modal-id="<?= htmlspecialchars($commentsModalId, ENT_QUOTES, 'UTF-8'); ?>"
             data-community-comment-button
@@ -183,7 +187,10 @@ $editPostPayload = htmlspecialchars(json_encode([
             <article class="community-comments-preview card">
                 <div class="community-post-top">
                     <div class="community-post-author">
-                        <a href="<?= htmlspecialchars($post['profile_path'], ENT_QUOTES, 'UTF-8'); ?>" class="community-avatar" aria-label="Profil użytkownika">
+                        <a href="<?= htmlspecialchars($post['profile_path'], ENT_QUOTES, 'UTF-8'); ?>" class="community-avatar<?= $authorAvatarPath !== '' ? ' has-image' : ''; ?>" aria-label="Profil uĹĽytkownika">
+                            <?php if ($authorAvatarPath !== ''): ?>
+                                <img src="<?= htmlspecialchars($authorAvatarPath, ENT_QUOTES, 'UTF-8'); ?>" alt="<?= htmlspecialchars($post['author_name'], ENT_QUOTES, 'UTF-8'); ?>" class="community-avatar-image">
+                            <?php endif; ?>
                             <span class="community-avatar-ring"></span>
                         </a>
                         <div class="community-post-author-meta">
@@ -204,7 +211,7 @@ $editPostPayload = htmlspecialchars(json_encode([
                 <?php if (!empty($post['images'])): ?>
                     <div class="community-post-carousel<?= count($post['images']) > 1 ? ' has-controls' : ''; ?>" data-community-carousel>
                         <?php if (count($post['images']) > 1): ?>
-                            <button type="button" class="community-post-carousel-control is-prev" aria-label="Poprzednie zdjęcie" data-community-carousel-prev></button>
+                            <button type="button" class="community-post-carousel-control is-prev" aria-label="Poprzednie zdjÄ™cie" data-community-carousel-prev></button>
                         <?php endif; ?>
 
                         <div class="community-post-carousel-viewport">
@@ -213,7 +220,7 @@ $editPostPayload = htmlspecialchars(json_encode([
                                     <div class="community-post-carousel-slide">
                                         <img
                                             src="<?= htmlspecialchars($image['path'], ENT_QUOTES, 'UTF-8'); ?>"
-                                            alt="Zdjęcie w poście"
+                                            alt="ZdjÄ™cie w poĹ›cie"
                                             class="community-post-image"
                                         >
                                     </div>
@@ -222,7 +229,7 @@ $editPostPayload = htmlspecialchars(json_encode([
                         </div>
 
                         <?php if (count($post['images']) > 1): ?>
-                            <button type="button" class="community-post-carousel-control is-next" aria-label="Następne zdjęcie" data-community-carousel-next></button>
+                            <button type="button" class="community-post-carousel-control is-next" aria-label="NastÄ™pne zdjÄ™cie" data-community-carousel-next></button>
                         <?php endif; ?>
                     </div>
                 <?php endif; ?>
@@ -267,7 +274,7 @@ $editPostPayload = htmlspecialchars(json_encode([
                                                 <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/community', ENT_QUOTES, 'UTF-8'); ?>">
                                                 <input type="hidden" name="action" value="delete_comment">
                                                 <button type="submit" class="community-post-menu-action is-danger">
-                                                    Usuń komentarz
+                                                    UsuĹ„ komentarz
                                                 </button>
                                             </form>
                                         <?php else: ?>
@@ -277,7 +284,7 @@ $editPostPayload = htmlspecialchars(json_encode([
                                             <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/community', ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="action" value="report_comment">
                                             <button type="submit" class="community-post-menu-action is-danger">
-                                                Zgłoś komentarz
+                                                ZgĹ‚oĹ› komentarz
                                             </button>
                                         </form>
                                         <?php endif; ?>
@@ -327,3 +334,4 @@ $editPostPayload = htmlspecialchars(json_encode([
         </div>
     </div>
 </section>
+

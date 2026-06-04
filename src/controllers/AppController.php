@@ -241,6 +241,7 @@ class AppController
             'id' => $userId,
             'full_name' => 'Użytkownik testowy',
             'pseudonym' => null,
+            'avatar_path' => null,
             'membership_tier' => 'free',
         ];
 

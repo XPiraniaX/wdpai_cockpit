@@ -27,6 +27,7 @@ SELECT
     l.updated_at,
     u.username,
     u.pseudonym,
+    u.avatar_path,
     CONCAT(u.first_name, ' ', u.last_name) AS full_name,
     u.membership_tier,
     cb.name AS brand_name,

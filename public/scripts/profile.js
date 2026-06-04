@@ -6,6 +6,7 @@ if (isProfilePage) {
 
 let activeProfileMarketplaceConfirmResolver = null;
 let activeProfileMarketplaceConfirmKeyHandler = null;
+let activeProfileAvatarPreviewUrl = null;
 
 const ensureProfileMarketplaceConfirmModal = () => {
     let modal = document.querySelector('[data-profile-marketplace-confirm-modal]');
@@ -118,6 +119,187 @@ const openProfileMarketplaceConfirmModal = ({
     return new Promise((resolve) => {
         activeProfileMarketplaceConfirmResolver = resolve;
     });
+};
+
+const revokeActiveProfileAvatarPreviewUrl = () => {
+    if (activeProfileAvatarPreviewUrl) {
+        URL.revokeObjectURL(activeProfileAvatarPreviewUrl);
+        activeProfileAvatarPreviewUrl = null;
+    }
+};
+
+const ensureProfileAvatarImage = (src) => {
+    document.querySelectorAll('[data-profile-avatar-shell]').forEach((shell) => {
+        if (!(shell instanceof HTMLElement)) {
+            return;
+        }
+
+        let image = shell.querySelector('[data-profile-avatar-image]');
+        if (!(image instanceof HTMLImageElement)) {
+            image = document.createElement('img');
+            image.className = 'profile-avatar-image';
+            image.setAttribute('data-profile-avatar-image', '');
+            image.alt = '';
+            const ring = shell.querySelector('.community-avatar-ring');
+            shell.insertBefore(image, ring ?? shell.firstChild);
+        }
+
+        image.src = src;
+    });
+};
+
+const closeProfileAvatarModal = () => {
+    const modal = document.querySelector('[data-profile-avatar-modal]');
+    const form = document.querySelector('[data-profile-avatar-form]');
+    const input = document.querySelector('[data-profile-avatar-input]');
+    const submitButton = document.querySelector('[data-profile-avatar-submit]');
+    const preview = document.querySelector('[data-profile-avatar-preview]');
+
+    if (!(modal instanceof HTMLElement) || !(form instanceof HTMLFormElement) || !(input instanceof HTMLInputElement)) {
+        return;
+    }
+
+    modal.hidden = true;
+    document.body.classList.remove('vehicle-modal-open');
+    form.reset();
+    input.value = '';
+    revokeActiveProfileAvatarPreviewUrl();
+
+    if (submitButton instanceof HTMLButtonElement) {
+        submitButton.disabled = true;
+    }
+
+    if (preview instanceof HTMLElement) {
+        const storedImage = preview.getAttribute('data-current-avatar-src') || '';
+        preview.innerHTML = storedImage !== ''
+            ? `<img src="${storedImage}" alt="" class="profile-avatar-preview-image" data-profile-avatar-preview-image>`
+            : '<div class="profile-avatar-preview-placeholder" data-profile-avatar-preview-placeholder><span class="community-avatar-ring"></span></div>';
+    }
+};
+
+const openProfileAvatarModal = () => {
+    const modal = document.querySelector('[data-profile-avatar-modal]');
+    if (!(modal instanceof HTMLElement)) {
+        return;
+    }
+
+    modal.hidden = false;
+    document.body.classList.add('vehicle-modal-open');
+};
+
+const syncProfileAvatarPreview = (file) => {
+    const preview = document.querySelector('[data-profile-avatar-preview]');
+    const submitButton = document.querySelector('[data-profile-avatar-submit]');
+
+    if (!(preview instanceof HTMLElement) || !(submitButton instanceof HTMLButtonElement)) {
+        return;
+    }
+
+    revokeActiveProfileAvatarPreviewUrl();
+
+    if (!(file instanceof File)) {
+        submitButton.disabled = true;
+        const storedImage = preview.getAttribute('data-current-avatar-src') || '';
+        preview.innerHTML = storedImage !== ''
+            ? `<img src="${storedImage}" alt="" class="profile-avatar-preview-image" data-profile-avatar-preview-image>`
+            : '<div class="profile-avatar-preview-placeholder" data-profile-avatar-preview-placeholder><span class="community-avatar-ring"></span></div>';
+        return;
+    }
+
+    activeProfileAvatarPreviewUrl = URL.createObjectURL(file);
+    preview.innerHTML = `<img src="${activeProfileAvatarPreviewUrl}" alt="" class="profile-avatar-preview-image" data-profile-avatar-preview-image>`;
+    submitButton.disabled = false;
+};
+
+const bindProfileAvatarModal = () => {
+    const modal = document.querySelector('[data-profile-avatar-modal]');
+    const form = document.querySelector('[data-profile-avatar-form]');
+    const input = document.querySelector('[data-profile-avatar-input]');
+    const pickButton = document.querySelector('[data-profile-avatar-pick]');
+    const preview = document.querySelector('[data-profile-avatar-preview]');
+
+    if (!(modal instanceof HTMLElement)
+        || !(form instanceof HTMLFormElement)
+        || !(input instanceof HTMLInputElement)
+        || !(pickButton instanceof HTMLElement)
+        || !(preview instanceof HTMLElement)) {
+        return;
+    }
+
+    if (!preview.hasAttribute('data-current-avatar-src')) {
+        const currentImage = preview.querySelector('[data-profile-avatar-preview-image]');
+        preview.setAttribute('data-current-avatar-src', currentImage instanceof HTMLImageElement ? currentImage.src : '');
+    }
+
+    document.querySelectorAll('[data-open-profile-avatar-modal]').forEach((button) => {
+        if (button instanceof HTMLElement && button.dataset.boundProfileAvatarOpen !== 'true') {
+            button.addEventListener('click', () => openProfileAvatarModal());
+            button.dataset.boundProfileAvatarOpen = 'true';
+        }
+    });
+
+    modal.querySelectorAll('[data-close-profile-avatar-modal]').forEach((button) => {
+        if (button instanceof HTMLElement && button.dataset.boundProfileAvatarClose !== 'true') {
+            button.addEventListener('click', () => closeProfileAvatarModal());
+            button.dataset.boundProfileAvatarClose = 'true';
+        }
+    });
+
+    if (pickButton.dataset.boundProfileAvatarPick !== 'true') {
+        pickButton.addEventListener('click', () => input.click());
+        pickButton.dataset.boundProfileAvatarPick = 'true';
+    }
+
+    if (input.dataset.boundProfileAvatarInput !== 'true') {
+        input.addEventListener('change', () => {
+            const file = input.files && input.files[0] ? input.files[0] : null;
+            syncProfileAvatarPreview(file);
+        });
+        input.dataset.boundProfileAvatarInput = 'true';
+    }
+
+    if (form.dataset.boundProfileAvatarSubmit !== 'true') {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            if (!input.files || !input.files[0]) {
+                return;
+            }
+
+            const formData = new FormData(form);
+            const endpoint = form.getAttribute('action') || window.location.pathname + window.location.search;
+
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+
+                const payload = await response.json();
+                if (!payload.success || typeof payload.avatar_path !== 'string' || payload.avatar_path === '') {
+                    throw new Error('Invalid payload');
+                }
+
+                ensureProfileAvatarImage(payload.avatar_path);
+                preview.setAttribute('data-current-avatar-src', payload.avatar_path);
+                closeProfileAvatarModal();
+
+                if (typeof window.showAppToast === 'function') {
+                    window.showAppToast(payload.message || 'Zdjęcie profilowe zostało zaktualizowane.', 'success');
+                }
+            } catch {
+                form.submit();
+            }
+        });
+        form.dataset.boundProfileAvatarSubmit = 'true';
+    }
 };
 
 const renderProfileMarketplaceSaveIcon = (saved) => saved
@@ -1362,6 +1544,7 @@ const loadProfileActivityChunk = async (url) => {
 };
 
 if (isProfilePage) {
+    bindProfileAvatarModal();
     reinitializeProfileActivityChunk(document.querySelector('[data-profile-activity-root]') ?? document);
 
     document.addEventListener('click', (event) => {
