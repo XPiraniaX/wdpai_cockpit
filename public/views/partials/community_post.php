@@ -68,7 +68,7 @@ $authorAvatarPath = trim((string) ($post['author_avatar_path'] ?? ''));
                         <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/community', ENT_QUOTES, 'UTF-8'); ?>">
                         <input type="hidden" name="action" value="<?= $isOwnPost ? 'delete_post' : 'report_post'; ?>">
                         <button type="submit" class="community-post-menu-action is-danger">
-                            <?= $isOwnPost ? 'UsuĹ„ post' : 'ZgĹ‚oĹ› post'; ?>
+                            <?= $isOwnPost ? 'UsuĹ„ post' : 'Zgłoś post'; ?>
                         </button>
                     </form>
                 </div>
@@ -274,7 +274,7 @@ $authorAvatarPath = trim((string) ($post['author_avatar_path'] ?? ''));
                                                 <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/community', ENT_QUOTES, 'UTF-8'); ?>">
                                                 <input type="hidden" name="action" value="delete_comment">
                                                 <button type="submit" class="community-post-menu-action is-danger">
-                                                    UsuĹ„ komentarz
+                                                    Usuń komentarz
                                                 </button>
                                             </form>
                                         <?php else: ?>
@@ -284,7 +284,7 @@ $authorAvatarPath = trim((string) ($post['author_avatar_path'] ?? ''));
                                             <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/community', ENT_QUOTES, 'UTF-8'); ?>">
                                             <input type="hidden" name="action" value="report_comment">
                                             <button type="submit" class="community-post-menu-action is-danger">
-                                                ZgĹ‚oĹ› komentarz
+                                                Zgłoś komentarz
                                             </button>
                                         </form>
                                         <?php endif; ?>

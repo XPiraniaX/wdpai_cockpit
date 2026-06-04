@@ -5,8 +5,11 @@ class SettingsController extends AppController
     public function index()
     {
         $this->requireAuthentication();
-        $title = '5 - Settings';
+        $title = 'Ustawienia';
 
-        return $this->render('settings', ['title' => $title]);
+        return $this->render('settings', [
+            'title' => $title,
+            'scriptFiles' => ['settings.js'],
+        ]);
     }
 }

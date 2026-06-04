@@ -1,56 +1,308 @@
 <main class="settings-page">
-    <section class="settings-shell">
-        <div class="section-head">
-            <div class="section-head-copy">
-                <div class="section-head-title">Ustawienia</div>
-                <div class="section-head-subtitle">Podstawowe informacje o koncie i aktualnej sesji.</div>
-            </div>
-        </div>
+    <section class="settings-shell" data-settings-root>
+        <div class="settings-layout">
+            <section class="settings-column">
+                <article class="settings-panel">
+                    <div class="settings-panel-kicker">Konto</div>
+                    <h2 class="settings-panel-title">Dane konta</h2>
 
-        <div class="settings-grid">
-            <article class="settings-panel">
-                <div class="settings-panel-kicker">Konto</div>
-                <h1 class="settings-panel-title">Profil użytkownika</h1>
+                    <div class="settings-form-grid">
+                        <label class="settings-field">
+                            <span class="settings-field-label">Pseudonim</span>
+                            <input type="text" class="settings-input" value="<?= htmlspecialchars((string) ($currentUser['pseudonym'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Wpisz pseudonim">
+                        </label>
 
-                <div class="settings-list">
-                    <div class="settings-row">
-                        <span class="settings-label">Imię i nazwisko</span>
-                        <span class="settings-value"><?= htmlspecialchars($currentUser['full_name'] ?? 'Brak danych', ENT_QUOTES, 'UTF-8'); ?></span>
+                        <label class="settings-field">
+                            <span class="settings-field-label">Imię i nazwisko</span>
+                            <input type="text" class="settings-input" value="<?= htmlspecialchars((string) ($currentUser['full_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Imię i nazwisko">
+                        </label>
+
+                        <label class="settings-field">
+                            <span class="settings-field-label">E-mail</span>
+                            <input type="email" class="settings-input" value="<?= htmlspecialchars((string) ($currentUser['email'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="E-mail">
+                        </label>
+
+                        <label class="settings-field">
+                            <span class="settings-field-label">Login</span>
+                            <input type="text" class="settings-input" value="<?= htmlspecialchars((string) ($currentUser['username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Login">
+                        </label>
                     </div>
 
-                    <div class="settings-row">
-                        <span class="settings-label">Login</span>
-                        <span class="settings-value"><?= htmlspecialchars($currentUser['username'] ?? 'Brak danych', ENT_QUOTES, 'UTF-8'); ?></span>
+                    <div class="settings-actions-row">
+                        <button type="button" class="settings-button settings-button-primary">Zapisz zmiany</button>
+                    </div>
+                </article>
+
+                <article class="settings-panel">
+                    <div class="settings-panel-kicker">Bezpieczeństwo</div>
+                    <h2 class="settings-panel-title">Hasło i dostęp</h2>
+
+                    <div class="settings-form-grid">
+                        <label class="settings-field">
+                            <span class="settings-field-label">Aktualne hasło</span>
+                            <input type="password" class="settings-input" placeholder="••••••••">
+                        </label>
+
+                        <label class="settings-field">
+                            <span class="settings-field-label">Nowe hasło</span>
+                            <input type="password" class="settings-input" placeholder="Nowe hasło">
+                        </label>
+
+                        <label class="settings-field settings-field-full">
+                            <span class="settings-field-label">Powtórz nowe hasło</span>
+                            <input type="password" class="settings-input" placeholder="Powtórz nowe hasło">
+                        </label>
                     </div>
 
-                    <div class="settings-row">
-                        <span class="settings-label">Email</span>
-                        <span class="settings-value"><?= htmlspecialchars($currentUser['email'] ?? 'Brak danych', ENT_QUOTES, 'UTF-8'); ?></span>
+                    <div class="settings-actions-row">
+                        <button type="button" class="settings-button settings-button-primary">Zmień hasło</button>
                     </div>
+                </article>
 
-                    <div class="settings-row">
-                        <span class="settings-label">Plan</span>
-                        <span class="settings-value"><?= htmlspecialchars(strtoupper((string) ($currentUser['membership_tier'] ?? 'free')), ENT_QUOTES, 'UTF-8'); ?></span>
+                <article class="settings-panel">
+                    <div class="settings-panel-kicker">Prywatność</div>
+                    <h2 class="settings-panel-title">Widoczność profilu</h2>
+
+                    <div class="settings-stack">
+                        <div class="settings-setting">
+                            <div class="settings-setting-copy">
+                                <div class="settings-setting-title">Kto widzi imię i nazwisko</div>
+                                <div class="settings-setting-text">Na razie domyślnie publiczne w profilu. Później podepniemy logikę ukrywania.</div>
+                            </div>
+                            <select class="settings-select">
+                                <option>Wszyscy</option>
+                                <option>Tylko znajomi</option>
+                                <option>Tylko ja</option>
+                            </select>
+                        </div>
+
+                        <div class="settings-setting">
+                            <div class="settings-setting-copy">
+                                <div class="settings-setting-title">Widoczność profilu</div>
+                                <div class="settings-setting-text">Czy profil ma być dostępny dla wszystkich użytkowników aplikacji.</div>
+                            </div>
+                            <select class="settings-select">
+                                <option>Publiczny</option>
+                                <option>Prywatny</option>
+                            </select>
+                        </div>
                     </div>
+                </article>
 
-                    <div class="settings-row">
-                        <span class="settings-label">Data utworzenia</span>
-                        <span class="settings-value">
-                            <?= !empty($currentUser['created_at']) ? htmlspecialchars((new DateTimeImmutable($currentUser['created_at']))->format('d.m.Y'), ENT_QUOTES, 'UTF-8') : 'Brak danych'; ?>
-                        </span>
+                <article class="settings-panel">
+                    <div class="settings-panel-kicker">Aplikacja</div>
+                    <h2 class="settings-panel-title">Język i jednostki</h2>
+
+                    <div class="settings-stack">
+                        <div class="settings-setting">
+                            <div class="settings-setting-copy">
+                                <div class="settings-setting-title">Język aplikacji</div>
+                                <div class="settings-setting-text">Domyślny język interfejsu użytkownika.</div>
+                            </div>
+                            <select class="settings-select">
+                                <option selected>Polski</option>
+                                <option>English</option>
+                                <option>Deutsch</option>
+                            </select>
+                        </div>
+
+                        <div class="settings-setting">
+                            <div class="settings-setting-copy">
+                                <div class="settings-setting-title">Jednostka przebiegu</div>
+                                <div class="settings-setting-text">Przygotowane pod przyszłe przeliczanie w całej aplikacji.</div>
+                            </div>
+                            <select class="settings-select">
+                                <option>Kilometry</option>
+                                <option>Mile</option>
+                            </select>
+                        </div>
+
+                        <div class="settings-setting">
+                            <div class="settings-setting-copy">
+                                <div class="settings-setting-title">Format spalania</div>
+                                <div class="settings-setting-text">Domyślny zapis spalania w historii tankowań i statystykach.</div>
+                            </div>
+                            <select class="settings-select">
+                                <option>L / 100 km</option>
+                                <option>km / L</option>
+                            </select>
+                        </div>
                     </div>
-                </div>
-            </article>
+                </article>
 
-            <article class="settings-panel settings-panel-danger">
-                <div class="settings-panel-kicker">Sesja</div>
-                <h2 class="settings-panel-title">Wylogowanie</h2>
-                <p class="settings-panel-copy">Zakończ aktualną sesję i wróć do ekranu logowania.</p>
+                <article class="settings-panel settings-panel-danger">
+                    <div class="settings-panel-kicker">Sesja</div>
+                    <h2 class="settings-panel-title">Wylogowanie i usunięcie konta</h2>
 
-                <form method="post" action="/logout" class="settings-actions">
-                    <button type="submit" class="settings-logout-button">Wyloguj się</button>
-                </form>
-            </article>
+                    <div class="settings-danger-actions">
+                        <form method="post" action="/logout" class="settings-actions">
+                            <button type="submit" class="settings-button settings-button-danger">Wyloguj się</button>
+                        </form>
+
+                        <button type="button" class="settings-button settings-button-ghost-danger">Usuń konto</button>
+                    </div>
+                </article>
+            </section>
+
+            <section class="settings-column">
+                <article class="settings-panel">
+                    <div class="settings-panel-kicker">Marketplace</div>
+                    <h2 class="settings-panel-title">Ogłoszenia i oferty</h2>
+
+                    <div class="settings-stack">
+                        <div class="settings-setting">
+                            <div class="settings-setting-copy">
+                                <div class="settings-setting-title">Domyślny zakres ogłoszeń</div>
+                                <div class="settings-setting-text">Po wejściu możesz zaczynać od wszystkich albo ulubionych.</div>
+                            </div>
+                            <select class="settings-select">
+                                <option>Wszystkie</option>
+                                <option>Ulubione</option>
+                            </select>
+                        </div>
+
+                        <div class="settings-setting">
+                            <div class="settings-setting-copy">
+                                <div class="settings-setting-title">Domyślne sortowanie</div>
+                                <div class="settings-setting-text">Przygotowane pod przyszłe zapisanie preferencji marketplace.</div>
+                            </div>
+                            <select class="settings-select">
+                                <option>Najnowsze</option>
+                                <option>Najtańsze</option>
+                                <option>Najdroższe</option>
+                                <option>Najmniejszy przebieg</option>
+                            </select>
+                        </div>
+
+                        <div class="settings-setting">
+                            <div class="settings-setting-copy">
+                                <div class="settings-setting-title">Preferowany kanał kontaktu</div>
+                                <div class="settings-setting-text">Ustawienie domyślnego stylu kontaktu przy nowych ogłoszeniach.</div>
+                            </div>
+                            <select class="settings-select">
+                                <option>Telefon i e-mail</option>
+                                <option>Tylko telefon</option>
+                                <option>Tylko e-mail</option>
+                            </select>
+                        </div>
+
+                        <div class="settings-setting">
+                            <div class="settings-setting-copy">
+                                <div class="settings-setting-title">Potwierdzenia dla ogłoszeń</div>
+                                <div class="settings-setting-text">Usuwanie, zakończenie i wznowienie ofert.</div>
+                            </div>
+                            <label class="settings-toggle">
+                                <input type="checkbox" checked>
+                                <span class="settings-toggle-track"></span>
+                            </label>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="settings-panel">
+                    <div class="settings-panel-kicker">Społeczność</div>
+                    <h2 class="settings-panel-title">Preferencje feedu</h2>
+
+                    <div class="settings-stack">
+                        <div class="settings-setting">
+                            <div class="settings-setting-copy">
+                                <div class="settings-setting-title">Domyślny widok feedu</div>
+                                <div class="settings-setting-text">Wybierz, co ma otwierać się jako pierwsze w społeczności.</div>
+                            </div>
+                            <select class="settings-select">
+                                <option>Wszystkie posty</option>
+                                <option>Polubione</option>
+                                <option>Zapisane</option>
+                                <option>Komentowane</option>
+                            </select>
+                        </div>
+
+                        <div class="settings-setting">
+                            <div class="settings-setting-copy">
+                                <div class="settings-setting-title">Pokazuj tooltipy</div>
+                                <div class="settings-setting-text">Podpowiedzi nad ikonami w postach i ogłoszeniach.</div>
+                            </div>
+                            <label class="settings-toggle">
+                                <input type="checkbox" checked>
+                                <span class="settings-toggle-track"></span>
+                            </label>
+                        </div>
+
+                        <div class="settings-setting">
+                            <div class="settings-setting-copy">
+                                <div class="settings-setting-title">Potwierdzenie przed usunięciem posta</div>
+                                <div class="settings-setting-text">Kontrolka przygotowana pod późniejsze sterowanie modalami potwierdzeń.</div>
+                            </div>
+                            <label class="settings-toggle">
+                                <input type="checkbox" checked>
+                                <span class="settings-toggle-track"></span>
+                            </label>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="settings-panel">
+                    <div class="settings-panel-kicker">Powiadomienia</div>
+                    <h2 class="settings-panel-title">Alerty i przypomnienia</h2>
+
+                    <div class="settings-stack">
+                        <div class="settings-setting">
+                            <div class="settings-setting-copy">
+                                <div class="settings-setting-title">Polubienia i zapisy</div>
+                                <div class="settings-setting-text">Powiadomienia o reakcjach na posty i ogłoszenia.</div>
+                            </div>
+                            <label class="settings-toggle">
+                                <input type="checkbox" checked>
+                                <span class="settings-toggle-track"></span>
+                            </label>
+                        </div>
+
+                        <div class="settings-setting">
+                            <div class="settings-setting-copy">
+                                <div class="settings-setting-title">Komentarze i odpowiedzi</div>
+                                <div class="settings-setting-text">Alerty o nowych komentarzach pod Twoimi postami.</div>
+                            </div>
+                            <label class="settings-toggle">
+                                <input type="checkbox" checked>
+                                <span class="settings-toggle-track"></span>
+                            </label>
+                        </div>
+
+                        <div class="settings-setting">
+                            <div class="settings-setting-copy">
+                                <div class="settings-setting-title">Przegląd, OC i serwis</div>
+                                <div class="settings-setting-text">Przypomnienia związane z pojazdami i zadaniami.</div>
+                            </div>
+                            <label class="settings-toggle">
+                                <input type="checkbox" checked>
+                                <span class="settings-toggle-track"></span>
+                            </label>
+                        </div>
+
+                        <div class="settings-setting">
+                            <div class="settings-setting-copy">
+                                <div class="settings-setting-title">Kanał powiadomień</div>
+                                <div class="settings-setting-text">Na razie wizualnie przygotowane pod wybór rodzaju powiadomień.</div>
+                            </div>
+                            <select class="settings-select">
+                                <option>Tylko w aplikacji</option>
+                                <option>E-mail i aplikacja</option>
+                            </select>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="settings-panel settings-panel-neutral">
+                    <div class="settings-panel-kicker">Przywracanie</div>
+                    <h2 class="settings-panel-title">Przywróć ustawienia domyślne</h2>
+
+                    <div class="settings-danger-actions">
+                        <button type="button" class="settings-button settings-button-muted" data-settings-reset-defaults>
+                            Przywróć ustawienia domyślne
+                        </button>
+                    </div>
+                </article>
+            </section>
         </div>
     </section>
 </main>
