@@ -64,6 +64,26 @@ class UserRepository
         return $row ?: null;
     }
 
+    public function getAuthenticationDataById(int $userId): ?array
+    {
+        $statement = $this->connection->prepare(
+            "SELECT
+                id,
+                password,
+                is_active
+            FROM users
+            WHERE id = :user_id
+            LIMIT 1"
+        );
+        $statement->execute([
+            'user_id' => $userId,
+        ]);
+
+        $row = $statement->fetch();
+
+        return $row ?: null;
+    }
+
     public function usernameExists(string $username): bool
     {
         $statement = $this->connection->prepare(
@@ -83,6 +103,40 @@ class UserRepository
         );
         $statement->execute([
             'email' => $email,
+        ]);
+
+        return (bool) $statement->fetchColumn();
+    }
+
+    public function usernameExistsForOtherUser(string $username, int $excludedUserId): bool
+    {
+        $statement = $this->connection->prepare(
+            'SELECT 1
+            FROM users
+            WHERE LOWER(username) = LOWER(:username)
+                AND id <> :excluded_user_id
+            LIMIT 1'
+        );
+        $statement->execute([
+            'username' => $username,
+            'excluded_user_id' => $excludedUserId,
+        ]);
+
+        return (bool) $statement->fetchColumn();
+    }
+
+    public function emailExistsForOtherUser(string $email, int $excludedUserId): bool
+    {
+        $statement = $this->connection->prepare(
+            'SELECT 1
+            FROM users
+            WHERE LOWER(email) = LOWER(:email)
+                AND id <> :excluded_user_id
+            LIMIT 1'
+        );
+        $statement->execute([
+            'email' => $email,
+            'excluded_user_id' => $excludedUserId,
         ]);
 
         return (bool) $statement->fetchColumn();
@@ -226,5 +280,47 @@ class UserRepository
             $statement->bindValue(':avatar_path', $avatarPath, PDO::PARAM_STR);
         }
         $statement->execute();
+    }
+
+    public function updateAccountData(
+        int $userId,
+        string $username,
+        string $email,
+        string $firstName,
+        string $lastName,
+        string $pseudonym
+    ): void {
+        $statement = $this->connection->prepare(
+            'UPDATE users
+            SET username = :username,
+                email = :email,
+                first_name = :first_name,
+                last_name = :last_name,
+                pseudonym = :pseudonym,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :user_id'
+        );
+        $statement->execute([
+            'user_id' => $userId,
+            'username' => $username,
+            'email' => $email,
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'pseudonym' => $pseudonym,
+        ]);
+    }
+
+    public function updatePassword(int $userId, string $passwordHash): void
+    {
+        $statement = $this->connection->prepare(
+            'UPDATE users
+            SET password = :password,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :user_id'
+        );
+        $statement->execute([
+            'user_id' => $userId,
+            'password' => $passwordHash,
+        ]);
     }
 }

@@ -6,57 +6,150 @@
                     <div class="settings-panel-kicker">Konto</div>
                     <h2 class="settings-panel-title">Dane konta</h2>
 
-                    <div class="settings-form-grid">
-                        <label class="settings-field">
-                            <span class="settings-field-label">Pseudonim</span>
-                            <input type="text" class="settings-input" value="<?= htmlspecialchars((string) ($currentUser['pseudonym'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Wpisz pseudonim">
-                        </label>
+                    <form method="post" class="settings-account-form" data-settings-account-form novalidate>
+                        <input type="hidden" name="action" value="save_account_settings">
 
-                        <label class="settings-field">
-                            <span class="settings-field-label">Imię i nazwisko</span>
-                            <input type="text" class="settings-input" value="<?= htmlspecialchars((string) ($currentUser['full_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Imię i nazwisko">
-                        </label>
+                        <div class="settings-form-grid">
+                            <label class="settings-field">
+                                <span class="settings-field-label">Pseudonim</span>
+                                <input
+                                    type="text"
+                                    name="pseudonym"
+                                    class="settings-input<?= !empty($accountErrors['pseudonym']) ? ' is-invalid' : ''; ?>"
+                                    value="<?= htmlspecialchars((string) ($accountForm['pseudonym'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                    placeholder="Wpisz pseudonim"
+                                    maxlength="80"
+                                >
+                                <?php if (!empty($accountErrors['pseudonym'])): ?>
+                                    <span class="settings-field-error"><?= htmlspecialchars((string) $accountErrors['pseudonym'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <?php endif; ?>
+                            </label>
 
-                        <label class="settings-field">
-                            <span class="settings-field-label">E-mail</span>
-                            <input type="email" class="settings-input" value="<?= htmlspecialchars((string) ($currentUser['email'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="E-mail">
-                        </label>
+                            <label class="settings-field">
+                                <span class="settings-field-label">Imię i nazwisko</span>
+                                <input
+                                    type="text"
+                                    name="full_name"
+                                    class="settings-input<?= !empty($accountErrors['full_name']) ? ' is-invalid' : ''; ?>"
+                                    value="<?= htmlspecialchars((string) ($accountForm['full_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                    placeholder="Imię i nazwisko"
+                                    maxlength="120"
+                                >
+                                <?php if (!empty($accountErrors['full_name'])): ?>
+                                    <span class="settings-field-error"><?= htmlspecialchars((string) $accountErrors['full_name'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <?php endif; ?>
+                            </label>
 
-                        <label class="settings-field">
-                            <span class="settings-field-label">Login</span>
-                            <input type="text" class="settings-input" value="<?= htmlspecialchars((string) ($currentUser['username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>" placeholder="Login">
-                        </label>
-                    </div>
+                            <label class="settings-field">
+                                <span class="settings-field-label">E-mail</span>
+                                <input
+                                    type="email"
+                                    name="email"
+                                    class="settings-input<?= !empty($accountErrors['email']) ? ' is-invalid' : ''; ?>"
+                                    value="<?= htmlspecialchars((string) ($accountForm['email'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                    placeholder="E-mail"
+                                    maxlength="190"
+                                >
+                                <?php if (!empty($accountErrors['email'])): ?>
+                                    <span class="settings-field-error"><?= htmlspecialchars((string) $accountErrors['email'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <?php endif; ?>
+                            </label>
 
-                    <div class="settings-actions-row">
-                        <button type="button" class="settings-button settings-button-primary">Zapisz zmiany</button>
-                    </div>
+                            <label class="settings-field">
+                                <span class="settings-field-label">Login</span>
+                                <input
+                                    type="text"
+                                    name="username"
+                                    class="settings-input<?= !empty($accountErrors['username']) ? ' is-invalid' : ''; ?>"
+                                    value="<?= htmlspecialchars((string) ($accountForm['username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                    placeholder="Login"
+                                    maxlength="40"
+                                >
+                                <?php if (!empty($accountErrors['username'])): ?>
+                                    <span class="settings-field-error"><?= htmlspecialchars((string) $accountErrors['username'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <?php endif; ?>
+                            </label>
+                        </div>
+
+                        <?php if (!empty($accountErrors['form'])): ?>
+                            <div class="settings-form-error">
+                                <?= htmlspecialchars((string) $accountErrors['form'], ENT_QUOTES, 'UTF-8'); ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <div class="settings-actions-row">
+                            <button type="submit" class="settings-button settings-button-primary">Zapisz zmiany</button>
+                        </div>
+                    </form>
                 </article>
 
                 <article class="settings-panel">
                     <div class="settings-panel-kicker">Bezpieczeństwo</div>
                     <h2 class="settings-panel-title">Hasło i dostęp</h2>
 
-                    <div class="settings-form-grid">
-                        <label class="settings-field">
-                            <span class="settings-field-label">Aktualne hasło</span>
-                            <input type="password" class="settings-input" placeholder="••••••••">
-                        </label>
+                    <form method="post" class="settings-security-form" data-settings-security-form novalidate>
+                        <input type="hidden" name="action" value="save_security_settings">
 
-                        <label class="settings-field">
-                            <span class="settings-field-label">Nowe hasło</span>
-                            <input type="password" class="settings-input" placeholder="Nowe hasło">
-                        </label>
+                        <div class="settings-form-grid">
+                            <label class="settings-field settings-field-full">
+                                <span class="settings-field-label">Aktualne hasło</span>
+                                <input
+                                    type="password"
+                                    name="current_password"
+                                    class="settings-input<?= !empty($securityErrors['current_password']) ? ' is-invalid' : ''; ?>"
+                                    value="<?= htmlspecialchars((string) ($securityForm['current_password'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                    placeholder="••••••••"
+                                >
+                                <?php if (!empty($securityErrors['current_password'])): ?>
+                                    <span class="settings-field-error"><?= htmlspecialchars((string) $securityErrors['current_password'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <?php endif; ?>
+                            </label>
 
-                        <label class="settings-field settings-field-full">
-                            <span class="settings-field-label">Powtórz nowe hasło</span>
-                            <input type="password" class="settings-input" placeholder="Powtórz nowe hasło">
-                        </label>
-                    </div>
+                            <label class="settings-field">
+                                <span class="settings-field-label settings-field-label-with-tooltip">
+                                    <span>Nowe hasło</span>
+                                    <span class="settings-inline-tooltip-trigger" tabindex="0" aria-label="Wymagania hasła">
+                                        ?
+                                        <span class="settings-inline-tooltip">Minimum 8 znaków. Użyj małych i wielkich liter, cyfr oraz znaku specjalnego.</span>
+                                    </span>
+                                </span>
+                                <input
+                                    type="password"
+                                    name="new_password"
+                                    class="settings-input<?= !empty($securityErrors['new_password']) ? ' is-invalid' : ''; ?>"
+                                    value="<?= htmlspecialchars((string) ($securityForm['new_password'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                    placeholder="Nowe hasło"
+                                >
+                                <?php if (!empty($securityErrors['new_password'])): ?>
+                                    <span class="settings-field-error"><?= htmlspecialchars((string) $securityErrors['new_password'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <?php endif; ?>
+                            </label>
 
-                    <div class="settings-actions-row">
-                        <button type="button" class="settings-button settings-button-primary">Zmień hasło</button>
-                    </div>
+                            <label class="settings-field">
+                                <span class="settings-field-label">Powtórz nowe hasło</span>
+                                <input
+                                    type="password"
+                                    name="new_password_confirmation"
+                                    class="settings-input<?= !empty($securityErrors['new_password_confirmation']) ? ' is-invalid' : ''; ?>"
+                                    value="<?= htmlspecialchars((string) ($securityForm['new_password_confirmation'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                    placeholder="Powtórz nowe hasło"
+                                >
+                                <?php if (!empty($securityErrors['new_password_confirmation'])): ?>
+                                    <span class="settings-field-error"><?= htmlspecialchars((string) $securityErrors['new_password_confirmation'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                <?php endif; ?>
+                            </label>
+                        </div>
+
+                        <?php if (!empty($securityErrors['form'])): ?>
+                            <div class="settings-form-error">
+                                <?= htmlspecialchars((string) $securityErrors['form'], ENT_QUOTES, 'UTF-8'); ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <div class="settings-actions-row">
+                            <button type="submit" class="settings-button settings-button-primary">Zmień hasło</button>
+                        </div>
+                    </form>
                 </article>
 
                 <article class="settings-panel">
@@ -67,7 +160,6 @@
                         <div class="settings-setting">
                             <div class="settings-setting-copy">
                                 <div class="settings-setting-title">Kto widzi imię i nazwisko</div>
-                                <div class="settings-setting-text">Na razie domyślnie publiczne w profilu. Później podepniemy logikę ukrywania.</div>
                             </div>
                             <select class="settings-select">
                                 <option>Wszyscy</option>
@@ -79,7 +171,6 @@
                         <div class="settings-setting">
                             <div class="settings-setting-copy">
                                 <div class="settings-setting-title">Widoczność profilu</div>
-                                <div class="settings-setting-text">Czy profil ma być dostępny dla wszystkich użytkowników aplikacji.</div>
                             </div>
                             <select class="settings-select">
                                 <option>Publiczny</option>
@@ -97,7 +188,6 @@
                         <div class="settings-setting">
                             <div class="settings-setting-copy">
                                 <div class="settings-setting-title">Język aplikacji</div>
-                                <div class="settings-setting-text">Domyślny język interfejsu użytkownika.</div>
                             </div>
                             <select class="settings-select">
                                 <option selected>Polski</option>
@@ -109,7 +199,6 @@
                         <div class="settings-setting">
                             <div class="settings-setting-copy">
                                 <div class="settings-setting-title">Jednostka przebiegu</div>
-                                <div class="settings-setting-text">Przygotowane pod przyszłe przeliczanie w całej aplikacji.</div>
                             </div>
                             <select class="settings-select">
                                 <option>Kilometry</option>
@@ -120,7 +209,6 @@
                         <div class="settings-setting">
                             <div class="settings-setting-copy">
                                 <div class="settings-setting-title">Format spalania</div>
-                                <div class="settings-setting-text">Domyślny zapis spalania w historii tankowań i statystykach.</div>
                             </div>
                             <select class="settings-select">
                                 <option>L / 100 km</option>
@@ -153,7 +241,6 @@
                         <div class="settings-setting">
                             <div class="settings-setting-copy">
                                 <div class="settings-setting-title">Domyślny zakres ogłoszeń</div>
-                                <div class="settings-setting-text">Po wejściu możesz zaczynać od wszystkich albo ulubionych.</div>
                             </div>
                             <select class="settings-select">
                                 <option>Wszystkie</option>
@@ -164,7 +251,6 @@
                         <div class="settings-setting">
                             <div class="settings-setting-copy">
                                 <div class="settings-setting-title">Domyślne sortowanie</div>
-                                <div class="settings-setting-text">Przygotowane pod przyszłe zapisanie preferencji marketplace.</div>
                             </div>
                             <select class="settings-select">
                                 <option>Najnowsze</option>
@@ -177,7 +263,6 @@
                         <div class="settings-setting">
                             <div class="settings-setting-copy">
                                 <div class="settings-setting-title">Preferowany kanał kontaktu</div>
-                                <div class="settings-setting-text">Ustawienie domyślnego stylu kontaktu przy nowych ogłoszeniach.</div>
                             </div>
                             <select class="settings-select">
                                 <option>Telefon i e-mail</option>
@@ -189,7 +274,6 @@
                         <div class="settings-setting">
                             <div class="settings-setting-copy">
                                 <div class="settings-setting-title">Potwierdzenia dla ogłoszeń</div>
-                                <div class="settings-setting-text">Usuwanie, zakończenie i wznowienie ofert.</div>
                             </div>
                             <label class="settings-toggle">
                                 <input type="checkbox" checked>
@@ -207,7 +291,6 @@
                         <div class="settings-setting">
                             <div class="settings-setting-copy">
                                 <div class="settings-setting-title">Domyślny widok feedu</div>
-                                <div class="settings-setting-text">Wybierz, co ma otwierać się jako pierwsze w społeczności.</div>
                             </div>
                             <select class="settings-select">
                                 <option>Wszystkie posty</option>
@@ -220,7 +303,6 @@
                         <div class="settings-setting">
                             <div class="settings-setting-copy">
                                 <div class="settings-setting-title">Pokazuj tooltipy</div>
-                                <div class="settings-setting-text">Podpowiedzi nad ikonami w postach i ogłoszeniach.</div>
                             </div>
                             <label class="settings-toggle">
                                 <input type="checkbox" checked>
@@ -231,7 +313,6 @@
                         <div class="settings-setting">
                             <div class="settings-setting-copy">
                                 <div class="settings-setting-title">Potwierdzenie przed usunięciem posta</div>
-                                <div class="settings-setting-text">Kontrolka przygotowana pod późniejsze sterowanie modalami potwierdzeń.</div>
                             </div>
                             <label class="settings-toggle">
                                 <input type="checkbox" checked>
@@ -249,7 +330,6 @@
                         <div class="settings-setting">
                             <div class="settings-setting-copy">
                                 <div class="settings-setting-title">Polubienia i zapisy</div>
-                                <div class="settings-setting-text">Powiadomienia o reakcjach na posty i ogłoszenia.</div>
                             </div>
                             <label class="settings-toggle">
                                 <input type="checkbox" checked>
@@ -260,7 +340,6 @@
                         <div class="settings-setting">
                             <div class="settings-setting-copy">
                                 <div class="settings-setting-title">Komentarze i odpowiedzi</div>
-                                <div class="settings-setting-text">Alerty o nowych komentarzach pod Twoimi postami.</div>
                             </div>
                             <label class="settings-toggle">
                                 <input type="checkbox" checked>
@@ -271,7 +350,6 @@
                         <div class="settings-setting">
                             <div class="settings-setting-copy">
                                 <div class="settings-setting-title">Przegląd, OC i serwis</div>
-                                <div class="settings-setting-text">Przypomnienia związane z pojazdami i zadaniami.</div>
                             </div>
                             <label class="settings-toggle">
                                 <input type="checkbox" checked>
@@ -282,7 +360,6 @@
                         <div class="settings-setting">
                             <div class="settings-setting-copy">
                                 <div class="settings-setting-title">Kanał powiadomień</div>
-                                <div class="settings-setting-text">Na razie wizualnie przygotowane pod wybór rodzaju powiadomień.</div>
                             </div>
                             <select class="settings-select">
                                 <option>Tylko w aplikacji</option>
