@@ -414,6 +414,60 @@ const closeProfileTransientUi = () => {
     closeProfileMarketplaceMenus();
 };
 
+const bindProfileHeroActions = () => {
+    document.querySelectorAll('[data-profile-report-form]').forEach((form) => {
+        if (!(form instanceof HTMLFormElement) || form.dataset.boundProfileHeroReport === 'true') {
+            return;
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+
+            const confirmed = await openProfileMarketplaceConfirmModal({
+                kicker: 'Zgłoszenie profilu',
+                title: 'Zgłosić profil?',
+                message: 'Czy na pewno chcesz zgłosić ten profil do weryfikacji?',
+                confirmLabel: 'Zgłoś profil',
+                tone: 'danger',
+            });
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                const response = await fetch(form.getAttribute('action') || window.location.pathname + window.location.search, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+
+                const payload = parseProfileJsonResponse(await response.text());
+                if (!payload.success) {
+                    throw new Error('Invalid payload');
+                }
+
+                if (typeof window.showAppToast === 'function') {
+                    window.showAppToast(payload.message || 'Profil został zgłoszony.', 'success');
+                }
+
+                closeProfileMarketplaceMenus();
+            } catch {
+                form.submit();
+            }
+        }, true);
+
+        form.dataset.boundProfileHeroReport = 'true';
+    });
+};
+
 const disconnectProfileFeedObserver = () => {
     if (activeProfileFeedObserver) {
         activeProfileFeedObserver.disconnect();
@@ -2052,6 +2106,7 @@ const loadProfileActivityChunk = async (url) => {
 
 if (isProfilePage) {
     bindProfileAvatarModal();
+    bindProfileHeroActions();
     reinitializeProfileActivityChunk(document.querySelector('[data-profile-activity-root]') ?? document);
     document.addEventListener('profile:stats-refresh', () => {
         refreshProfileStats();

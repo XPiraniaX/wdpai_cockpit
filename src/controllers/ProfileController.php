@@ -28,6 +28,11 @@ class ProfileController extends CommunityController
             return;
         }
 
+        if ($this->isPost() && (string) ($_POST['action'] ?? '') === 'report_profile') {
+            $this->handleProfileReport($repository, $currentUserId, $requestedPseudonym, $requestedId);
+            return;
+        }
+
         if ($this->isPost()) {
             $this->handlePostAction($repository, $currentUserId);
             return;
@@ -350,5 +355,46 @@ class ProfileController extends CommunityController
         if (is_file($filePath)) {
             @unlink($filePath);
         }
+    }
+
+    private function handleProfileReport(
+        CommunityRepository $repository,
+        int $currentUserId,
+        string $requestedPseudonym,
+        ?int $requestedId
+    ): void {
+        $profile = $requestedPseudonym !== ''
+            ? $repository->getProfileByPseudonym($requestedPseudonym)
+            : $repository->getProfile($requestedId ?? 0);
+
+        $redirectPath = '/profile';
+        if ($profile !== null) {
+            $redirectPath = trim((string) ($profile['pseudonym'] ?? '')) !== ''
+                ? '/profile/' . rawurlencode((string) $profile['pseudonym'])
+                : '/profile?id=' . (int) $profile['id'];
+        }
+
+        if ($profile === null || (int) $profile['id'] === $currentUserId) {
+            if ($this->isAjaxRequest()) {
+                $this->jsonResponse([
+                    'success' => false,
+                    'message' => 'Nie udało się zgłosić profilu.',
+                ], 422);
+            }
+
+            $this->setFlash('error', 'Nie udało się zgłosić profilu.');
+            $this->redirect($redirectPath);
+        }
+
+        if ($this->isAjaxRequest()) {
+            $this->jsonResponse([
+                'success' => true,
+                'profile_id' => (int) $profile['id'],
+                'message' => 'Profil został zgłoszony.',
+            ]);
+        }
+
+        $this->setFlash('success', 'Profil został zgłoszony.');
+        $this->redirect($redirectPath);
     }
 }

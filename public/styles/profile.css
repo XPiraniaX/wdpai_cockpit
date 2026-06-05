@@ -2,6 +2,10 @@
     width: 100%;
 }
 
+.profile-page .community-profile-hero {
+    position: relative;
+}
+
 .profile-page .community-shell-profile {
     width: min(100%, 900px);
     transform: none;
@@ -22,6 +26,13 @@
 
 .profile-page .community-profile-head {
     justify-content: center;
+}
+
+.profile-page .profile-hero-menu {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 3;
 }
 
 .profile-page .community-profile-identity {
