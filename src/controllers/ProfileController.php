@@ -57,6 +57,20 @@ class ProfileController extends CommunityController
 
         $profileUserId = (int) $profile['id'];
         $isOwnProfile = $profileUserId === $currentUserId;
+        $canViewFullName = $isOwnProfile || (($profile['privacy_full_name_visibility'] ?? 'public') === 'public');
+        $canViewMembershipTier = $isOwnProfile || (($profile['privacy_membership_visibility'] ?? 'public') === 'public');
+        $canViewPosts = $isOwnProfile || (($profile['privacy_profile_posts_visibility'] ?? 'public') === 'public');
+        $canViewListings = $isOwnProfile || (($profile['privacy_profile_listings_visibility'] ?? 'public') === 'public');
+        $activityScopes = [];
+        if ($canViewPosts) {
+            $activityScopes['posts'] = 'Posty';
+        }
+        if ($canViewListings) {
+            $activityScopes['listings'] = 'Ogłoszenia';
+        }
+        if (!array_key_exists($activityScope, $activityScopes)) {
+            $activityScope = array_key_first($activityScopes) ?? 'none';
+        }
         $listingVisibility = $isOwnProfile
             ? $this->resolveProfileListingVisibility((string) ($_GET['listing_visibility'] ?? 'all'))
             : 'active';
@@ -107,6 +121,15 @@ class ProfileController extends CommunityController
                     'next_offset' => $feedPage['next_offset'],
                 ]);
             }
+
+            $this->jsonResponse([
+                'success' => true,
+                'html' => '',
+                'has_more' => false,
+                'next_cursor_created_at' => null,
+                'next_cursor_id' => null,
+                'next_offset' => 0,
+            ]);
         }
 
         $posts = [];
@@ -144,6 +167,11 @@ class ProfileController extends CommunityController
             'title' => $profile['display_name'],
             'profile' => $profile,
             'isOwnProfile' => $isOwnProfile,
+            'canViewFullName' => $canViewFullName,
+            'canViewMembershipTier' => $canViewMembershipTier,
+            'canViewPosts' => $canViewPosts,
+            'canViewListings' => $canViewListings,
+            'activityScopes' => $activityScopes,
             'activityScope' => $activityScope,
             'listingVisibility' => $listingVisibility,
             'posts' => $posts,

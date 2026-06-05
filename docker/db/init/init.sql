@@ -30,6 +30,18 @@ CREATE TABLE user_settings (
     insurance_reminders BOOLEAN NOT NULL DEFAULT TRUE,
     privacy_profile_visibility VARCHAR(20) NOT NULL DEFAULT 'private'
         CHECK (privacy_profile_visibility IN ('private', 'friends', 'public')),
+    privacy_full_name_visibility VARCHAR(20) NOT NULL DEFAULT 'public'
+        CHECK (privacy_full_name_visibility IN ('public', 'private')),
+    privacy_membership_visibility VARCHAR(20) NOT NULL DEFAULT 'public'
+        CHECK (privacy_membership_visibility IN ('public', 'private')),
+    privacy_profile_posts_visibility VARCHAR(20) NOT NULL DEFAULT 'public'
+        CHECK (privacy_profile_posts_visibility IN ('public', 'private')),
+    privacy_profile_listings_visibility VARCHAR(20) NOT NULL DEFAULT 'public'
+        CHECK (privacy_profile_listings_visibility IN ('public', 'private')),
+    app_distance_unit VARCHAR(10) NOT NULL DEFAULT 'km'
+        CHECK (app_distance_unit IN ('km', 'mi')),
+    app_consumption_format VARCHAR(20) NOT NULL DEFAULT 'l_100km'
+        CHECK (app_consumption_format IN ('l_100km', 'km_l')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

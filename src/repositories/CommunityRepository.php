@@ -805,10 +805,15 @@ class CommunityRepository
                 u.avatar_path,
                 CONCAT(u.first_name, ' ', u.last_name) AS full_name,
                 u.membership_tier,
+                COALESCE(us.privacy_full_name_visibility, 'public') AS privacy_full_name_visibility,
+                COALESCE(us.privacy_membership_visibility, 'public') AS privacy_membership_visibility,
+                COALESCE(us.privacy_profile_posts_visibility, 'public') AS privacy_profile_posts_visibility,
+                COALESCE(us.privacy_profile_listings_visibility, 'public') AS privacy_profile_listings_visibility,
                 COALESCE(vehicle_counts.vehicle_count, 0) AS vehicle_count,
                 COALESCE(post_counts.post_count, 0) AS post_count,
                 COALESCE(listing_counts.listing_count, 0) AS listing_count
             FROM users u
+            LEFT JOIN user_settings us ON us.user_id = u.id
             LEFT JOIN LATERAL (
                 SELECT COUNT(*)::INTEGER AS vehicle_count
                 FROM vehicles v
@@ -847,6 +852,10 @@ class CommunityRepository
             'full_name' => $row['full_name'],
             'display_name' => $row['pseudonym'] ?: $row['full_name'],
             'membership_tier' => strtoupper((string) $row['membership_tier']) . ' MEMBER',
+            'privacy_full_name_visibility' => (string) ($row['privacy_full_name_visibility'] ?? 'public'),
+            'privacy_membership_visibility' => (string) ($row['privacy_membership_visibility'] ?? 'public'),
+            'privacy_profile_posts_visibility' => (string) ($row['privacy_profile_posts_visibility'] ?? 'public'),
+            'privacy_profile_listings_visibility' => (string) ($row['privacy_profile_listings_visibility'] ?? 'public'),
             'vehicle_count' => (int) $row['vehicle_count'],
             'post_count' => (int) $row['post_count'],
             'listing_count' => (int) $row['listing_count'],

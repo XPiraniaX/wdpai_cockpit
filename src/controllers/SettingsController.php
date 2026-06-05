@@ -29,6 +29,10 @@ class SettingsController extends AppController
             'new_password_confirmation' => '',
         ];
         $securityErrors = [];
+        $privacyForm = $repository->getPrivacySettings($currentUserId);
+        $privacyErrors = [];
+        $applicationForm = $repository->getApplicationSettings($currentUserId);
+        $applicationErrors = [];
 
         if ($this->isPost()) {
             $action = (string) ($_POST['action'] ?? '');
@@ -143,6 +147,78 @@ class SettingsController extends AppController
                     ], 422);
                 }
             }
+
+            if ($action === 'save_privacy_settings') {
+                $privacyForm = [
+                    'privacy_full_name_visibility' => trim((string) ($_POST['privacy_full_name_visibility'] ?? 'public')),
+                    'privacy_membership_visibility' => trim((string) ($_POST['privacy_membership_visibility'] ?? 'public')),
+                    'privacy_profile_posts_visibility' => trim((string) ($_POST['privacy_profile_posts_visibility'] ?? 'public')),
+                    'privacy_profile_listings_visibility' => trim((string) ($_POST['privacy_profile_listings_visibility'] ?? 'public')),
+                ];
+
+                $privacyErrors = $this->validatePrivacyForm($privacyForm);
+
+                if ($privacyErrors === []) {
+                    try {
+                        $repository->updatePrivacySettings($currentUserId, $privacyForm);
+
+                        if ($this->isAjaxRequest()) {
+                            $this->jsonResponse([
+                                'success' => true,
+                                'message' => 'Ustawienia prywatności zostały zaktualizowane.',
+                                'form' => $privacyForm,
+                            ]);
+                        }
+
+                        $this->setFlash('success', 'Ustawienia prywatności zostały zaktualizowane.');
+                        $this->redirect('/settings');
+                    } catch (Throwable) {
+                        $privacyErrors['form'] = 'Nie udało się zapisać ustawień prywatności. Spróbuj ponownie za chwilę.';
+                    }
+                }
+
+                if ($this->isAjaxRequest()) {
+                    $this->jsonResponse([
+                        'success' => false,
+                        'errors' => $privacyErrors,
+                    ], 422);
+                }
+            }
+
+            if ($action === 'save_application_settings') {
+                $applicationForm = [
+                    'app_distance_unit' => 'km',
+                    'app_consumption_format' => trim((string) ($_POST['app_consumption_format'] ?? 'l_100km')),
+                ];
+
+                $applicationErrors = $this->validateApplicationForm($applicationForm);
+
+                if ($applicationErrors === []) {
+                    try {
+                        $repository->updateApplicationSettings($currentUserId, $applicationForm);
+
+                        if ($this->isAjaxRequest()) {
+                            $this->jsonResponse([
+                                'success' => true,
+                                'message' => 'Ustawienia aplikacji zostały zaktualizowane.',
+                                'form' => $applicationForm,
+                            ]);
+                        }
+
+                        $this->setFlash('success', 'Ustawienia aplikacji zostały zaktualizowane.');
+                        $this->redirect('/settings');
+                    } catch (Throwable) {
+                        $applicationErrors['form'] = 'Nie udało się zapisać ustawień aplikacji. Spróbuj ponownie za chwilę.';
+                    }
+                }
+
+                if ($this->isAjaxRequest()) {
+                    $this->jsonResponse([
+                        'success' => false,
+                        'errors' => $applicationErrors,
+                    ], 422);
+                }
+            }
         }
 
         $this->render('settings', [
@@ -152,6 +228,10 @@ class SettingsController extends AppController
             'accountErrors' => $accountErrors,
             'securityForm' => $securityForm,
             'securityErrors' => $securityErrors,
+            'privacyForm' => $privacyForm,
+            'privacyErrors' => $privacyErrors,
+            'applicationForm' => $applicationForm,
+            'applicationErrors' => $applicationErrors,
         ]);
     }
 
@@ -236,6 +316,40 @@ class SettingsController extends AppController
 
         if ($this->canAuthenticate((string) $authData['password'], $form['new_password'])) {
             $errors['new_password'] = 'Nowe hasło musi różnić się od aktualnego.';
+        }
+
+        return $errors;
+    }
+
+    private function validatePrivacyForm(array $form): array
+    {
+        $errors = [];
+        $allowedValues = ['public', 'private'];
+
+        foreach ([
+            'privacy_full_name_visibility',
+            'privacy_membership_visibility',
+            'privacy_profile_posts_visibility',
+            'privacy_profile_listings_visibility',
+        ] as $field) {
+            if (!in_array($form[$field] ?? '', $allowedValues, true)) {
+                $errors[$field] = 'Wybierz poprawną wartość ustawienia.';
+            }
+        }
+
+        return $errors;
+    }
+
+    private function validateApplicationForm(array $form): array
+    {
+        $errors = [];
+
+        if (($form['app_distance_unit'] ?? 'km') !== 'km') {
+            $errors['app_distance_unit'] = 'Jednostka przebiegu jest obecnie zablokowana na kilometry.';
+        }
+
+        if (!in_array(($form['app_consumption_format'] ?? ''), ['l_100km', 'km_l'], true)) {
+            $errors['app_consumption_format'] = 'Wybierz poprawny format spalania.';
         }
 
         return $errors;

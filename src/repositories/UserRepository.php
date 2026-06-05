@@ -2,6 +2,8 @@
 
 class UserRepository
 {
+    private ?bool $hasApplicationSettingsColumns = null;
+
     public function __construct(private PDO $connection)
     {
     }
@@ -205,29 +207,85 @@ class UserRepository
 
             $userId = (int) $userStatement->fetchColumn();
 
-            $settingsStatement = $this->connection->prepare(
-                'INSERT INTO user_settings (
-                    user_id,
-                    email_notifications,
-                    push_notifications,
-                    maintenance_reminders,
-                    inspection_reminders,
-                    insurance_reminders,
-                    privacy_profile_visibility
-                ) VALUES (
-                    :user_id,
-                    TRUE,
-                    FALSE,
-                    TRUE,
-                    TRUE,
-                    TRUE,
-                    :privacy_profile_visibility
-                )'
-            );
-            $settingsStatement->execute([
-                'user_id' => $userId,
-                'privacy_profile_visibility' => 'private',
-            ]);
+            if ($this->hasApplicationSettingsColumns()) {
+                $settingsStatement = $this->connection->prepare(
+                    'INSERT INTO user_settings (
+                        user_id,
+                        email_notifications,
+                        push_notifications,
+                        maintenance_reminders,
+                        inspection_reminders,
+                        insurance_reminders,
+                        privacy_profile_visibility,
+                        privacy_full_name_visibility,
+                        privacy_membership_visibility,
+                        privacy_profile_posts_visibility,
+                        privacy_profile_listings_visibility,
+                        app_distance_unit,
+                        app_consumption_format
+                    ) VALUES (
+                        :user_id,
+                        TRUE,
+                        FALSE,
+                        TRUE,
+                        TRUE,
+                        TRUE,
+                        :privacy_profile_visibility,
+                        :privacy_full_name_visibility,
+                        :privacy_membership_visibility,
+                        :privacy_profile_posts_visibility,
+                        :privacy_profile_listings_visibility,
+                        :app_distance_unit,
+                        :app_consumption_format
+                    )'
+                );
+                $settingsStatement->execute([
+                    'user_id' => $userId,
+                    'privacy_profile_visibility' => 'private',
+                    'privacy_full_name_visibility' => 'public',
+                    'privacy_membership_visibility' => 'public',
+                    'privacy_profile_posts_visibility' => 'public',
+                    'privacy_profile_listings_visibility' => 'public',
+                    'app_distance_unit' => 'km',
+                    'app_consumption_format' => 'l_100km',
+                ]);
+            } else {
+                $settingsStatement = $this->connection->prepare(
+                    'INSERT INTO user_settings (
+                        user_id,
+                        email_notifications,
+                        push_notifications,
+                        maintenance_reminders,
+                        inspection_reminders,
+                        insurance_reminders,
+                        privacy_profile_visibility,
+                        privacy_full_name_visibility,
+                        privacy_membership_visibility,
+                        privacy_profile_posts_visibility,
+                        privacy_profile_listings_visibility
+                    ) VALUES (
+                        :user_id,
+                        TRUE,
+                        FALSE,
+                        TRUE,
+                        TRUE,
+                        TRUE,
+                        :privacy_profile_visibility,
+                        :privacy_full_name_visibility,
+                        :privacy_membership_visibility,
+                        :privacy_profile_posts_visibility,
+                        :privacy_profile_listings_visibility
+                    )'
+                );
+                $settingsStatement->execute([
+                    'user_id' => $userId,
+                    'privacy_profile_visibility' => 'private',
+                    'privacy_full_name_visibility' => 'public',
+                    'privacy_membership_visibility' => 'public',
+                    'privacy_profile_posts_visibility' => 'public',
+                    'privacy_profile_listings_visibility' => 'public',
+                ]);
+            }
 
             $this->connection->commit();
 
@@ -324,6 +382,101 @@ class UserRepository
         ]);
     }
 
+    public function getPrivacySettings(int $userId): array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT
+                privacy_full_name_visibility,
+                privacy_membership_visibility,
+                privacy_profile_posts_visibility,
+                privacy_profile_listings_visibility
+            FROM user_settings
+            WHERE user_id = :user_id
+            LIMIT 1'
+        );
+        $statement->execute([
+            'user_id' => $userId,
+        ]);
+
+        $row = $statement->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        return [
+            'privacy_full_name_visibility' => (string) ($row['privacy_full_name_visibility'] ?? 'public'),
+            'privacy_membership_visibility' => (string) ($row['privacy_membership_visibility'] ?? 'public'),
+            'privacy_profile_posts_visibility' => (string) ($row['privacy_profile_posts_visibility'] ?? 'public'),
+            'privacy_profile_listings_visibility' => (string) ($row['privacy_profile_listings_visibility'] ?? 'public'),
+        ];
+    }
+
+    public function updatePrivacySettings(int $userId, array $settings): void
+    {
+        $statement = $this->connection->prepare(
+            'UPDATE user_settings
+            SET privacy_full_name_visibility = :privacy_full_name_visibility,
+                privacy_membership_visibility = :privacy_membership_visibility,
+                privacy_profile_posts_visibility = :privacy_profile_posts_visibility,
+                privacy_profile_listings_visibility = :privacy_profile_listings_visibility,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = :user_id'
+        );
+        $statement->execute([
+            'user_id' => $userId,
+            'privacy_full_name_visibility' => $settings['privacy_full_name_visibility'],
+            'privacy_membership_visibility' => $settings['privacy_membership_visibility'],
+            'privacy_profile_posts_visibility' => $settings['privacy_profile_posts_visibility'],
+            'privacy_profile_listings_visibility' => $settings['privacy_profile_listings_visibility'],
+        ]);
+    }
+
+    public function getApplicationSettings(int $userId): array
+    {
+        if (!$this->hasApplicationSettingsColumns()) {
+            return [
+                'app_distance_unit' => 'km',
+                'app_consumption_format' => 'l_100km',
+            ];
+        }
+
+        $statement = $this->connection->prepare(
+            'SELECT
+                app_distance_unit,
+                app_consumption_format
+            FROM user_settings
+            WHERE user_id = :user_id
+            LIMIT 1'
+        );
+        $statement->execute([
+            'user_id' => $userId,
+        ]);
+
+        $row = $statement->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        return [
+            'app_distance_unit' => (string) ($row['app_distance_unit'] ?? 'km'),
+            'app_consumption_format' => (string) ($row['app_consumption_format'] ?? 'l_100km'),
+        ];
+    }
+
+    public function updateApplicationSettings(int $userId, array $settings): void
+    {
+        if (!$this->hasApplicationSettingsColumns()) {
+            return;
+        }
+
+        $statement = $this->connection->prepare(
+            'UPDATE user_settings
+            SET app_distance_unit = :app_distance_unit,
+                app_consumption_format = :app_consumption_format,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = :user_id'
+        );
+        $statement->execute([
+            'user_id' => $userId,
+            'app_distance_unit' => $settings['app_distance_unit'],
+            'app_consumption_format' => $settings['app_consumption_format'],
+        ]);
+    }
+
     public function deactivateAccount(int $userId): void
     {
         $this->connection->beginTransaction();
@@ -402,5 +555,27 @@ class UserRepository
             $this->connection->rollBack();
             throw $exception;
         }
+    }
+
+    private function hasApplicationSettingsColumns(): bool
+    {
+        if ($this->hasApplicationSettingsColumns !== null) {
+            return $this->hasApplicationSettingsColumns;
+        }
+
+        $statement = $this->connection->query(
+            "SELECT COUNT(*)::INTEGER
+            FROM information_schema.columns
+            WHERE table_name = 'user_settings'
+                AND table_schema = current_schema()
+                AND column_name IN (
+                    'app_distance_unit',
+                    'app_consumption_format'
+                )"
+        );
+
+        $this->hasApplicationSettingsColumns = ((int) $statement->fetchColumn()) === 2;
+
+        return $this->hasApplicationSettingsColumns;
     }
 }

@@ -289,6 +289,8 @@ if (settingsRoot) {
     const resetButton = settingsRoot.querySelector('[data-settings-reset-defaults]');
     const accountForm = settingsRoot.querySelector('[data-settings-account-form]');
     const securityForm = settingsRoot.querySelector('[data-settings-security-form]');
+    const privacyForm = settingsRoot.querySelector('[data-settings-privacy-form]');
+    const applicationForm = settingsRoot.querySelector('[data-settings-application-form]');
     const logoutForm = settingsRoot.querySelector('[data-settings-logout-form]');
     const deleteAccountForm = settingsRoot.querySelector('[data-settings-delete-account-form]');
     const deleteAccountButton = settingsRoot.querySelector('.settings-panel-danger .settings-button-ghost-danger');
@@ -400,6 +402,80 @@ if (settingsRoot) {
         });
     }
 
+    if (privacyForm instanceof HTMLFormElement) {
+        privacyForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const confirmed = await openSettingsConfirmModal({
+                kicker: 'Zmiana prywatności',
+                title: 'Zapisać ustawienia prywatności?',
+                message: 'Czy na pewno chcesz zaktualizować ustawienia widoczności profilu? Zmiany zaczną działać od razu po zapisie.',
+                confirmLabel: 'Zapisz prywatność',
+            });
+
+            if (!confirmed) {
+                return;
+            }
+
+            const { success, payload } = await submitSettingsForm(privacyForm);
+            if (!success) {
+                return;
+            }
+
+            if (payload.form && typeof payload.form === 'object') {
+                Object.entries(payload.form).forEach(([key, value]) => {
+                    const field = privacyForm.querySelector(`[name="${key}"]`);
+                    if (field instanceof HTMLSelectElement) {
+                        field.value = String(value ?? '');
+                    }
+                });
+            }
+
+            syncDefaultSnapshot();
+
+            if (typeof window.showAppToast === 'function') {
+                window.showAppToast(payload.message || 'Ustawienia prywatności zostały zaktualizowane.', 'success');
+            }
+        });
+    }
+
+    if (applicationForm instanceof HTMLFormElement) {
+        applicationForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const confirmed = await openSettingsConfirmModal({
+                kicker: 'Zmiana ustawień aplikacji',
+                title: 'Zapisać ustawienia aplikacji?',
+                message: 'Czy na pewno chcesz zaktualizować format spalania? Zmiana zacznie działać od razu w szczegółach pojazdu.',
+                confirmLabel: 'Zapisz aplikację',
+            });
+
+            if (!confirmed) {
+                return;
+            }
+
+            const { success, payload } = await submitSettingsForm(applicationForm);
+            if (!success) {
+                return;
+            }
+
+            if (payload.form && typeof payload.form === 'object') {
+                Object.entries(payload.form).forEach(([key, value]) => {
+                    const field = applicationForm.querySelector(`[name="${key}"]`);
+                    if (field instanceof HTMLSelectElement || field instanceof HTMLInputElement) {
+                        field.value = String(value ?? '');
+                    }
+                });
+            }
+
+            syncDefaultSnapshot();
+
+            if (typeof window.showAppToast === 'function') {
+                window.showAppToast(payload.message || 'Ustawienia aplikacji zostały zaktualizowane.', 'success');
+            }
+        });
+    }
+
     if (resetButton instanceof HTMLButtonElement) {
         resetButton.addEventListener('click', () => {
             defaultSnapshot.forEach((item) => {
@@ -437,6 +513,14 @@ if (settingsRoot) {
             if (securityForm instanceof HTMLFormElement) {
                 clearFormErrors(securityForm);
                 syncPasswordConfirmationWarning();
+            }
+
+            if (privacyForm instanceof HTMLFormElement) {
+                clearFormErrors(privacyForm);
+            }
+
+            if (applicationForm instanceof HTMLFormElement) {
+                clearFormErrors(applicationForm);
             }
 
             if (typeof window.showAppToast === 'function') {

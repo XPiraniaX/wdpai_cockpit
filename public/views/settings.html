@@ -138,66 +138,127 @@
                     <div class="settings-panel-kicker">Prywatność</div>
                     <h2 class="settings-panel-title">Widoczność profilu</h2>
 
-                    <div class="settings-stack">
-                        <div class="settings-setting">
-                            <div class="settings-setting-copy">
-                                <div class="settings-setting-title">Kto widzi imię i nazwisko</div>
-                            </div>
-                            <select class="settings-select">
-                                <option>Wszyscy</option>
-                                <option>Tylko znajomi</option>
-                                <option>Tylko ja</option>
-                            </select>
+                    <form method="post" class="settings-privacy-form" data-settings-privacy-form novalidate>
+                        <input type="hidden" name="action" value="save_privacy_settings">
+
+                        <div class="settings-stack">
+                            <label class="settings-setting">
+                                <span class="settings-setting-copy">
+                                    <span class="settings-setting-title">Kto widzi imię i nazwisko</span>
+                                </span>
+                                <span class="settings-setting-control">
+                                    <select name="privacy_full_name_visibility" class="settings-select<?= !empty($privacyErrors['privacy_full_name_visibility']) ? ' is-invalid' : ''; ?>">
+                                        <option value="public"<?= ($privacyForm['privacy_full_name_visibility'] ?? 'public') === 'public' ? ' selected' : ''; ?>>Wszyscy</option>
+                                        <option value="private"<?= ($privacyForm['privacy_full_name_visibility'] ?? 'public') === 'private' ? ' selected' : ''; ?>>Tylko ja</option>
+                                    </select>
+                                    <span class="settings-field-error" data-settings-error-for="privacy_full_name_visibility"<?= empty($privacyErrors['privacy_full_name_visibility']) ? ' hidden' : ''; ?>><?= htmlspecialchars((string) ($privacyErrors['privacy_full_name_visibility'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                                </span>
+                            </label>
+
+                            <label class="settings-setting">
+                                <span class="settings-setting-copy">
+                                    <span class="settings-setting-title">Kto widzi status member</span>
+                                </span>
+                                <span class="settings-setting-control">
+                                    <select name="privacy_membership_visibility" class="settings-select<?= !empty($privacyErrors['privacy_membership_visibility']) ? ' is-invalid' : ''; ?>">
+                                        <option value="public"<?= ($privacyForm['privacy_membership_visibility'] ?? 'public') === 'public' ? ' selected' : ''; ?>>Wszyscy</option>
+                                        <option value="private"<?= ($privacyForm['privacy_membership_visibility'] ?? 'public') === 'private' ? ' selected' : ''; ?>>Tylko ja</option>
+                                    </select>
+                                    <span class="settings-field-error" data-settings-error-for="privacy_membership_visibility"<?= empty($privacyErrors['privacy_membership_visibility']) ? ' hidden' : ''; ?>><?= htmlspecialchars((string) ($privacyErrors['privacy_membership_visibility'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                                </span>
+                            </label>
+
+                            <label class="settings-setting">
+                                <span class="settings-setting-copy">
+                                    <span class="settings-setting-title">Kto widzi posty na profilu</span>
+                                </span>
+                                <span class="settings-setting-control">
+                                    <select name="privacy_profile_posts_visibility" class="settings-select<?= !empty($privacyErrors['privacy_profile_posts_visibility']) ? ' is-invalid' : ''; ?>">
+                                        <option value="public"<?= ($privacyForm['privacy_profile_posts_visibility'] ?? 'public') === 'public' ? ' selected' : ''; ?>>Wszyscy</option>
+                                        <option value="private"<?= ($privacyForm['privacy_profile_posts_visibility'] ?? 'public') === 'private' ? ' selected' : ''; ?>>Tylko ja</option>
+                                    </select>
+                                    <span class="settings-field-error" data-settings-error-for="privacy_profile_posts_visibility"<?= empty($privacyErrors['privacy_profile_posts_visibility']) ? ' hidden' : ''; ?>><?= htmlspecialchars((string) ($privacyErrors['privacy_profile_posts_visibility'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                                </span>
+                            </label>
+
+                            <label class="settings-setting">
+                                <span class="settings-setting-copy">
+                                    <span class="settings-setting-title">Kto widzi ogłoszenia na profilu</span>
+                                </span>
+                                <span class="settings-setting-control">
+                                    <select name="privacy_profile_listings_visibility" class="settings-select<?= !empty($privacyErrors['privacy_profile_listings_visibility']) ? ' is-invalid' : ''; ?>">
+                                        <option value="public"<?= ($privacyForm['privacy_profile_listings_visibility'] ?? 'public') === 'public' ? ' selected' : ''; ?>>Wszyscy</option>
+                                        <option value="private"<?= ($privacyForm['privacy_profile_listings_visibility'] ?? 'public') === 'private' ? ' selected' : ''; ?>>Tylko ja</option>
+                                    </select>
+                                    <span class="settings-field-error" data-settings-error-for="privacy_profile_listings_visibility"<?= empty($privacyErrors['privacy_profile_listings_visibility']) ? ' hidden' : ''; ?>><?= htmlspecialchars((string) ($privacyErrors['privacy_profile_listings_visibility'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                                </span>
+                            </label>
                         </div>
 
-                        <div class="settings-setting">
-                            <div class="settings-setting-copy">
-                                <div class="settings-setting-title">Widoczność profilu</div>
-                            </div>
-                            <select class="settings-select">
-                                <option>Publiczny</option>
-                                <option>Prywatny</option>
-                            </select>
+                        <div class="settings-form-error" data-settings-form-error<?= empty($privacyErrors['form']) ? ' hidden' : ''; ?>>
+                            <?= htmlspecialchars((string) ($privacyErrors['form'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
                         </div>
-                    </div>
+
+                        <div class="settings-actions-row">
+                            <button type="submit" class="settings-button settings-button-primary">Zapisz prywatność</button>
+                        </div>
+                    </form>
                 </article>
 
                 <article class="settings-panel">
                     <div class="settings-panel-kicker">Aplikacja</div>
                     <h2 class="settings-panel-title">Język i jednostki</h2>
 
-                    <div class="settings-stack">
-                        <div class="settings-setting">
-                            <div class="settings-setting-copy">
-                                <div class="settings-setting-title">Język aplikacji</div>
-                            </div>
-                            <select class="settings-select">
-                                <option selected>Polski</option>
-                                <option>English</option>
-                                <option>Deutsch</option>
-                            </select>
+                    <form method="post" class="settings-application-form" data-settings-application-form novalidate>
+                        <input type="hidden" name="action" value="save_application_settings">
+                        <input type="hidden" name="app_distance_unit" value="km">
+
+                        <div class="settings-stack">
+                            <label class="settings-setting">
+                                <span class="settings-setting-copy">
+                                    <span class="settings-setting-title">Język aplikacji</span>
+                                </span>
+                                <span class="settings-setting-control">
+                                    <select class="settings-select" disabled>
+                                        <option selected>Polski</option>
+                                    </select>
+                                </span>
+                            </label>
+
+                            <label class="settings-setting">
+                                <span class="settings-setting-copy">
+                                    <span class="settings-setting-title">Jednostka przebiegu</span>
+                                </span>
+                                <span class="settings-setting-control">
+                                    <select class="settings-select" disabled>
+                                        <option selected>Kilometry</option>
+                                    </select>
+                                    <span class="settings-field-error" data-settings-error-for="app_distance_unit"<?= empty($applicationErrors['app_distance_unit']) ? ' hidden' : ''; ?>><?= htmlspecialchars((string) ($applicationErrors['app_distance_unit'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                                </span>
+                            </label>
+
+                            <label class="settings-setting">
+                                <span class="settings-setting-copy">
+                                    <span class="settings-setting-title">Format spalania</span>
+                                </span>
+                                <span class="settings-setting-control">
+                                    <select name="app_consumption_format" class="settings-select<?= !empty($applicationErrors['app_consumption_format']) ? ' is-invalid' : ''; ?>">
+                                        <option value="l_100km"<?= ($applicationForm['app_consumption_format'] ?? 'l_100km') === 'l_100km' ? ' selected' : ''; ?>>L / 100 km</option>
+                                        <option value="km_l"<?= ($applicationForm['app_consumption_format'] ?? 'l_100km') === 'km_l' ? ' selected' : ''; ?>>km / L</option>
+                                    </select>
+                                    <span class="settings-field-error" data-settings-error-for="app_consumption_format"<?= empty($applicationErrors['app_consumption_format']) ? ' hidden' : ''; ?>><?= htmlspecialchars((string) ($applicationErrors['app_consumption_format'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                                </span>
+                            </label>
                         </div>
 
-                        <div class="settings-setting">
-                            <div class="settings-setting-copy">
-                                <div class="settings-setting-title">Jednostka przebiegu</div>
-                            </div>
-                            <select class="settings-select">
-                                <option>Kilometry</option>
-                                <option>Mile</option>
-                            </select>
+                        <div class="settings-form-error" data-settings-form-error<?= empty($applicationErrors['form']) ? ' hidden' : ''; ?>>
+                            <?= htmlspecialchars((string) ($applicationErrors['form'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
                         </div>
 
-                        <div class="settings-setting">
-                            <div class="settings-setting-copy">
-                                <div class="settings-setting-title">Format spalania</div>
-                            </div>
-                            <select class="settings-select">
-                                <option>L / 100 km</option>
-                                <option>km / L</option>
-                            </select>
+                        <div class="settings-actions-row">
+                            <button type="submit" class="settings-button settings-button-primary">Zapisz aplikację</button>
                         </div>
-                    </div>
+                    </form>
                 </article>
 
                 <article class="settings-panel settings-panel-danger">
@@ -207,6 +268,10 @@
                     <div class="settings-danger-actions">
                         <form method="post" action="/logout" class="settings-actions" data-settings-logout-form>
                             <button type="submit" class="settings-button settings-button-danger">Wyloguj się</button>
+                        </form>
+
+                        <form method="post" class="settings-delete-account-form" data-settings-delete-account-form hidden>
+                            <input type="hidden" name="action" value="delete_account">
                         </form>
 
                         <button type="button" class="settings-button settings-button-ghost-danger">Usuń konto</button>

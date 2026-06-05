@@ -142,6 +142,10 @@ class CarsController extends AppController
         $allMaintenanceTasks = $repository->getMaintenanceTasks($vehicleId, 50);
         $inspectionHistory = $repository->getInspectionHistory($vehicleId);
         $vehicleImages = $repository->getVehicleImages($userId, $vehicleId);
+        $applicationSettings = (new UserRepository(Database::getConnection()))->getApplicationSettings($userId);
+        $consumptionFormat = $applicationSettings['app_consumption_format'] ?? 'l_100km';
+
+        $averageConsumption = $this->formatRecentConsumption($recentFuelLogs, $consumptionFormat);
 
         return $this->render('vehicle_details', [
             'title' => $vehicle['display_name'],
@@ -168,7 +172,8 @@ class CarsController extends AppController
                 'vin' => $vehicle['vin'] ?: 'Brak danych',
                 'plate' => $vehicle['license_plate'] ?: 'Brak danych',
                 'notes' => $vehicle['notes'] ?: 'Brak dodatkowych notatek.',
-                'averageConsumption' => $this->formatConsumption($vehicle['average_consumption_l_100km'] ?? null),
+                'averageConsumption' => $averageConsumption,
+                'averageConsumptionIsShort' => $averageConsumption === 'Zbyt krótka historia tankowań',
                 'drivetrain' => $vehicle['drivetrain'] ? strtoupper((string) $vehicle['drivetrain']) : 'Brak danych',
                 'fuelType' => $this->formatVehicleFuelType($vehicle['fuel_type'] ?? null),
                 'technicalSpec' => $this->buildTechnicalSpec($vehicle),
@@ -323,13 +328,64 @@ class CarsController extends AppController
         return number_format((int) $mileage, 0, ',', ' ') . ' km';
     }
 
-    private function formatConsumption(float|int|string|null $value): string
+    private function formatConsumption(float|int|string|null $value, string $format = 'l_100km'): string
     {
         if ($value === null || $value === '') {
             return 'Brak danych';
         }
 
-        return number_format((float) $value, 1, ',', ' ') . ' L/100km';
+        $normalizedValue = (float) $value;
+
+        if ($format === 'km_l') {
+            if ($normalizedValue <= 0.0) {
+                return 'Brak danych';
+            }
+
+            return number_format(100 / $normalizedValue, 1, ',', ' ') . ' km/L';
+        }
+
+        return number_format($normalizedValue, 1, ',', ' ') . ' L/100km';
+    }
+
+    private function formatRecentConsumption(array $recentFuelLogs, string $format = 'l_100km'): string
+    {
+        if (count($recentFuelLogs) < 3) {
+            return 'Zbyt krótka historia tankowań';
+        }
+
+        $latestThree = array_values(array_slice($recentFuelLogs, 0, 3));
+        $oldest = $latestThree[2];
+        $middle = $latestThree[1];
+        $newest = $latestThree[0];
+
+        $oldestMileage = isset($oldest['mileage_km']) ? (int) $oldest['mileage_km'] : null;
+        $middleMileage = isset($middle['mileage_km']) ? (int) $middle['mileage_km'] : null;
+        $newestMileage = isset($newest['mileage_km']) ? (int) $newest['mileage_km'] : null;
+        $middleLiters = isset($middle['liters']) ? (float) $middle['liters'] : null;
+        $newestLiters = isset($newest['liters']) ? (float) $newest['liters'] : null;
+
+        if (
+            $oldestMileage === null
+            || $middleMileage === null
+            || $newestMileage === null
+            || $middleLiters === null
+            || $newestLiters === null
+        ) {
+            return 'Zbyt krótka historia tankowań';
+        }
+
+        $distanceFirst = $middleMileage - $oldestMileage;
+        $distanceSecond = $newestMileage - $middleMileage;
+        $totalDistance = $distanceFirst + $distanceSecond;
+        $totalLiters = $middleLiters + $newestLiters;
+
+        if ($distanceFirst <= 0 || $distanceSecond <= 0 || $totalDistance <= 0 || $totalLiters <= 0) {
+            return 'Zbyt krótka historia tankowań';
+        }
+
+        $consumptionL100 = ($totalLiters / $totalDistance) * 100;
+
+        return $this->formatConsumption($consumptionL100, $format);
     }
 
     private function formatBodyType(?string $bodyType): string

@@ -304,6 +304,14 @@
     gap: 4px;
 }
 
+.settings-setting-control {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+    min-width: 220px;
+}
+
 .settings-setting-title {
     color: #eef4ff;
     font-size: 15px;
@@ -535,6 +543,12 @@
     .settings-setting {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .settings-setting-control {
+        width: 100%;
+        min-width: 0;
+        align-items: stretch;
     }
 }
 

@@ -3,11 +3,6 @@ $profileBasePath = !empty($profile['pseudonym'])
     ? '/profile/' . rawurlencode((string) $profile['pseudonym'])
     : '/profile?id=' . (int) $profile['id'];
 
-$activityScopes = [
-    'posts' => 'Posty',
-    'listings' => 'Ogłoszenia',
-];
-
 $listingScopes = [
     'all' => 'Wszystkie',
     'active' => 'Aktywne',
@@ -16,6 +11,15 @@ $listingScopes = [
 
 $composerUserName = $currentUser['display_name'] ?? ($currentUser['full_name'] ?? 'Użytkownik');
 $profileAvatarPath = trim((string) ($profile['avatar_path'] ?? ''));
+$profileMetaParts = [];
+
+if (!empty($canViewFullName)) {
+    $profileMetaParts[] = (string) $profile['full_name'];
+}
+
+if (!empty($canViewMembershipTier)) {
+    $profileMetaParts[] = (string) $profile['membership_tier'];
+}
 ?>
 <main class="profile-page community-page community-profile-page">
     <div class="community-shell community-shell-profile">
@@ -61,11 +65,11 @@ $profileAvatarPath = trim((string) ($profile['avatar_path'] ?? ''));
                     </div>
                     <div class="community-profile-copy">
                         <h1 class="community-title"><?= htmlspecialchars($profile['display_name'], ENT_QUOTES, 'UTF-8'); ?></h1>
-                        <p class="community-subtitle">
-                            <?= htmlspecialchars($profile['full_name'], ENT_QUOTES, 'UTF-8'); ?>
-                            •
-                            <?= htmlspecialchars($profile['membership_tier'], ENT_QUOTES, 'UTF-8'); ?>
-                        </p>
+                        <?php if ($profileMetaParts !== []): ?>
+                            <p class="community-subtitle">
+                                <?= htmlspecialchars(implode(' • ', $profileMetaParts), ENT_QUOTES, 'UTF-8'); ?>
+                            </p>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -75,35 +79,39 @@ $profileAvatarPath = trim((string) ($profile['avatar_path'] ?? ''));
                     <span class="community-profile-stat-value" data-profile-stat="vehicles"><?= (int) $profile['vehicle_count']; ?></span>
                     <span class="community-profile-stat-label">Samochody</span>
                 </div>
-                <div class="community-profile-stat">
-                    <span class="community-profile-stat-value" data-profile-stat="posts"><?= (int) $profile['post_count']; ?></span>
-                    <span class="community-profile-stat-label">Posty</span>
-                </div>
-                <div class="community-profile-stat">
-                    <span class="community-profile-stat-value" data-profile-stat="listings"><?= (int) $profile['listing_count']; ?></span>
-                    <span class="community-profile-stat-label">Ogłoszenia</span>
-                </div>
+                <?php if (!empty($canViewPosts)): ?>
+                    <div class="community-profile-stat">
+                        <span class="community-profile-stat-value" data-profile-stat="posts"><?= (int) $profile['post_count']; ?></span>
+                        <span class="community-profile-stat-label">Posty</span>
+                    </div>
+                <?php endif; ?>
+                <?php if (!empty($canViewListings)): ?>
+                    <div class="community-profile-stat">
+                        <span class="community-profile-stat-value" data-profile-stat="listings"><?= (int) $profile['listing_count']; ?></span>
+                        <span class="community-profile-stat-label">Ogłoszenia</span>
+                    </div>
+                <?php endif; ?>
             </div>
         </section>
 
         <div data-profile-activity-root>
-            <section class="community-profile-filters card">
-                <div class="community-side-heading">Aktywność</div>
-                <div class="community-scope-list community-profile-scope-list">
-                    <?php foreach ($activityScopes as $scopeKey => $scopeLabel): ?>
-                        <?php
-                        $scopePath = $profileBasePath . (str_contains($profileBasePath, '?') ? '&' : '?') . 'scope=' . rawurlencode($scopeKey);
-                        ?>
-                        <a
-                            href="<?= htmlspecialchars($scopePath, ENT_QUOTES, 'UTF-8'); ?>"
-                            class="community-chip<?= $activityScope === $scopeKey ? ' is-active' : ''; ?>"
-                            data-profile-activity-link
-                        >
-                            <?= htmlspecialchars($scopeLabel, ENT_QUOTES, 'UTF-8'); ?>
-                        </a>
-                    <?php endforeach; ?>
-                </div>
-            </section>
+            <?php if ($activityScopes !== []): ?>
+                <section class="community-profile-filters card">
+                    <div class="community-side-heading">Aktywność</div>
+                    <div class="community-scope-list community-profile-scope-list">
+                        <?php foreach ($activityScopes as $scopeKey => $scopeLabel): ?>
+                            <?php $scopePath = $profileBasePath . (str_contains($profileBasePath, '?') ? '&' : '?') . 'scope=' . rawurlencode($scopeKey); ?>
+                            <a
+                                href="<?= htmlspecialchars($scopePath, ENT_QUOTES, 'UTF-8'); ?>"
+                                class="community-chip<?= $activityScope === $scopeKey ? ' is-active' : ''; ?>"
+                                data-profile-activity-link
+                            >
+                                <?= htmlspecialchars($scopeLabel, ENT_QUOTES, 'UTF-8'); ?>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+                </section>
+            <?php endif; ?>
 
             <?php if ($activityScope === 'listings' && $isOwnProfile): ?>
                 <section class="community-profile-filters card">
