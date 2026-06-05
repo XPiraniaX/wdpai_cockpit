@@ -33,6 +33,18 @@ class SettingsController extends AppController
         if ($this->isPost()) {
             $action = (string) ($_POST['action'] ?? '');
 
+            if ($action === 'delete_account') {
+                try {
+                    $repository->deactivateAccount($currentUserId);
+                    $this->logoutUser();
+                    $this->setFlash('success', 'Konto zostało usunięte.');
+                    $this->redirect('/login');
+                } catch (Throwable) {
+                    $this->setFlash('error', 'Nie udało się usunąć konta. Spróbuj ponownie za chwilę.');
+                    $this->redirect('/settings');
+                }
+            }
+
             if ($action === 'save_account_settings') {
                 $accountForm = [
                     'pseudonym' => trim((string) ($_POST['pseudonym'] ?? '')),
@@ -56,11 +68,41 @@ class SettingsController extends AppController
                             $accountForm['pseudonym']
                         );
 
+                        $updatedUser = $repository->getById($currentUserId) ?: $currentUser;
+                        $headerUserName = trim((string) ($updatedUser['pseudonym'] ?? '')) !== ''
+                            ? (string) $updatedUser['pseudonym']
+                            : (string) ($updatedUser['full_name'] ?? 'Użytkownik testowy');
+                        $profilePath = trim((string) ($updatedUser['pseudonym'] ?? '')) !== ''
+                            ? '/profile/' . rawurlencode((string) $updatedUser['pseudonym'])
+                            : '/profile';
+
+                        if ($this->isAjaxRequest()) {
+                            $this->jsonResponse([
+                                'success' => true,
+                                'message' => 'Dane konta zostały zaktualizowane.',
+                                'form' => [
+                                    'pseudonym' => (string) ($updatedUser['pseudonym'] ?? ''),
+                                    'full_name' => trim((string) ($updatedUser['full_name'] ?? '')),
+                                    'email' => (string) ($updatedUser['email'] ?? ''),
+                                    'username' => (string) ($updatedUser['username'] ?? ''),
+                                ],
+                                'header_user_name' => $headerUserName,
+                                'profile_path' => $profilePath,
+                            ]);
+                        }
+
                         $this->setFlash('success', 'Dane konta zostały zaktualizowane.');
                         $this->redirect('/settings');
                     } catch (Throwable) {
                         $accountErrors['form'] = 'Nie udało się zapisać zmian. Spróbuj ponownie za chwilę.';
                     }
+                }
+
+                if ($this->isAjaxRequest()) {
+                    $this->jsonResponse([
+                        'success' => false,
+                        'errors' => $accountErrors,
+                    ], 422);
                 }
             }
 
@@ -80,11 +122,25 @@ class SettingsController extends AppController
                             password_hash($securityForm['new_password'], PASSWORD_DEFAULT)
                         );
 
+                        if ($this->isAjaxRequest()) {
+                            $this->jsonResponse([
+                                'success' => true,
+                                'message' => 'Hasło zostało zmienione.',
+                            ]);
+                        }
+
                         $this->setFlash('success', 'Hasło zostało zmienione.');
                         $this->redirect('/settings');
                     } catch (Throwable) {
                         $securityErrors['form'] = 'Nie udało się zmienić hasła. Spróbuj ponownie za chwilę.';
                     }
+                }
+
+                if ($this->isAjaxRequest()) {
+                    $this->jsonResponse([
+                        'success' => false,
+                        'errors' => $securityErrors,
+                    ], 422);
                 }
             }
         }

@@ -24,7 +24,8 @@ Haslo testowe dla wszystkich seedowanych kont:
 - Zawartosc: `1` samochod
 
 
-### `lenatwo`
+### `lenatwo2`
+- Hasło: Password.1
 - Imie i nazwisko: Lena Krawczyk
 - Typ konta: `business`
 - Zawartosc: `2` samochody

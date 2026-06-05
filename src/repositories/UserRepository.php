@@ -323,4 +323,84 @@ class UserRepository
             'password' => $passwordHash,
         ]);
     }
+
+    public function deactivateAccount(int $userId): void
+    {
+        $this->connection->beginTransaction();
+
+        try {
+            $deletedToken = 'deleted_' . $userId . '_' . gmdate('YmdHis');
+            $deletedEmail = $deletedToken . '@cockpit.local';
+
+            $statement = $this->connection->prepare(
+                'UPDATE community_posts
+                SET is_active = FALSE,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = :user_id
+                    AND is_active = TRUE'
+            );
+            $statement->execute([
+                'user_id' => $userId,
+            ]);
+
+            $statement = $this->connection->prepare(
+                'UPDATE community_comments
+                SET is_active = FALSE
+                WHERE user_id = :user_id
+                    AND is_active = TRUE'
+            );
+            $statement->execute([
+                'user_id' => $userId,
+            ]);
+
+            $statement = $this->connection->prepare(
+                'UPDATE marketplace_listings
+                SET is_active = FALSE,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = :user_id
+                    AND is_active = TRUE'
+            );
+            $statement->execute([
+                'user_id' => $userId,
+            ]);
+
+            $statement = $this->connection->prepare(
+                "UPDATE vehicles
+                SET status = 'archived',
+                    is_primary = FALSE
+                WHERE user_id = :user_id
+                    AND (status <> 'archived' OR is_primary = TRUE)"
+            );
+            $statement->execute([
+                'user_id' => $userId,
+            ]);
+
+            $statement = $this->connection->prepare(
+                'UPDATE users
+                SET username = :username,
+                    email = :email,
+                    pseudonym = NULL,
+                    avatar_path = NULL,
+                    first_name = :first_name,
+                    last_name = :last_name,
+                    membership_tier = :membership_tier,
+                    is_active = FALSE,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = :user_id'
+            );
+            $statement->execute([
+                'user_id' => $userId,
+                'username' => $deletedToken,
+                'email' => $deletedEmail,
+                'first_name' => 'Usunięte',
+                'last_name' => 'konto',
+                'membership_tier' => 'free',
+            ]);
+
+            $this->connection->commit();
+        } catch (Throwable $exception) {
+            $this->connection->rollBack();
+            throw $exception;
+        }
+    }
 }

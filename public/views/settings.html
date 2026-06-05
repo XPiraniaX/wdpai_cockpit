@@ -20,9 +20,7 @@
                                     placeholder="Wpisz pseudonim"
                                     maxlength="80"
                                 >
-                                <?php if (!empty($accountErrors['pseudonym'])): ?>
-                                    <span class="settings-field-error"><?= htmlspecialchars((string) $accountErrors['pseudonym'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                <?php endif; ?>
+                                <span class="settings-field-error" data-settings-error-for="pseudonym"<?= empty($accountErrors['pseudonym']) ? ' hidden' : ''; ?>><?= htmlspecialchars((string) ($accountErrors['pseudonym'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
                             </label>
 
                             <label class="settings-field">
@@ -35,9 +33,7 @@
                                     placeholder="Imię i nazwisko"
                                     maxlength="120"
                                 >
-                                <?php if (!empty($accountErrors['full_name'])): ?>
-                                    <span class="settings-field-error"><?= htmlspecialchars((string) $accountErrors['full_name'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                <?php endif; ?>
+                                <span class="settings-field-error" data-settings-error-for="full_name"<?= empty($accountErrors['full_name']) ? ' hidden' : ''; ?>><?= htmlspecialchars((string) ($accountErrors['full_name'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
                             </label>
 
                             <label class="settings-field">
@@ -50,9 +46,7 @@
                                     placeholder="E-mail"
                                     maxlength="190"
                                 >
-                                <?php if (!empty($accountErrors['email'])): ?>
-                                    <span class="settings-field-error"><?= htmlspecialchars((string) $accountErrors['email'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                <?php endif; ?>
+                                <span class="settings-field-error" data-settings-error-for="email"<?= empty($accountErrors['email']) ? ' hidden' : ''; ?>><?= htmlspecialchars((string) ($accountErrors['email'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
                             </label>
 
                             <label class="settings-field">
@@ -65,17 +59,13 @@
                                     placeholder="Login"
                                     maxlength="40"
                                 >
-                                <?php if (!empty($accountErrors['username'])): ?>
-                                    <span class="settings-field-error"><?= htmlspecialchars((string) $accountErrors['username'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                <?php endif; ?>
+                                <span class="settings-field-error" data-settings-error-for="username"<?= empty($accountErrors['username']) ? ' hidden' : ''; ?>><?= htmlspecialchars((string) ($accountErrors['username'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
                             </label>
                         </div>
 
-                        <?php if (!empty($accountErrors['form'])): ?>
-                            <div class="settings-form-error">
-                                <?= htmlspecialchars((string) $accountErrors['form'], ENT_QUOTES, 'UTF-8'); ?>
-                            </div>
-                        <?php endif; ?>
+                        <div class="settings-form-error" data-settings-form-error<?= empty($accountErrors['form']) ? ' hidden' : ''; ?>>
+                            <?= htmlspecialchars((string) ($accountErrors['form'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
+                        </div>
 
                         <div class="settings-actions-row">
                             <button type="submit" class="settings-button settings-button-primary">Zapisz zmiany</button>
@@ -100,29 +90,23 @@
                                     value="<?= htmlspecialchars((string) ($securityForm['current_password'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                                     placeholder="••••••••"
                                 >
-                                <?php if (!empty($securityErrors['current_password'])): ?>
-                                    <span class="settings-field-error"><?= htmlspecialchars((string) $securityErrors['current_password'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                <?php endif; ?>
+                                <span class="settings-field-error" data-settings-error-for="current_password"<?= empty($securityErrors['current_password']) ? ' hidden' : ''; ?>><?= htmlspecialchars((string) ($securityErrors['current_password'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
                             </label>
 
                             <label class="settings-field">
-                                <span class="settings-field-label settings-field-label-with-tooltip">
-                                    <span>Nowe hasło</span>
-                                    <span class="settings-inline-tooltip-trigger" tabindex="0" aria-label="Wymagania hasła">
-                                        ?
-                                        <span class="settings-inline-tooltip">Minimum 8 znaków. Użyj małych i wielkich liter, cyfr oraz znaku specjalnego.</span>
-                                    </span>
-                                </span>
-                                <input
-                                    type="password"
-                                    name="new_password"
-                                    class="settings-input<?= !empty($securityErrors['new_password']) ? ' is-invalid' : ''; ?>"
-                                    value="<?= htmlspecialchars((string) ($securityForm['new_password'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
-                                    placeholder="Nowe hasło"
-                                >
-                                <?php if (!empty($securityErrors['new_password'])): ?>
-                                    <span class="settings-field-error"><?= htmlspecialchars((string) $securityErrors['new_password'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                <?php endif; ?>
+                                <span class="settings-field-label">Nowe hasło</span>
+                                <div class="settings-input-tooltip-wrap">
+                                    <input
+                                        type="password"
+                                        name="new_password"
+                                        class="settings-input<?= !empty($securityErrors['new_password']) ? ' is-invalid' : ''; ?>"
+                                        value="<?= htmlspecialchars((string) ($securityForm['new_password'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
+                                        placeholder="Nowe hasło"
+                                        data-settings-new-password
+                                    >
+                                    <span class="settings-inline-tooltip">Minimum 8 znaków. Użyj małych i wielkich liter, cyfr oraz znaku specjalnego.</span>
+                                </div>
+                                <span class="settings-field-error" data-settings-error-for="new_password"<?= empty($securityErrors['new_password']) ? ' hidden' : ''; ?>><?= htmlspecialchars((string) ($securityErrors['new_password'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
                             </label>
 
                             <label class="settings-field">
@@ -133,18 +117,16 @@
                                     class="settings-input<?= !empty($securityErrors['new_password_confirmation']) ? ' is-invalid' : ''; ?>"
                                     value="<?= htmlspecialchars((string) ($securityForm['new_password_confirmation'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>"
                                     placeholder="Powtórz nowe hasło"
+                                    data-settings-password-confirmation
                                 >
-                                <?php if (!empty($securityErrors['new_password_confirmation'])): ?>
-                                    <span class="settings-field-error"><?= htmlspecialchars((string) $securityErrors['new_password_confirmation'], ENT_QUOTES, 'UTF-8'); ?></span>
-                                <?php endif; ?>
+                                <span class="settings-field-error" data-settings-error-for="new_password_confirmation"<?= empty($securityErrors['new_password_confirmation']) ? ' hidden' : ''; ?>><?= htmlspecialchars((string) ($securityErrors['new_password_confirmation'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                                <span class="settings-field-error" hidden data-settings-password-match-error>Powtórzone hasło musi być identyczne z nowym hasłem.</span>
                             </label>
                         </div>
 
-                        <?php if (!empty($securityErrors['form'])): ?>
-                            <div class="settings-form-error">
-                                <?= htmlspecialchars((string) $securityErrors['form'], ENT_QUOTES, 'UTF-8'); ?>
-                            </div>
-                        <?php endif; ?>
+                        <div class="settings-form-error" data-settings-form-error<?= empty($securityErrors['form']) ? ' hidden' : ''; ?>>
+                            <?= htmlspecialchars((string) ($securityErrors['form'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
+                        </div>
 
                         <div class="settings-actions-row">
                             <button type="submit" class="settings-button settings-button-primary">Zmień hasło</button>
@@ -223,7 +205,7 @@
                     <h2 class="settings-panel-title">Wylogowanie i usunięcie konta</h2>
 
                     <div class="settings-danger-actions">
-                        <form method="post" action="/logout" class="settings-actions">
+                        <form method="post" action="/logout" class="settings-actions" data-settings-logout-form>
                             <button type="submit" class="settings-button settings-button-danger">Wyloguj się</button>
                         </form>
 

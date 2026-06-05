@@ -65,8 +65,9 @@ const closeSettingsConfirmModal = (accepted = false) => {
 const openSettingsConfirmModal = ({
     kicker = 'Potwierdzenie',
     title = 'Zapisać zmiany?',
-    message = 'Czy na pewno chcesz zapisać zmiany w danych konta?',
+    message = 'Czy na pewno chcesz zapisać zmiany?',
     confirmLabel = 'Zapisz zmiany',
+    confirmButtonClass = 'settings-button-primary',
 } = {}) => {
     const modal = ensureSettingsConfirmModal();
     const kickerElement = modal.querySelector('[data-settings-confirm-kicker]');
@@ -85,6 +86,7 @@ const openSettingsConfirmModal = ({
     titleElement.textContent = title;
     messageElement.textContent = message;
     submitButton.textContent = confirmLabel;
+    submitButton.className = `settings-button ${confirmButtonClass}`;
 
     modal.querySelectorAll('[data-settings-confirm-cancel]').forEach((button) => {
         if (button instanceof HTMLElement && button.dataset.boundSettingsConfirmCancel !== 'true') {
@@ -144,17 +146,177 @@ if (settingsRoot) {
         };
     });
 
-    const resetButton = settingsRoot.querySelector('[data-settings-reset-defaults]');
-    const accountForm = settingsRoot.querySelector('[data-settings-account-form]');
-    const securityForm = settingsRoot.querySelector('[data-settings-security-form]');
+    const syncDefaultSnapshot = () => {
+        defaultSnapshot.forEach((item) => {
+            const control = item.element;
 
-    if (accountForm instanceof HTMLFormElement) {
-        accountForm.addEventListener('submit', async (event) => {
-            if (accountForm.dataset.settingsConfirmed === 'true') {
-                accountForm.dataset.settingsConfirmed = 'false';
+            if (control instanceof HTMLInputElement) {
+                item.value = control.value;
+                item.checked = control.checked;
                 return;
             }
 
+            if (control instanceof HTMLSelectElement) {
+                item.selectedIndex = control.selectedIndex;
+                item.value = control.value;
+                return;
+            }
+
+            if (control instanceof HTMLTextAreaElement) {
+                item.value = control.value;
+            }
+        });
+    };
+
+    const parseJsonResponse = async (response) => {
+        const text = await response.text();
+        const normalized = String(text || '').trim();
+
+        if (normalized === '') {
+            return {};
+        }
+
+        try {
+            return JSON.parse(normalized);
+        } catch {
+            const firstBrace = normalized.indexOf('{');
+            const lastBrace = normalized.lastIndexOf('}');
+            if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+                throw new Error('Invalid JSON response');
+            }
+
+            return JSON.parse(normalized.slice(firstBrace, lastBrace + 1));
+        }
+    };
+
+    const clearFormErrors = (form) => {
+        form.querySelectorAll('[data-settings-error-for]').forEach((element) => {
+            if (!(element instanceof HTMLElement)) {
+                return;
+            }
+
+            element.textContent = '';
+            element.hidden = true;
+        });
+
+        form.querySelectorAll('.settings-input.is-invalid, .settings-select.is-invalid').forEach((field) => {
+            field.classList.remove('is-invalid');
+        });
+
+        const formError = form.querySelector('[data-settings-form-error]');
+        if (formError instanceof HTMLElement) {
+            formError.textContent = '';
+            formError.hidden = true;
+        }
+    };
+
+    const applyFormErrors = (form, errors = {}) => {
+        clearFormErrors(form);
+
+        Object.entries(errors).forEach(([key, value]) => {
+            const message = String(value || '');
+            if (message === '') {
+                return;
+            }
+
+            if (key === 'form') {
+                const formError = form.querySelector('[data-settings-form-error]');
+                if (formError instanceof HTMLElement) {
+                    formError.textContent = message;
+                    formError.hidden = false;
+                }
+                return;
+            }
+
+            const field = form.querySelector(`[name="${key}"]`);
+            if (field instanceof HTMLElement) {
+                field.classList.add('is-invalid');
+            }
+
+            const errorElement = form.querySelector(`[data-settings-error-for="${key}"]`);
+            if (errorElement instanceof HTMLElement) {
+                errorElement.textContent = message;
+                errorElement.hidden = false;
+            }
+        });
+    };
+
+    const updateHeaderUser = ({ headerUserName = '', profilePath = '' } = {}) => {
+        if (headerUserName !== '') {
+            document.querySelectorAll('.user-name').forEach((element) => {
+                element.textContent = headerUserName;
+            });
+        }
+
+        if (profilePath !== '') {
+            document.querySelectorAll('.user-card-link').forEach((element) => {
+                if (element instanceof HTMLAnchorElement) {
+                    element.href = profilePath;
+                }
+            });
+        }
+    };
+
+    const submitSettingsForm = async (form) => {
+        try {
+            const response = await fetch(form.getAttribute('action') || window.location.pathname + window.location.search, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+            });
+
+            const payload = await parseJsonResponse(response);
+            if (!response.ok || !payload.success) {
+                applyFormErrors(form, payload.errors || {
+                    form: 'Nie udało się zapisać zmian. Spróbuj ponownie.',
+                });
+                return { success: false, payload };
+            }
+
+            clearFormErrors(form);
+            return { success: true, payload };
+        } catch {
+            applyFormErrors(form, {
+                form: 'Nie udało się zapisać zmian. Sprawdź połączenie i spróbuj ponownie.',
+            });
+            return { success: false, payload: null };
+        }
+    };
+
+    const resetButton = settingsRoot.querySelector('[data-settings-reset-defaults]');
+    const accountForm = settingsRoot.querySelector('[data-settings-account-form]');
+    const securityForm = settingsRoot.querySelector('[data-settings-security-form]');
+    const logoutForm = settingsRoot.querySelector('[data-settings-logout-form]');
+    const deleteAccountForm = settingsRoot.querySelector('[data-settings-delete-account-form]');
+    const deleteAccountButton = settingsRoot.querySelector('.settings-panel-danger .settings-button-ghost-danger');
+
+    const syncPasswordConfirmationWarning = () => {
+        if (!(securityForm instanceof HTMLFormElement)) {
+            return;
+        }
+
+        const newPasswordInput = securityForm.querySelector('[data-settings-new-password]');
+        const confirmationInput = securityForm.querySelector('[data-settings-password-confirmation]');
+        const mismatchWarning = securityForm.querySelector('[data-settings-password-match-error]');
+
+        if (!(newPasswordInput instanceof HTMLInputElement)
+            || !(confirmationInput instanceof HTMLInputElement)
+            || !(mismatchWarning instanceof HTMLElement)) {
+            return;
+        }
+
+        const shouldShow = confirmationInput.value !== ''
+            && newPasswordInput.value !== confirmationInput.value;
+
+        mismatchWarning.hidden = !shouldShow;
+        confirmationInput.classList.toggle('is-invalid', shouldShow);
+    };
+
+    if (accountForm instanceof HTMLFormElement) {
+        accountForm.addEventListener('submit', async (event) => {
             event.preventDefault();
 
             const confirmed = await openSettingsConfirmModal({
@@ -168,23 +330,52 @@ if (settingsRoot) {
                 return;
             }
 
-            accountForm.dataset.settingsConfirmed = 'true';
-            accountForm.submit();
+            const { success, payload } = await submitSettingsForm(accountForm);
+            if (!success) {
+                return;
+            }
+
+            if (payload.form && typeof payload.form === 'object') {
+                Object.entries(payload.form).forEach(([key, value]) => {
+                    const field = accountForm.querySelector(`[name="${key}"]`);
+                    if (field instanceof HTMLInputElement) {
+                        field.value = String(value ?? '');
+                    }
+                });
+            }
+
+            syncDefaultSnapshot();
+            updateHeaderUser({
+                headerUserName: String(payload.header_user_name || ''),
+                profilePath: String(payload.profile_path || ''),
+            });
+
+            if (typeof window.showAppToast === 'function') {
+                window.showAppToast(payload.message || 'Dane konta zostały zaktualizowane.', 'success');
+            }
         });
     }
 
     if (securityForm instanceof HTMLFormElement) {
-        securityForm.addEventListener('submit', async (event) => {
-            if (securityForm.dataset.settingsConfirmed === 'true') {
-                securityForm.dataset.settingsConfirmed = 'false';
-                return;
-            }
+        const newPasswordInput = securityForm.querySelector('[data-settings-new-password]');
+        const confirmationInput = securityForm.querySelector('[data-settings-password-confirmation]');
 
+        if (newPasswordInput instanceof HTMLInputElement) {
+            newPasswordInput.addEventListener('input', syncPasswordConfirmationWarning);
+        }
+
+        if (confirmationInput instanceof HTMLInputElement) {
+            confirmationInput.addEventListener('input', syncPasswordConfirmationWarning);
+        }
+
+        syncPasswordConfirmationWarning();
+
+        securityForm.addEventListener('submit', async (event) => {
             event.preventDefault();
 
             const confirmed = await openSettingsConfirmModal({
                 kicker: 'Zmiana hasła',
-                title: 'Zmień hasło?',
+                title: 'Zmienić hasło?',
                 message: 'Czy na pewno chcesz ustawić nowe hasło do konta? Po zapisaniu będziesz używać już tylko nowego hasła.',
                 confirmLabel: 'Zmień hasło',
             });
@@ -193,8 +384,19 @@ if (settingsRoot) {
                 return;
             }
 
-            securityForm.dataset.settingsConfirmed = 'true';
-            securityForm.submit();
+            const { success, payload } = await submitSettingsForm(securityForm);
+            if (!success) {
+                syncPasswordConfirmationWarning();
+                return;
+            }
+
+            securityForm.reset();
+            syncPasswordConfirmationWarning();
+            syncDefaultSnapshot();
+
+            if (typeof window.showAppToast === 'function') {
+                window.showAppToast(payload.message || 'Hasło zostało zmienione.', 'success');
+            }
         });
     }
 
@@ -228,9 +430,98 @@ if (settingsRoot) {
                 }
             });
 
+            if (accountForm instanceof HTMLFormElement) {
+                clearFormErrors(accountForm);
+            }
+
+            if (securityForm instanceof HTMLFormElement) {
+                clearFormErrors(securityForm);
+                syncPasswordConfirmationWarning();
+            }
+
             if (typeof window.showAppToast === 'function') {
                 window.showAppToast('Ustawienia zostały przywrócone do wartości domyślnych.', 'success');
             }
+        });
+    }
+
+    if (logoutForm instanceof HTMLFormElement) {
+        logoutForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const confirmed = await openSettingsConfirmModal({
+                kicker: 'Sesja',
+                title: 'Wylogować się?',
+                message: 'Czy na pewno chcesz zakończyć bieżącą sesję?',
+                confirmLabel: 'Wyloguj się',
+                confirmButtonClass: 'settings-button-muted',
+            });
+
+            if (!confirmed) {
+                return;
+            }
+
+            HTMLFormElement.prototype.submit.call(logoutForm);
+        });
+    }
+
+    const submitDeleteAccount = () => {
+        if (deleteAccountForm instanceof HTMLFormElement) {
+            HTMLFormElement.prototype.submit.call(deleteAccountForm);
+            return;
+        }
+
+        const fallbackForm = document.createElement('form');
+        fallbackForm.method = 'post';
+        fallbackForm.action = window.location.pathname + window.location.search;
+        fallbackForm.hidden = true;
+
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = 'delete_account';
+        fallbackForm.appendChild(actionInput);
+
+        document.body.appendChild(fallbackForm);
+        HTMLFormElement.prototype.submit.call(fallbackForm);
+    };
+
+    const handleDeleteAccountRequest = async () => {
+        const firstConfirmed = await openSettingsConfirmModal({
+            kicker: 'Usuwanie konta',
+            title: 'Usunąć konto?',
+            message: 'Czy na pewno chcesz usunąć konto? Operacja wyloguje Cię i ukryje Twoje aktywne treści w aplikacji. Tego kroku nie da się cofnąć.',
+            confirmLabel: 'Dalej',
+            confirmButtonClass: 'settings-button-muted',
+        });
+
+        if (!firstConfirmed) {
+            return;
+        }
+
+        const secondConfirmed = await openSettingsConfirmModal({
+            kicker: 'Ostateczne potwierdzenie',
+            title: 'Potwierdź usunięcie konta',
+            message: 'To jest ostatni krok. Po zatwierdzeniu konto zostanie wyłączone, sesja zakończona, a aktywne treści ukryte w aplikacji.',
+            confirmLabel: 'Usuń konto',
+            confirmButtonClass: 'settings-button-danger',
+        });
+
+        if (!secondConfirmed) {
+            return;
+        }
+
+        submitDeleteAccount();
+    };
+
+    if (deleteAccountForm instanceof HTMLFormElement) {
+        deleteAccountForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            await handleDeleteAccountRequest();
+        });
+    } else if (deleteAccountButton instanceof HTMLButtonElement) {
+        deleteAccountButton.addEventListener('click', async () => {
+            await handleDeleteAccountRequest();
         });
     }
 }
