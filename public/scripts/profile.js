@@ -1498,7 +1498,15 @@ const bindProfileMarketplaceChunk = (root = document) => {
         return;
     }
 
-    const interactionRoot = document;
+    const queryProfileMarketplaceTargets = (selector) => {
+        const scopedTargets = Array.from(root.querySelectorAll(selector));
+        if (root instanceof Document) {
+            return scopedTargets;
+        }
+
+        const documentTargets = Array.from(document.querySelectorAll(selector));
+        return Array.from(new Set([...scopedTargets, ...documentTargets]));
+    };
 
     root.querySelectorAll('[data-marketplace-details-modal]').forEach((modal) => {
         if (modal.parentElement !== document.body) {
@@ -1519,7 +1527,7 @@ const bindProfileMarketplaceChunk = (root = document) => {
         initializeProfileMarketplaceCarousel(carousel);
     });
 
-    interactionRoot.querySelectorAll('[data-marketplace-save-form]').forEach((form) => {
+    queryProfileMarketplaceTargets('[data-marketplace-save-form]').forEach((form) => {
         if (!(form instanceof HTMLFormElement) || form.dataset.boundProfileSave === 'true') {
             return;
         }
@@ -1569,7 +1577,7 @@ const bindProfileMarketplaceChunk = (root = document) => {
         form.dataset.boundProfileSave = 'true';
     });
 
-    interactionRoot.querySelectorAll('[data-marketplace-report-form]').forEach((form) => {
+    queryProfileMarketplaceTargets('[data-marketplace-report-form]').forEach((form) => {
         if (!(form instanceof HTMLFormElement) || form.dataset.boundProfileReport === 'true') {
             return;
         }
@@ -1623,7 +1631,7 @@ const bindProfileMarketplaceChunk = (root = document) => {
         form.dataset.boundProfileReport = 'true';
     });
 
-    interactionRoot.querySelectorAll('[data-marketplace-delete-form]').forEach((form) => {
+    queryProfileMarketplaceTargets('[data-marketplace-delete-form]').forEach((form) => {
         if (!(form instanceof HTMLFormElement) || form.dataset.boundProfileDelete === 'true') {
             return;
         }
@@ -1681,7 +1689,7 @@ const bindProfileMarketplaceChunk = (root = document) => {
         form.dataset.boundProfileDelete = 'true';
     });
 
-    interactionRoot.querySelectorAll('[data-marketplace-visibility-form]').forEach((form) => {
+    queryProfileMarketplaceTargets('[data-marketplace-visibility-form]').forEach((form) => {
         if (!(form instanceof HTMLFormElement) || form.dataset.boundProfileVisibility === 'true') {
             return;
         }
