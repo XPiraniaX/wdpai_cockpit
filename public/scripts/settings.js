@@ -3,6 +3,32 @@ const settingsRoot = document.querySelector('[data-settings-root]');
 let activeSettingsConfirmResolver = null;
 let activeSettingsConfirmKeyHandler = null;
 
+const showAppToast = (message, type = 'info') => {
+    const existingToast = document.querySelector('[data-app-toast]');
+    existingToast?.remove();
+
+    const toast = document.createElement('div');
+    toast.className = `app-toast app-toast-${type}`;
+    toast.setAttribute('data-app-toast', '');
+    toast.innerHTML = `
+        <div class="app-toast-message"></div>
+    `;
+
+    const messageElement = toast.querySelector('.app-toast-message');
+    if (messageElement) {
+        messageElement.textContent = message;
+    }
+
+    document.body.appendChild(toast);
+
+    window.setTimeout(() => {
+        toast.classList.add('is-hiding');
+        window.setTimeout(() => toast.remove(), 260);
+    }, 5000);
+};
+
+window.showAppToast = showAppToast;
+
 const ensureSettingsConfirmModal = () => {
     let modal = document.querySelector('[data-settings-confirm-modal]');
     if (modal instanceof HTMLElement) {
@@ -291,6 +317,9 @@ if (settingsRoot) {
     const securityForm = settingsRoot.querySelector('[data-settings-security-form]');
     const privacyForm = settingsRoot.querySelector('[data-settings-privacy-form]');
     const applicationForm = settingsRoot.querySelector('[data-settings-application-form]');
+    const communityForm = settingsRoot.querySelector('[data-settings-community-form]');
+    const marketplaceForm = settingsRoot.querySelector('[data-settings-marketplace-form]');
+    const notificationForm = settingsRoot.querySelector('[data-settings-notification-form]');
     const logoutForm = settingsRoot.querySelector('[data-settings-logout-form]');
     const deleteAccountForm = settingsRoot.querySelector('[data-settings-delete-account-form]');
     const deleteAccountButton = settingsRoot.querySelector('.settings-panel-danger .settings-button-ghost-danger');
@@ -476,8 +505,196 @@ if (settingsRoot) {
         });
     }
 
+    if (communityForm instanceof HTMLFormElement) {
+        communityForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const confirmed = await openSettingsConfirmModal({
+                kicker: 'Zmiana ustawień społeczności',
+                title: 'Zapisać ustawienia społeczności?',
+                message: 'Czy na pewno chcesz zaktualizować domyślny widok feedu w społeczności?',
+                confirmLabel: 'Zapisz społeczność',
+            });
+
+            if (!confirmed) {
+                return;
+            }
+
+            const { success, payload } = await submitSettingsForm(communityForm);
+            if (!success) {
+                return;
+            }
+
+            if (payload.form && typeof payload.form === 'object') {
+                Object.entries(payload.form).forEach(([key, value]) => {
+                    const field = communityForm.querySelector(`[name="${key}"]`);
+                    if (field instanceof HTMLSelectElement || field instanceof HTMLInputElement) {
+                        field.value = String(value ?? '');
+                    }
+                });
+            }
+
+            syncDefaultSnapshot();
+
+            if (typeof window.showAppToast === 'function') {
+                window.showAppToast(payload.message || 'Ustawienia społeczności zostały zaktualizowane.', 'success');
+            }
+        });
+    }
+
+    if (marketplaceForm instanceof HTMLFormElement) {
+        marketplaceForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const confirmed = await openSettingsConfirmModal({
+                kicker: 'Zmiana ustawień marketplace',
+                title: 'Zapisać ustawienia marketplace?',
+                message: 'Czy na pewno chcesz zaktualizować domyślny zakres ogłoszeń, domyślne sortowanie i preferowany kanał kontaktu?',
+                confirmLabel: 'Zapisz marketplace',
+            });
+
+            if (!confirmed) {
+                return;
+            }
+
+            const { success, payload } = await submitSettingsForm(marketplaceForm);
+            if (!success) {
+                return;
+            }
+
+            if (payload.form && typeof payload.form === 'object') {
+                Object.entries(payload.form).forEach(([key, value]) => {
+                    const field = marketplaceForm.querySelector(`[name="${key}"]`);
+                    if (field instanceof HTMLSelectElement || field instanceof HTMLInputElement) {
+                        field.value = String(value ?? '');
+                    }
+                });
+            }
+
+            syncDefaultSnapshot();
+
+            if (typeof window.showAppToast === 'function') {
+                window.showAppToast(payload.message || 'Ustawienia marketplace zostały zaktualizowane.', 'success');
+            }
+        });
+    }
+
+    if (notificationForm instanceof HTMLFormElement) {
+        const disableAllToggle = notificationForm.querySelector('[data-settings-notifications-disable-all]');
+        const notificationToggles = Array.from(notificationForm.querySelectorAll('[data-settings-notification-toggle]'));
+        const previousNotificationState = new Map();
+
+        const syncNotificationDisabledState = () => {
+            const disableAll = disableAllToggle instanceof HTMLInputElement && disableAllToggle.checked;
+
+            notificationToggles.forEach((toggle) => {
+                if (!(toggle instanceof HTMLInputElement)) {
+                    return;
+                }
+
+                if (disableAll) {
+                    previousNotificationState.set(toggle.name, toggle.checked);
+                    toggle.checked = false;
+                    toggle.disabled = true;
+                } else {
+                    toggle.disabled = false;
+                    toggle.removeAttribute('disabled');
+                    if (previousNotificationState.has(toggle.name)) {
+                        toggle.checked = Boolean(previousNotificationState.get(toggle.name));
+                    }
+                }
+            });
+
+            if (!disableAll) {
+                previousNotificationState.clear();
+            }
+        };
+
+        const syncDisableAllFromToggles = () => {
+            if (!(disableAllToggle instanceof HTMLInputElement)) {
+                return;
+            }
+
+            const anyEnabled = notificationToggles.some((toggle) => toggle instanceof HTMLInputElement && toggle.checked);
+            const disableAll = !anyEnabled;
+            disableAllToggle.checked = disableAll;
+
+            notificationToggles.forEach((toggle) => {
+                if (!(toggle instanceof HTMLInputElement)) {
+                    return;
+                }
+
+                toggle.disabled = disableAll;
+                if (!disableAll) {
+                    toggle.removeAttribute('disabled');
+                }
+            });
+        };
+
+        if (disableAllToggle instanceof HTMLInputElement) {
+            disableAllToggle.addEventListener('change', syncNotificationDisabledState);
+        }
+
+        notificationToggles.forEach((toggle) => {
+            if (toggle instanceof HTMLInputElement) {
+                toggle.addEventListener('change', syncDisableAllFromToggles);
+            }
+        });
+
+        syncDisableAllFromToggles();
+
+        notificationForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const confirmed = await openSettingsConfirmModal({
+                kicker: 'Zmiana ustawień powiadomień',
+                title: 'Zapisać ustawienia powiadomień?',
+                message: 'Czy na pewno chcesz zaktualizować preferencje powiadomień w aplikacji?',
+                confirmLabel: 'Zapisz powiadomienia',
+            });
+
+            if (!confirmed) {
+                return;
+            }
+
+            const { success, payload } = await submitSettingsForm(notificationForm);
+            if (!success) {
+                return;
+            }
+
+            if (payload.form && typeof payload.form === 'object') {
+                Object.entries(payload.form).forEach(([key, value]) => {
+                    const field = notificationForm.querySelector(`[name="${key}"]`);
+                    if (field instanceof HTMLInputElement && field.type === 'checkbox') {
+                        field.checked = Boolean(value);
+                    }
+                });
+            }
+
+            syncDisableAllFromToggles();
+
+            syncDefaultSnapshot();
+
+            if (typeof window.showAppToast === 'function') {
+                window.showAppToast(payload.message || 'Ustawienia powiadomień zostały zaktualizowane.', 'success');
+            }
+        });
+    }
+
     if (resetButton instanceof HTMLButtonElement) {
-        resetButton.addEventListener('click', () => {
+        resetButton.addEventListener('click', async () => {
+            const confirmed = await openSettingsConfirmModal({
+                kicker: 'Potwierdzenie przywracania',
+                title: 'Potwierdź przywrócenie',
+                message: 'Ta operacja cofnie wszystkie bieżące zmiany w formularzach na tej stronie. Kontynuować?',
+                confirmLabel: 'Przywróć ustawienia',
+                confirmButtonClass: 'settings-button-primary',
+            });
+
+            if (!confirmed) {
+                return;
+            }
+
             defaultSnapshot.forEach((item) => {
                 const control = item.element;
 
@@ -521,6 +738,18 @@ if (settingsRoot) {
 
             if (applicationForm instanceof HTMLFormElement) {
                 clearFormErrors(applicationForm);
+            }
+
+            if (communityForm instanceof HTMLFormElement) {
+                clearFormErrors(communityForm);
+            }
+
+            if (marketplaceForm instanceof HTMLFormElement) {
+                clearFormErrors(marketplaceForm);
+            }
+
+            if (notificationForm instanceof HTMLFormElement) {
+                clearFormErrors(notificationForm);
             }
 
             if (typeof window.showAppToast === 'function') {

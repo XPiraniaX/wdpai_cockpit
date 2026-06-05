@@ -7,14 +7,16 @@ class MarketplaceController extends AppController
 
         $repository = new MarketplaceRepository(Database::getConnection());
         $carsRepository = new CarsRepository(Database::getConnection());
+        $userRepository = new UserRepository(Database::getConnection());
         $userId = $this->getCurrentUserId();
+        $marketplaceSettings = $userRepository->getMarketplaceSettings($userId);
 
         if ($this->isPost()) {
             $this->handleMarketplaceAction($repository, $userId);
             return;
         }
 
-        $filters = $this->resolveFilters();
+        $filters = $this->resolveFilters($marketplaceSettings);
         $feedPage = $repository->getFeedPage(
             $userId,
             $filters,
@@ -298,16 +300,23 @@ class MarketplaceController extends AppController
         $this->redirect($redirectTo);
     }
 
-    private function resolveFilters(): array
+    private function resolveFilters(array $marketplaceSettings = []): array
     {
         $brandId = $this->normalizeNullableInt($_GET['brand_id'] ?? null);
-        $sort = (string) ($_GET['sort'] ?? 'newest');
+        $scope = trim((string) ($_GET['scope'] ?? ''));
+        if ($scope === '') {
+            $scope = (string) ($marketplaceSettings['marketplace_default_scope'] ?? 'all');
+        }
+
+        $sort = trim((string) ($_GET['sort'] ?? ''));
         if ($brandId === null) {
             $sort = 'newest';
+        } elseif ($sort === '') {
+            $sort = (string) ($marketplaceSettings['marketplace_default_sort'] ?? 'newest');
         }
 
         return [
-            'scope' => (string) ($_GET['scope'] ?? 'all'),
+            'scope' => $scope,
             'brand_id' => $brandId,
             'model_id' => $this->normalizeNullableInt($_GET['model_id'] ?? null),
             'sort' => $sort,

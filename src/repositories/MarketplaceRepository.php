@@ -3,6 +3,8 @@
 class MarketplaceRepository
 {
     public const DEFAULT_FEED_PAGE_SIZE = 10;
+    private ?bool $hasMarketplacePreferredContactChannelColumn = null;
+    private ?bool $hasPrivacyMembershipVisibilityColumn = null;
 
     public function __construct(private PDO $connection)
     {
@@ -168,8 +170,14 @@ class MarketplaceRepository
         $statement = $this->connection->prepare(
             "SELECT
                 feed.*,
+                " . ($this->hasPrivacyMembershipVisibilityColumn()
+                    ? "COALESCE(us_priv.privacy_membership_visibility, 'public') AS privacy_membership_visibility,"
+                    : "'public' AS privacy_membership_visibility,") . "
                 COALESCE(save_ref.is_saved, FALSE) AS saved_by_current_user
             FROM vw_marketplace_feed feed
+            " . ($this->hasPrivacyMembershipVisibilityColumn()
+                ? 'LEFT JOIN user_settings us_priv ON us_priv.user_id = feed.user_id'
+                : '') . "
             LEFT JOIN LATERAL (
                 SELECT TRUE AS is_saved
                 FROM marketplace_listing_saves s
@@ -220,6 +228,16 @@ class MarketplaceRepository
     public function getListingsByUser(int $currentUserId, int $profileUserId, string $visibility = 'active'): array
     {
         $conditions = ['l.user_id = :profile_user_id'];
+        $preferredContactSelect = $this->hasMarketplacePreferredContactChannelColumn()
+            ? "COALESCE(us.marketplace_preferred_contact_channel, 'both') AS preferred_contact_channel,"
+            : "'both' AS preferred_contact_channel,";
+        $privacyMembershipSelect = $this->hasPrivacyMembershipVisibilityColumn()
+            ? "COALESCE(us.privacy_membership_visibility, 'public') AS privacy_membership_visibility,"
+            : "'public' AS privacy_membership_visibility,";
+        $preferredContactJoin = $this->hasMarketplacePreferredContactChannelColumn()
+            || $this->hasPrivacyMembershipVisibilityColumn()
+            ? 'LEFT JOIN user_settings us ON us.user_id = l.user_id'
+            : '';
 
         if ($visibility === 'active') {
             $conditions[] = 'l.is_active = TRUE';
@@ -260,12 +278,15 @@ class MarketplaceRepository
                 u.avatar_path,
                 CONCAT(u.first_name, ' ', u.last_name) AS full_name,
                 u.membership_tier,
+                {$preferredContactSelect}
+                {$privacyMembershipSelect}
                 cb.name AS brand_name,
                 cm.name AS model_name,
                 COALESCE(saved.save_count, 0) AS save_count,
                 COALESCE(save_ref.is_saved, FALSE) AS saved_by_current_user
             FROM marketplace_listings l
             INNER JOIN users u ON u.id = l.user_id
+            {$preferredContactJoin}
             INNER JOIN car_brands cb ON cb.id = l.brand_id
             INNER JOIN car_models cm ON cm.id = l.model_id
             LEFT JOIN LATERAL (
@@ -299,6 +320,16 @@ class MarketplaceRepository
         int $offset = 0
     ): array {
         $conditions = ['l.user_id = :profile_user_id'];
+        $preferredContactSelect = $this->hasMarketplacePreferredContactChannelColumn()
+            ? "COALESCE(us.marketplace_preferred_contact_channel, 'both') AS preferred_contact_channel,"
+            : "'both' AS preferred_contact_channel,";
+        $privacyMembershipSelect = $this->hasPrivacyMembershipVisibilityColumn()
+            ? "COALESCE(us.privacy_membership_visibility, 'public') AS privacy_membership_visibility,"
+            : "'public' AS privacy_membership_visibility,";
+        $preferredContactJoin = $this->hasMarketplacePreferredContactChannelColumn()
+            || $this->hasPrivacyMembershipVisibilityColumn()
+            ? 'LEFT JOIN user_settings us ON us.user_id = l.user_id'
+            : '';
 
         if ($visibility === 'active') {
             $conditions[] = 'l.is_active = TRUE';
@@ -339,12 +370,15 @@ class MarketplaceRepository
                 u.avatar_path,
                 CONCAT(u.first_name, ' ', u.last_name) AS full_name,
                 u.membership_tier,
+                {$preferredContactSelect}
+                {$privacyMembershipSelect}
                 cb.name AS brand_name,
                 cm.name AS model_name,
                 COALESCE(saved.save_count, 0) AS save_count,
                 COALESCE(save_ref.is_saved, FALSE) AS saved_by_current_user
             FROM marketplace_listings l
             INNER JOIN users u ON u.id = l.user_id
+            {$preferredContactJoin}
             INNER JOIN car_brands cb ON cb.id = l.brand_id
             INNER JOIN car_models cm ON cm.id = l.model_id
             LEFT JOIN LATERAL (
@@ -816,7 +850,7 @@ class MarketplaceRepository
                 'author_name' => (string) ($listing['pseudonym'] ?? $listing['full_name']),
                 'author_username' => (string) $listing['username'],
                 'author_avatar_path' => $listing['avatar_path'] ?? null,
-                'author_tier' => strtoupper((string) $listing['membership_tier']) . ' MEMBER',
+                'author_tier' => $this->resolveAuthorTier($listing, $currentUserId),
                 'profile_path' => $this->buildProfilePath($currentUserId, (int) $listing['user_id'], $listing['pseudonym'] ?? null),
                 'title' => (string) $listing['title'],
                 'trim_name' => (string) ($listing['trim_name'] ?? ''),
@@ -837,6 +871,9 @@ class MarketplaceRepository
                 'contact_name' => (string) $listing['contact_name'],
                 'contact_phone' => (string) $listing['contact_phone'],
                 'contact_email' => (string) $listing['contact_email'],
+                'preferred_contact_channel' => in_array((string) ($listing['preferred_contact_channel'] ?? 'both'), ['both', 'phone', 'email'], true)
+                    ? (string) $listing['preferred_contact_channel']
+                    : 'both',
                 'created_at' => (string) $listing['created_at'],
                 'is_active' => array_key_exists('is_active', $listing)
                     ? (bool) $listing['is_active']
@@ -960,6 +997,56 @@ class MarketplaceRepository
         }
 
         return '/profile?id=' . $profileUserId;
+    }
+
+    private function hasMarketplacePreferredContactChannelColumn(): bool
+    {
+        if ($this->hasMarketplacePreferredContactChannelColumn !== null) {
+            return $this->hasMarketplacePreferredContactChannelColumn;
+        }
+
+        $statement = $this->connection->query(
+            "SELECT COUNT(*)::INTEGER
+            FROM information_schema.columns
+            WHERE table_name = 'user_settings'
+                AND table_schema = current_schema()
+                AND column_name = 'marketplace_preferred_contact_channel'"
+        );
+
+        $this->hasMarketplacePreferredContactChannelColumn = ((int) $statement->fetchColumn()) === 1;
+
+        return $this->hasMarketplacePreferredContactChannelColumn;
+    }
+
+    private function hasPrivacyMembershipVisibilityColumn(): bool
+    {
+        if ($this->hasPrivacyMembershipVisibilityColumn !== null) {
+            return $this->hasPrivacyMembershipVisibilityColumn;
+        }
+
+        $statement = $this->connection->query(
+            "SELECT COUNT(*)::INTEGER
+            FROM information_schema.columns
+            WHERE table_name = 'user_settings'
+                AND table_schema = current_schema()
+                AND column_name = 'privacy_membership_visibility'"
+        );
+
+        $this->hasPrivacyMembershipVisibilityColumn = ((int) $statement->fetchColumn()) === 1;
+
+        return $this->hasPrivacyMembershipVisibilityColumn;
+    }
+
+    private function resolveAuthorTier(array $listing, int $currentUserId): string
+    {
+        $userId = (int) ($listing['user_id'] ?? 0);
+        $visibility = (string) ($listing['privacy_membership_visibility'] ?? 'public');
+
+        if ($visibility === 'private' && $currentUserId !== $userId) {
+            return '';
+        }
+
+        return strtoupper((string) ($listing['membership_tier'] ?? '')) . ' MEMBER';
     }
 }
 

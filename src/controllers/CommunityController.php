@@ -7,6 +7,7 @@ class CommunityController extends AppController
         $this->requireAuthentication();
 
         $repository = new CommunityRepository(Database::getConnection());
+        $userRepository = new UserRepository(Database::getConnection());
         $userId = $this->getCurrentUserId();
 
         if ($this->isPost()) {
@@ -14,7 +15,8 @@ class CommunityController extends AppController
             return;
         }
 
-        $filters = $this->resolveFilters();
+        $communitySettings = $userRepository->getCommunitySettings($userId);
+        $filters = $this->resolveFilters($communitySettings);
         $feedPage = $repository->getFeedPage(
             $userId,
             $filters,
@@ -469,10 +471,15 @@ class CommunityController extends AppController
 
         $this->redirect($redirectTo);
     }
-    private function resolveFilters(): array
+    private function resolveFilters(array $communitySettings = []): array
     {
+        $requestedScope = trim((string) ($_GET['scope'] ?? ''));
+        $defaultScope = in_array((string) ($communitySettings['community_default_scope'] ?? 'all'), ['all', 'liked', 'saved', 'commented'], true)
+            ? (string) $communitySettings['community_default_scope']
+            : 'all';
+
         return [
-            'scope' => (string) ($_GET['scope'] ?? 'all'),
+            'scope' => $requestedScope !== '' ? $requestedScope : $defaultScope,
             'brand_id' => $this->normalizeNullableInt($_GET['brand_id'] ?? null),
             'model_id' => $this->normalizeNullableInt($_GET['model_id'] ?? null),
         ];

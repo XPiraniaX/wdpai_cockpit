@@ -42,6 +42,18 @@ CREATE TABLE user_settings (
         CHECK (app_distance_unit IN ('km', 'mi')),
     app_consumption_format VARCHAR(20) NOT NULL DEFAULT 'l_100km'
         CHECK (app_consumption_format IN ('l_100km', 'km_l')),
+    community_default_scope VARCHAR(20) NOT NULL DEFAULT 'all'
+        CHECK (community_default_scope IN ('all', 'liked', 'saved', 'commented')),
+    notification_profile_membership BOOLEAN NOT NULL DEFAULT TRUE,
+    notification_post_likes BOOLEAN NOT NULL DEFAULT TRUE,
+    notification_post_comments BOOLEAN NOT NULL DEFAULT TRUE,
+    notification_marketplace_activity BOOLEAN NOT NULL DEFAULT TRUE,
+    marketplace_default_scope VARCHAR(20) NOT NULL DEFAULT 'all'
+        CHECK (marketplace_default_scope IN ('all', 'saved')),
+    marketplace_default_sort VARCHAR(20) NOT NULL DEFAULT 'newest'
+        CHECK (marketplace_default_sort IN ('newest', 'price_asc', 'price_desc', 'year_desc', 'mileage_asc')),
+    marketplace_preferred_contact_channel VARCHAR(20) NOT NULL DEFAULT 'both'
+        CHECK (marketplace_preferred_contact_channel IN ('both', 'phone', 'email')),
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -1265,6 +1277,7 @@ SELECT
     u.pseudonym,
     CONCAT(u.first_name, ' ', u.last_name) AS full_name,
     u.membership_tier,
+    COALESCE(us.marketplace_preferred_contact_channel, 'both') AS preferred_contact_channel,
     cb.name AS brand_name,
     cm.name AS model_name,
     COALESCE(saved.save_count, 0) AS save_count,
@@ -1273,6 +1286,8 @@ SELECT
 FROM marketplace_listings l
 INNER JOIN users u
     ON u.id = l.user_id
+LEFT JOIN user_settings us
+    ON us.user_id = u.id
 INNER JOIN car_brands cb
     ON cb.id = l.brand_id
 INNER JOIN car_models cm

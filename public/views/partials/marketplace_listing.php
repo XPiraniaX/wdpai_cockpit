@@ -4,6 +4,11 @@ $hasImages = !empty($listing['images']);
 $isOwnListing = ((int) ($currentUser['id'] ?? 0)) === (int) $listing['user_id'];
 $isActiveListing = (bool) ($listing['is_active'] ?? true);
 $authorAvatarPath = trim((string) ($listing['author_avatar_path'] ?? ''));
+$preferredContactChannel = in_array((string) ($listing['preferred_contact_channel'] ?? 'both'), ['both', 'phone', 'email'], true)
+    ? (string) $listing['preferred_contact_channel']
+    : 'both';
+$showPhoneContact = $preferredContactChannel === 'both' || $preferredContactChannel === 'phone';
+$showEmailContact = $preferredContactChannel === 'both' || $preferredContactChannel === 'email';
 $editPayload = htmlspecialchars(json_encode([
     'id' => (int) $listing['id'],
     'title' => (string) $listing['title'],
@@ -25,6 +30,7 @@ $editPayload = htmlspecialchars(json_encode([
     'contact_name' => (string) $listing['contact_name'],
     'contact_phone' => (string) $listing['contact_phone'],
     'contact_email' => (string) $listing['contact_email'],
+    'preferred_contact_channel' => $preferredContactChannel,
     'brand_id' => (int) $listing['brand_id'],
     'model_id' => (int) $listing['model_id'],
     'brand_name' => (string) ($listing['brand_name'] ?? ''),
@@ -306,7 +312,9 @@ $editPayload = htmlspecialchars(json_encode([
                         </span>
                         <span class="marketplace-details-seller-copy">
                             <span class="marketplace-details-seller-name"><?= htmlspecialchars($listing['author_name'], ENT_QUOTES, 'UTF-8'); ?></span>
-                            <span class="marketplace-details-seller-role"><?= htmlspecialchars($listing['author_tier'], ENT_QUOTES, 'UTF-8'); ?></span>
+                            <?php if (!empty($listing['author_tier'])): ?>
+                                <span class="marketplace-details-seller-role"><?= htmlspecialchars($listing['author_tier'], ENT_QUOTES, 'UTF-8'); ?></span>
+                            <?php endif; ?>
                         </span>
                     </a>
                     <button
@@ -317,8 +325,12 @@ $editPayload = htmlspecialchars(json_encode([
                     >Sprawdź dane kontaktowe</button>
                     <div class="marketplace-contact-card" hidden data-marketplace-contact-card>
                         <div class="marketplace-details-row"><span>Imię i nazwisko</span><strong><?= htmlspecialchars($listing['contact_name'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                        <div class="marketplace-details-row"><span>Telefon</span><strong><?= htmlspecialchars($listing['contact_phone'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
-                        <div class="marketplace-details-row"><span>E-mail</span><strong><?= htmlspecialchars($listing['contact_email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                        <?php if ($showPhoneContact): ?>
+                            <div class="marketplace-details-row"><span>Telefon</span><strong><?= htmlspecialchars($listing['contact_phone'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                        <?php endif; ?>
+                        <?php if ($showEmailContact): ?>
+                            <div class="marketplace-details-row"><span>E-mail</span><strong><?= htmlspecialchars($listing['contact_email'], ENT_QUOTES, 'UTF-8'); ?></strong></div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>

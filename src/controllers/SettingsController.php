@@ -33,6 +33,12 @@ class SettingsController extends AppController
         $privacyErrors = [];
         $applicationForm = $repository->getApplicationSettings($currentUserId);
         $applicationErrors = [];
+        $communityForm = $repository->getCommunitySettings($currentUserId);
+        $communityErrors = [];
+        $marketplaceForm = $repository->getMarketplaceSettings($currentUserId);
+        $marketplaceErrors = [];
+        $notificationForm = $repository->getNotificationSettings($currentUserId);
+        $notificationErrors = [];
 
         if ($this->isPost()) {
             $action = (string) ($_POST['action'] ?? '');
@@ -219,6 +225,114 @@ class SettingsController extends AppController
                     ], 422);
                 }
             }
+
+            if ($action === 'save_community_settings') {
+                $communityForm = [
+                    'community_default_scope' => trim((string) ($_POST['community_default_scope'] ?? 'all')),
+                ];
+
+                $communityErrors = $this->validateCommunityForm($communityForm);
+
+                if ($communityErrors === []) {
+                    try {
+                        $repository->updateCommunitySettings($currentUserId, $communityForm);
+
+                        if ($this->isAjaxRequest()) {
+                            $this->jsonResponse([
+                                'success' => true,
+                                'message' => 'Ustawienia społeczności zostały zaktualizowane.',
+                                'form' => $communityForm,
+                            ]);
+                        }
+
+                        $this->setFlash('success', 'Ustawienia społeczności zostały zaktualizowane.');
+                        $this->redirect('/settings');
+                    } catch (Throwable) {
+                        $communityErrors['form'] = 'Nie udało się zapisać ustawień społeczności. Spróbuj ponownie za chwilę.';
+                    }
+                }
+
+                if ($this->isAjaxRequest()) {
+                    $this->jsonResponse([
+                        'success' => false,
+                        'errors' => $communityErrors,
+                    ], 422);
+                }
+            }
+
+            if ($action === 'save_marketplace_settings') {
+                $marketplaceForm = [
+                    'marketplace_default_scope' => trim((string) ($_POST['marketplace_default_scope'] ?? 'all')),
+                    'marketplace_default_sort' => trim((string) ($_POST['marketplace_default_sort'] ?? 'newest')),
+                    'marketplace_preferred_contact_channel' => trim((string) ($_POST['marketplace_preferred_contact_channel'] ?? 'both')),
+                ];
+
+                $marketplaceErrors = $this->validateMarketplaceForm($marketplaceForm);
+
+                if ($marketplaceErrors === []) {
+                    try {
+                        $repository->updateMarketplaceSettings($currentUserId, $marketplaceForm);
+
+                        if ($this->isAjaxRequest()) {
+                            $this->jsonResponse([
+                                'success' => true,
+                                'message' => 'Ustawienia marketplace zostały zaktualizowane.',
+                                'form' => $marketplaceForm,
+                            ]);
+                        }
+
+                        $this->setFlash('success', 'Ustawienia marketplace zostały zaktualizowane.');
+                        $this->redirect('/settings');
+                    } catch (Throwable) {
+                        $marketplaceErrors['form'] = 'Nie udało się zapisać ustawień marketplace. Spróbuj ponownie za chwilę.';
+                    }
+                }
+
+                if ($this->isAjaxRequest()) {
+                    $this->jsonResponse([
+                        'success' => false,
+                        'errors' => $marketplaceErrors,
+                    ], 422);
+                }
+            }
+
+            if ($action === 'save_notification_settings') {
+                $notificationForm = [
+                    'notification_vehicle_acceptance' => isset($_POST['notification_vehicle_acceptance']),
+                    'notification_vehicle_documents' => isset($_POST['notification_vehicle_documents']),
+                    'notification_profile_membership' => isset($_POST['notification_profile_membership']),
+                    'notification_post_likes' => isset($_POST['notification_post_likes']),
+                    'notification_post_comments' => isset($_POST['notification_post_comments']),
+                ];
+
+                $notificationErrors = $this->validateNotificationForm($notificationForm);
+
+                if ($notificationErrors === []) {
+                    try {
+                        $repository->updateNotificationSettings($currentUserId, $notificationForm);
+
+                        if ($this->isAjaxRequest()) {
+                            $this->jsonResponse([
+                                'success' => true,
+                                'message' => 'Ustawienia powiadomień zostały zaktualizowane.',
+                                'form' => $notificationForm,
+                            ]);
+                        }
+
+                        $this->setFlash('success', 'Ustawienia powiadomień zostały zaktualizowane.');
+                        $this->redirect('/settings');
+                    } catch (Throwable) {
+                        $notificationErrors['form'] = 'Nie udało się zapisać ustawień powiadomień. Spróbuj ponownie za chwilę.';
+                    }
+                }
+
+                if ($this->isAjaxRequest()) {
+                    $this->jsonResponse([
+                        'success' => false,
+                        'errors' => $notificationErrors,
+                    ], 422);
+                }
+            }
         }
 
         $this->render('settings', [
@@ -232,6 +346,12 @@ class SettingsController extends AppController
             'privacyErrors' => $privacyErrors,
             'applicationForm' => $applicationForm,
             'applicationErrors' => $applicationErrors,
+            'communityForm' => $communityForm,
+            'communityErrors' => $communityErrors,
+            'marketplaceForm' => $marketplaceForm,
+            'marketplaceErrors' => $marketplaceErrors,
+            'notificationForm' => $notificationForm,
+            'notificationErrors' => $notificationErrors,
         ]);
     }
 
@@ -350,6 +470,55 @@ class SettingsController extends AppController
 
         if (!in_array(($form['app_consumption_format'] ?? ''), ['l_100km', 'km_l'], true)) {
             $errors['app_consumption_format'] = 'Wybierz poprawny format spalania.';
+        }
+
+        return $errors;
+    }
+
+    private function validateMarketplaceForm(array $form): array
+    {
+        $errors = [];
+
+        if (!in_array(($form['marketplace_default_scope'] ?? ''), ['all', 'saved'], true)) {
+            $errors['marketplace_default_scope'] = 'Wybierz poprawny domyślny zakres ogłoszeń.';
+        }
+
+        if (!in_array(($form['marketplace_default_sort'] ?? ''), ['newest', 'price_asc', 'price_desc', 'year_desc', 'mileage_asc'], true)) {
+            $errors['marketplace_default_sort'] = 'Wybierz poprawne domyślne sortowanie.';
+        }
+
+        if (!in_array(($form['marketplace_preferred_contact_channel'] ?? ''), ['both', 'phone', 'email'], true)) {
+            $errors['marketplace_preferred_contact_channel'] = 'Wybierz poprawny preferowany kanał kontaktowy.';
+        }
+
+        return $errors;
+    }
+
+    private function validateCommunityForm(array $form): array
+    {
+        $errors = [];
+
+        if (!in_array(($form['community_default_scope'] ?? ''), ['all', 'liked', 'saved', 'commented'], true)) {
+            $errors['community_default_scope'] = 'Wybierz poprawny domyślny widok feedu.';
+        }
+
+        return $errors;
+    }
+
+    private function validateNotificationForm(array $form): array
+    {
+        $errors = [];
+
+        foreach ([
+            'notification_vehicle_acceptance',
+            'notification_vehicle_documents',
+            'notification_profile_membership',
+            'notification_post_likes',
+            'notification_post_comments',
+        ] as $field) {
+            if (!is_bool($form[$field] ?? null)) {
+                $errors[$field] = 'Wybierz poprawną wartość ustawienia.';
+            }
         }
 
         return $errors;

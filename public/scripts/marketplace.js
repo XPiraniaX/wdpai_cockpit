@@ -1180,6 +1180,7 @@ const fillMarketplaceCreateForm = (payload) => {
     } else {
         syncMarketplaceCategoryFields(selectedBrandName, selectedModelName);
     }
+
     syncMarketplacePhoneInput();
 };
 

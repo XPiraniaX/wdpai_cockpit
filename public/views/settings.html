@@ -200,7 +200,7 @@
                         </div>
 
                         <div class="settings-actions-row">
-                            <button type="submit" class="settings-button settings-button-primary">Zapisz prywatność</button>
+                            <button type="submit" class="settings-button settings-button-primary">Zapisz zmiany</button>
                         </div>
                     </form>
                 </article>
@@ -256,7 +256,7 @@
                         </div>
 
                         <div class="settings-actions-row">
-                            <button type="submit" class="settings-button settings-button-primary">Zapisz aplikację</button>
+                            <button type="submit" class="settings-button settings-button-primary">Zapisz zmiany</button>
                         </div>
                     </form>
                 </article>
@@ -284,144 +284,222 @@
                     <div class="settings-panel-kicker">Marketplace</div>
                     <h2 class="settings-panel-title">Ogłoszenia i oferty</h2>
 
-                    <div class="settings-stack">
-                        <div class="settings-setting">
-                            <div class="settings-setting-copy">
-                                <div class="settings-setting-title">Domyślny zakres ogłoszeń</div>
-                            </div>
-                            <select class="settings-select">
-                                <option>Wszystkie</option>
-                                <option>Ulubione</option>
-                            </select>
-                        </div>
+                    <form method="post" class="settings-marketplace-form" data-settings-marketplace-form novalidate>
+                        <input type="hidden" name="action" value="save_marketplace_settings">
 
-                        <div class="settings-setting">
-                            <div class="settings-setting-copy">
-                                <div class="settings-setting-title">Domyślne sortowanie</div>
-                            </div>
-                            <select class="settings-select">
-                                <option>Najnowsze</option>
-                                <option>Najtańsze</option>
-                                <option>Najdroższe</option>
-                                <option>Najmniejszy przebieg</option>
-                            </select>
-                        </div>
+                        <div class="settings-stack">
+                            <label class="settings-setting">
+                                <span class="settings-setting-copy">
+                                    <span class="settings-setting-title">Domyślny zakres ogłoszeń</span>
+                                </span>
+                                <span class="settings-setting-control">
+                                    <select name="marketplace_default_scope" class="settings-select<?= !empty($marketplaceErrors['marketplace_default_scope']) ? ' is-invalid' : ''; ?>">
+                                        <option value="all"<?= ($marketplaceForm['marketplace_default_scope'] ?? 'all') === 'all' ? ' selected' : ''; ?>>Wszystkie</option>
+                                        <option value="saved"<?= ($marketplaceForm['marketplace_default_scope'] ?? 'all') === 'saved' ? ' selected' : ''; ?>>Ulubione</option>
+                                    </select>
+                                    <span class="settings-field-error" data-settings-error-for="marketplace_default_scope"<?= empty($marketplaceErrors['marketplace_default_scope']) ? ' hidden' : ''; ?>><?= htmlspecialchars((string) ($marketplaceErrors['marketplace_default_scope'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                                </span>
+                            </label>
 
-                        <div class="settings-setting">
-                            <div class="settings-setting-copy">
-                                <div class="settings-setting-title">Preferowany kanał kontaktu</div>
-                            </div>
-                            <select class="settings-select">
-                                <option>Telefon i e-mail</option>
-                                <option>Tylko telefon</option>
-                                <option>Tylko e-mail</option>
-                            </select>
-                        </div>
+                            <label class="settings-setting">
+                                <span class="settings-setting-copy">
+                                    <span class="settings-setting-title">Domyślne sortowanie</span>
+                                </span>
+                                <span class="settings-setting-control">
+                                    <select name="marketplace_default_sort" class="settings-select<?= !empty($marketplaceErrors['marketplace_default_sort']) ? ' is-invalid' : ''; ?>">
+                                        <option value="newest"<?= ($marketplaceForm['marketplace_default_sort'] ?? 'newest') === 'newest' ? ' selected' : ''; ?>>Najnowsze</option>
+                                        <option value="price_asc"<?= ($marketplaceForm['marketplace_default_sort'] ?? 'newest') === 'price_asc' ? ' selected' : ''; ?>>Najtańsze</option>
+                                        <option value="price_desc"<?= ($marketplaceForm['marketplace_default_sort'] ?? 'newest') === 'price_desc' ? ' selected' : ''; ?>>Najdroższe</option>
+                                        <option value="year_desc"<?= ($marketplaceForm['marketplace_default_sort'] ?? 'newest') === 'year_desc' ? ' selected' : ''; ?>>Najnowszy rocznik</option>
+                                        <option value="mileage_asc"<?= ($marketplaceForm['marketplace_default_sort'] ?? 'newest') === 'mileage_asc' ? ' selected' : ''; ?>>Najmniejszy przebieg</option>
+                                    </select>
+                                    <span class="settings-field-error" data-settings-error-for="marketplace_default_sort"<?= empty($marketplaceErrors['marketplace_default_sort']) ? ' hidden' : ''; ?>><?= htmlspecialchars((string) ($marketplaceErrors['marketplace_default_sort'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                                </span>
+                            </label>
 
-                        <div class="settings-setting">
-                            <div class="settings-setting-copy">
-                                <div class="settings-setting-title">Potwierdzenia dla ogłoszeń</div>
-                            </div>
-                            <label class="settings-toggle">
-                                <input type="checkbox" checked>
-                                <span class="settings-toggle-track"></span>
+                            <label class="settings-setting">
+                                <span class="settings-setting-copy">
+                                    <span class="settings-setting-title">Preferowany kanał kontaktu</span>
+                                </span>
+                                <span class="settings-setting-control">
+                                    <select name="marketplace_preferred_contact_channel" class="settings-select<?= !empty($marketplaceErrors['marketplace_preferred_contact_channel']) ? ' is-invalid' : ''; ?>">
+                                        <option value="both"<?= ($marketplaceForm['marketplace_preferred_contact_channel'] ?? 'both') === 'both' ? ' selected' : ''; ?>>Telefon i e-mail</option>
+                                        <option value="phone"<?= ($marketplaceForm['marketplace_preferred_contact_channel'] ?? 'both') === 'phone' ? ' selected' : ''; ?>>Tylko telefon</option>
+                                        <option value="email"<?= ($marketplaceForm['marketplace_preferred_contact_channel'] ?? 'both') === 'email' ? ' selected' : ''; ?>>Tylko e-mail</option>
+                                    </select>
+                                    <span class="settings-field-error" data-settings-error-for="marketplace_preferred_contact_channel"<?= empty($marketplaceErrors['marketplace_preferred_contact_channel']) ? ' hidden' : ''; ?>><?= htmlspecialchars((string) ($marketplaceErrors['marketplace_preferred_contact_channel'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                                </span>
                             </label>
                         </div>
-                    </div>
+
+                        <div class="settings-form-error" data-settings-form-error<?= empty($marketplaceErrors['form']) ? ' hidden' : ''; ?>>
+                            <?= htmlspecialchars((string) ($marketplaceErrors['form'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
+                        </div>
+
+                        <div class="settings-actions-row">
+                            <button type="submit" class="settings-button settings-button-primary">Zapisz zmiany</button>
+                        </div>
+                    </form>
                 </article>
 
                 <article class="settings-panel">
                     <div class="settings-panel-kicker">Społeczność</div>
                     <h2 class="settings-panel-title">Preferencje feedu</h2>
 
-                    <div class="settings-stack">
-                        <div class="settings-setting">
-                            <div class="settings-setting-copy">
-                                <div class="settings-setting-title">Domyślny widok feedu</div>
-                            </div>
-                            <select class="settings-select">
-                                <option>Wszystkie posty</option>
-                                <option>Polubione</option>
-                                <option>Zapisane</option>
-                                <option>Komentowane</option>
-                            </select>
-                        </div>
+                    <form method="post" class="settings-community-form" data-settings-community-form novalidate>
+                        <input type="hidden" name="action" value="save_community_settings">
 
-                        <div class="settings-setting">
-                            <div class="settings-setting-copy">
-                                <div class="settings-setting-title">Pokazuj tooltipy</div>
-                            </div>
-                            <label class="settings-toggle">
-                                <input type="checkbox" checked>
-                                <span class="settings-toggle-track"></span>
+                        <div class="settings-stack">
+                            <label class="settings-setting">
+                                <span class="settings-setting-copy">
+                                    <span class="settings-setting-title">Domyślny widok feedu</span>
+                                </span>
+                                <span class="settings-setting-control">
+                                    <select name="community_default_scope" class="settings-select<?= !empty($communityErrors['community_default_scope']) ? ' is-invalid' : ''; ?>">
+                                        <option value="all"<?= ($communityForm['community_default_scope'] ?? 'all') === 'all' ? ' selected' : ''; ?>>Wszystkie posty</option>
+                                        <option value="liked"<?= ($communityForm['community_default_scope'] ?? 'all') === 'liked' ? ' selected' : ''; ?>>Polubione</option>
+                                        <option value="saved"<?= ($communityForm['community_default_scope'] ?? 'all') === 'saved' ? ' selected' : ''; ?>>Zapisane</option>
+                                        <option value="commented"<?= ($communityForm['community_default_scope'] ?? 'all') === 'commented' ? ' selected' : ''; ?>>Komentowane</option>
+                                    </select>
+                                    <span class="settings-field-error" data-settings-error-for="community_default_scope"<?= empty($communityErrors['community_default_scope']) ? ' hidden' : ''; ?>><?= htmlspecialchars((string) ($communityErrors['community_default_scope'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></span>
+                                </span>
                             </label>
                         </div>
 
-                        <div class="settings-setting">
-                            <div class="settings-setting-copy">
-                                <div class="settings-setting-title">Potwierdzenie przed usunięciem posta</div>
-                            </div>
-                            <label class="settings-toggle">
-                                <input type="checkbox" checked>
-                                <span class="settings-toggle-track"></span>
-                            </label>
+                        <div class="settings-form-error" data-settings-form-error<?= empty($communityErrors['form']) ? ' hidden' : ''; ?>>
+                            <?= htmlspecialchars((string) ($communityErrors['form'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
                         </div>
-                    </div>
+
+                        <div class="settings-actions-row">
+                            <button type="submit" class="settings-button settings-button-primary">Zapisz zmiany</button>
+                        </div>
+                    </form>
                 </article>
 
                 <article class="settings-panel">
                     <div class="settings-panel-kicker">Powiadomienia</div>
                     <h2 class="settings-panel-title">Alerty i przypomnienia</h2>
 
-                    <div class="settings-stack">
-                        <div class="settings-setting">
-                            <div class="settings-setting-copy">
-                                <div class="settings-setting-title">Polubienia i zapisy</div>
-                            </div>
-                            <label class="settings-toggle">
-                                <input type="checkbox" checked>
-                                <span class="settings-toggle-track"></span>
+                    <form method="post" class="settings-notification-form" data-settings-notification-form novalidate>
+                        <input type="hidden" name="action" value="save_notification_settings">
+
+                        <div class="settings-stack">
+                            <label class="settings-setting">
+                                <span class="settings-setting-copy">
+                                    <span class="settings-setting-title">Wyłącz wszystkie powiadomienia</span>
+                                </span>
+                                <span class="settings-setting-control">
+                                    <label class="settings-toggle">
+                                        <input
+                                            type="checkbox"
+                                            data-settings-notifications-disable-all
+                                            <?= empty($notificationForm['notification_vehicle_acceptance'])
+                                                && empty($notificationForm['notification_vehicle_documents'])
+                                                && empty($notificationForm['notification_profile_membership'])
+                                                && empty($notificationForm['notification_post_likes'])
+                                                && empty($notificationForm['notification_post_comments'])
+                                                    ? ' checked' : ''; ?>
+                                        >
+                                        <span class="settings-toggle-track"></span>
+                                    </label>
+                                </span>
                             </label>
+
+                            <label class="settings-setting">
+                                <span class="settings-setting-copy">
+                                    <span class="settings-setting-title">Kanał powiadomień</span>
+                                </span>
+                                <span class="settings-setting-control">
+                                    <select class="settings-select" disabled>
+                                        <option selected>Tylko w aplikacji</option>
+                                    </select>
+                                </span>
+                            </label>
+
+                            <div class="settings-setting-group-title">Moje samochody</div>
+
+                            <label class="settings-setting">
+                                <span class="settings-setting-copy">
+                                    <span class="settings-setting-title">Akceptacja samochodu</span>
+                                </span>
+                                <span class="settings-setting-control">
+                                    <label class="settings-toggle">
+                                        <input type="checkbox" name="notification_vehicle_acceptance" data-settings-notification-toggle<?= !empty($notificationForm['notification_vehicle_acceptance']) ? ' checked' : ''; ?>>
+                                        <span class="settings-toggle-track"></span>
+                                    </label>
+                                </span>
+                            </label>
+
+                            <label class="settings-setting">
+                                <span class="settings-setting-copy">
+                                    <span class="settings-setting-title">Przegląd i ubezpieczenie</span>
+                                </span>
+                                <span class="settings-setting-control">
+                                    <label class="settings-toggle">
+                                        <input type="checkbox" name="notification_vehicle_documents" data-settings-notification-toggle<?= !empty($notificationForm['notification_vehicle_documents']) ? ' checked' : ''; ?>>
+                                        <span class="settings-toggle-track"></span>
+                                    </label>
+                                </span>
+                            </label>
+
+                            <div class="settings-setting-group-title">Profil</div>
+
+                            <label class="settings-setting">
+                                <span class="settings-setting-copy">
+                                    <span class="settings-setting-title">Status member</span>
+                                </span>
+                                <span class="settings-setting-control">
+                                    <label class="settings-toggle">
+                                        <input type="checkbox" name="notification_profile_membership" data-settings-notification-toggle<?= !empty($notificationForm['notification_profile_membership']) ? ' checked' : ''; ?>>
+                                        <span class="settings-toggle-track"></span>
+                                    </label>
+                                </span>
+                            </label>
+
+                            <div class="settings-setting-group-title">Posty</div>
+
+                            <label class="settings-setting">
+                                <span class="settings-setting-copy">
+                                    <span class="settings-setting-title">Polubienia</span>
+                                </span>
+                                <span class="settings-setting-control">
+                                    <label class="settings-toggle">
+                                        <input type="checkbox" name="notification_post_likes" data-settings-notification-toggle<?= !empty($notificationForm['notification_post_likes']) ? ' checked' : ''; ?>>
+                                        <span class="settings-toggle-track"></span>
+                                    </label>
+                                </span>
+                            </label>
+
+                            <label class="settings-setting">
+                                <span class="settings-setting-copy">
+                                    <span class="settings-setting-title">Komentarze</span>
+                                </span>
+                                <span class="settings-setting-control">
+                                    <label class="settings-toggle">
+                                        <input type="checkbox" name="notification_post_comments" data-settings-notification-toggle<?= !empty($notificationForm['notification_post_comments']) ? ' checked' : ''; ?>>
+                                        <span class="settings-toggle-track"></span>
+                                    </label>
+                                </span>
+                            </label>
+
                         </div>
 
-                        <div class="settings-setting">
-                            <div class="settings-setting-copy">
-                                <div class="settings-setting-title">Komentarze i odpowiedzi</div>
-                            </div>
-                            <label class="settings-toggle">
-                                <input type="checkbox" checked>
-                                <span class="settings-toggle-track"></span>
-                            </label>
+                        <div class="settings-form-error" data-settings-form-error<?= empty($notificationErrors['form']) ? ' hidden' : ''; ?>>
+                            <?= htmlspecialchars((string) ($notificationErrors['form'] ?? ''), ENT_QUOTES, 'UTF-8'); ?>
                         </div>
 
-                        <div class="settings-setting">
-                            <div class="settings-setting-copy">
-                                <div class="settings-setting-title">Przegląd, OC i serwis</div>
-                            </div>
-                            <label class="settings-toggle">
-                                <input type="checkbox" checked>
-                                <span class="settings-toggle-track"></span>
-                            </label>
+                        <div class="settings-actions-row">
+                            <button type="submit" class="settings-button settings-button-primary">Zapisz zmiany</button>
                         </div>
-
-                        <div class="settings-setting">
-                            <div class="settings-setting-copy">
-                                <div class="settings-setting-title">Kanał powiadomień</div>
-                            </div>
-                            <select class="settings-select">
-                                <option>Tylko w aplikacji</option>
-                                <option>E-mail i aplikacja</option>
-                            </select>
-                        </div>
-                    </div>
+                    </form>
                 </article>
 
                 <article class="settings-panel settings-panel-neutral">
                     <div class="settings-panel-kicker">Przywracanie</div>
                     <h2 class="settings-panel-title">Przywróć ustawienia domyślne</h2>
 
-                    <div class="settings-danger-actions">
-                        <button type="button" class="settings-button settings-button-muted" data-settings-reset-defaults>
+                    <div class="settings-danger-actions settings-danger-actions-fullwidth">
+                        <button type="button" class="settings-button settings-button-muted settings-button-fullwidth" data-settings-reset-defaults>
                             Przywróć ustawienia domyślne
                         </button>
                     </div>
