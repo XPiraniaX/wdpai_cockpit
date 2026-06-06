@@ -17,6 +17,7 @@ class Routing {
         "profile" => ["controller" => "ProfileController", "action" => "index"],
         "community/profile" => ["controller" => "ProfileController", "action" => "index"],
         "settings" => ["controller" => "SettingsController", "action" => "index"],
+        "notifications" => ["controller" => "NotificationController", "action" => "index"],
     ];
 
     public static function run(string $path) {

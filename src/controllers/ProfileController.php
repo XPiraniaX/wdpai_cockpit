@@ -43,7 +43,15 @@ class ProfileController extends CommunityController
         } else {
             $profile = $repository->getProfile($profileUserId);
             if ($profile !== null && trim((string) ($profile['pseudonym'] ?? '')) !== '') {
-                $this->redirect('/profile/' . rawurlencode((string) $profile['pseudonym']));
+                $query = $_GET;
+                unset($query['id'], $query['pseudonym']);
+
+                $redirectPath = '/profile/' . rawurlencode((string) $profile['pseudonym']);
+                if ($query !== []) {
+                    $redirectPath .= '?' . http_build_query($query);
+                }
+
+                $this->redirect($redirectPath);
             }
         }
 

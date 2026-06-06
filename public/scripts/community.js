@@ -477,6 +477,7 @@ const openCommentsModal = (modalElement) => {
     modalElement.hidden = false;
     syncBodyScrollLock();
 };
+window.openCommunityCommentsModal = openCommentsModal;
 
 const closeCommentsModal = (modalElement = activeCommentsModal) => {
     if (!modalElement) {
@@ -490,6 +491,7 @@ const closeCommentsModal = (modalElement = activeCommentsModal) => {
 
     syncBodyScrollLock();
 };
+window.closeCommunityCommentsModal = closeCommentsModal;
 
 openModalButtons.forEach((button) => {
     button.addEventListener('click', () => {

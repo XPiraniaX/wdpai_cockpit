@@ -54,6 +54,9 @@ class AppController
         $viewPath = file_exists($templatePath) ? $templatePath : 'public/views/404.html';
         $currentUserId = $this->getCurrentUserId();
         $currentUser = $this->resolveCurrentUser($currentUserId);
+        $notificationUnreadCount = $this->isAuthenticated()
+            ? $this->resolveNotificationUnreadCount($currentUserId)
+            : 0;
         $requiresPseudonymSetup = $this->isAuthenticated()
             && trim((string) ($currentUser['pseudonym'] ?? '')) === '';
         $flash = $this->consumeFlash();
@@ -68,9 +71,13 @@ class AppController
             'settings.css',
             'vehicle_details.css',
         ];
-        $scriptFiles = $variables['scriptFiles'] ?? [];
-
         extract($variables);
+
+        $scriptFiles = $variables['scriptFiles'] ?? [];
+        if ($this->isAuthenticated()) {
+            $scriptFiles[] = 'notifications.js';
+            $scriptFiles = array_values(array_unique($scriptFiles));
+        }
 
         ob_start();
         include $viewPath;
@@ -252,6 +259,18 @@ class AppController
             return $user ?: $fallbackUser;
         } catch (Throwable) {
             return $fallbackUser;
+        }
+    }
+
+    private function resolveNotificationUnreadCount(int $userId): int
+    {
+        try {
+            $repository = new NotificationRepository(Database::getConnection());
+            $repository->syncUserNotifications($userId);
+
+            return $repository->getUnreadCount($userId);
+        } catch (Throwable) {
+            return 0;
         }
     }
 }

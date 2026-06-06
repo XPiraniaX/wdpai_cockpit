@@ -34,6 +34,8 @@ $ownProfilePath = trim((string) ($currentUser['pseudonym'] ?? '')) !== ''
     ? '/profile/' . rawurlencode((string) $currentUser['pseudonym'])
     : '/profile';
 $headerAvatarPath = trim((string) ($currentUser['avatar_path'] ?? ''));
+$notificationBellIconIdlePath = '/public/assets/icons/bell_icon.svg?v=' . rawurlencode((string) filemtime('public/assets/icons/bell_icon.svg'));
+$notificationBellIconActivePath = '/public/assets/icons/bell_icon_active.svg?v=' . rawurlencode((string) filemtime('public/assets/icons/bell_icon_active.svg'));
 ?>
 <header class="topbar">
     <div class="breadcrumbs">
@@ -43,9 +45,30 @@ $headerAvatarPath = trim((string) ($currentUser['avatar_path'] ?? ''));
     </div>
 
     <div class="topbar-actions">
-        <button class="icon-button" type="button" aria-label="Powiadomienia">
-            <img src="/public/assets/icons/bell_icon.svg" alt="" class="bell-icon">
-        </button>
+        <div class="notification-shell" data-notification-shell>
+            <button
+                class="icon-button notification-trigger"
+                type="button"
+                aria-label="Powiadomienia"
+                aria-expanded="false"
+                data-notification-trigger
+                data-notification-bell-idle="<?= htmlspecialchars($notificationBellIconIdlePath, ENT_QUOTES, 'UTF-8'); ?>"
+                data-notification-bell-active="<?= htmlspecialchars($notificationBellIconActivePath, ENT_QUOTES, 'UTF-8'); ?>"
+            >
+                <img
+                    src="<?= htmlspecialchars($notificationBellIconIdlePath, ENT_QUOTES, 'UTF-8'); ?>"
+                    alt=""
+                    class="bell-icon"
+                    data-notification-bell-icon
+                >
+            </button>
+
+            <section class="notification-panel" hidden data-notification-panel>
+                <div class="notification-panel-body" data-notification-body>
+                    <div class="notification-panel-empty">Ładowanie powiadomień...</div>
+                </div>
+            </section>
+        </div>
 
         <a href="<?= htmlspecialchars($ownProfilePath, ENT_QUOTES, 'UTF-8'); ?>" class="user-card user-card-link" aria-label="Przejdź do swojego profilu">
             <div class="user-meta">

@@ -13,6 +13,7 @@ let activeProfileFeedElement = null;
 let activeProfileFeedCheckInterval = null;
 let activeProfileInfiniteScrollTarget = null;
 let activeProfileInfiniteScrollHandler = null;
+let activeProfileHashPostSearch = null;
 
 const getProfileScrollContainer = () => {
     const content = document.querySelector('.content');
@@ -88,6 +89,132 @@ const parseProfileJsonResponse = (responseText) => {
 };
 
 const updateProfileDebugIndicator = () => {};
+
+const getProfilePostHashTargetId = () => {
+    const hash = window.location.hash || '';
+    if (!hash.startsWith('#post-')) {
+        return null;
+    }
+
+    const postId = Number(hash.slice('#post-'.length));
+    return Number.isInteger(postId) && postId > 0 ? postId : null;
+};
+
+const getProfileOpenCommentsPostId = () => {
+    const url = new URL(window.location.href);
+    const postId = Number(url.searchParams.get('open_comments_post') || 0);
+    return Number.isInteger(postId) && postId > 0 ? postId : null;
+};
+
+const scrollProfilePostIntoView = (postId) => {
+    const target = document.getElementById(`post-${postId}`);
+    if (!(target instanceof HTMLElement)) {
+        return false;
+    }
+
+    target.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+    });
+
+    return true;
+};
+
+const waitForNextFrame = () => new Promise((resolve) => {
+    window.requestAnimationFrame(() => resolve());
+});
+
+const maybeOpenProfilePostComments = async (postId) => {
+    const openCommentsPostId = getProfileOpenCommentsPostId();
+    if (!openCommentsPostId || openCommentsPostId !== postId) {
+        return false;
+    }
+
+    const finalizeOpenedComments = () => {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('open_comments_post');
+        window.history.replaceState({}, '', url.toString());
+    };
+
+    const tryOpenViaTrigger = async () => {
+        const postElement = document.getElementById(`post-${postId}`);
+        if (!(postElement instanceof HTMLElement)) {
+            return false;
+        }
+
+        const commentTrigger = postElement.querySelector('[data-open-comments-modal]');
+        if (!(commentTrigger instanceof HTMLElement)) {
+            return false;
+        }
+
+        commentTrigger.dispatchEvent(new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+        }));
+
+        await waitForNextFrame();
+        await waitForNextFrame();
+
+        const modalId = commentTrigger.getAttribute('data-comments-modal-id') || `community-comments-modal-${postId}`;
+        const modal = document.getElementById(modalId);
+        if (!(modal instanceof HTMLElement) || modal.hidden) {
+            return false;
+        }
+
+        finalizeOpenedComments();
+        return true;
+    };
+
+    const openModalOnceReady = async () => {
+        const modal = document.getElementById(`community-comments-modal-${postId}`);
+        if (!(modal instanceof HTMLElement)) {
+            return false;
+        }
+
+        if (typeof window.openCommunityCommentsModal === 'function') {
+            window.openCommunityCommentsModal(modal);
+        } else {
+            modal.hidden = false;
+        }
+
+        await waitForNextFrame();
+        modal.querySelectorAll('[data-community-carousel]').forEach((carousel) => {
+            if (typeof window.initializeCommunityCarousel === 'function') {
+                window.initializeCommunityCarousel(carousel);
+            }
+        });
+
+        if (modal.hidden) {
+            return false;
+        }
+
+        finalizeOpenedComments();
+        return true;
+    };
+
+    for (let attempt = 0; attempt < 6; attempt += 1) {
+        const openedViaTrigger = await tryOpenViaTrigger();
+        if (openedViaTrigger) {
+            return true;
+        }
+
+        const opened = await openModalOnceReady();
+        if (opened) {
+            return true;
+        }
+
+        await waitForNextFrame();
+        await new Promise((resolve) => window.setTimeout(resolve, 60));
+    }
+
+    const openedViaTrigger = await tryOpenViaTrigger();
+    if (openedViaTrigger) {
+        return true;
+    }
+
+    return false;
+};
 
 const ensureProfileMarketplaceConfirmModal = () => {
     let modal = document.querySelector('[data-profile-marketplace-confirm-modal]');
@@ -1887,7 +2014,7 @@ const maybeLoadNextProfilePage = async (root = document) => {
     await loadNextProfileListingsPage(activeFeed.feed);
 };
 
-const loadNextProfilePostsPage = async (feed) => {
+const loadNextProfilePostsPage = async (feed, { suppressAutoCascade = false } = {}) => {
     if (!(feed instanceof HTMLElement) || isProfilePostsPageLoading || feed.dataset.hasMore !== '1') {
         return;
     }
@@ -1955,7 +2082,7 @@ const loadNextProfilePostsPage = async (feed) => {
         }
         isProfilePostsPageLoading = false;
 
-        if (feed.dataset.hasMore === '1' && isNearBottomOfProfileScroll()) {
+        if (!suppressAutoCascade && feed.dataset.hasMore === '1' && isNearBottomOfProfileScroll()) {
             window.setTimeout(() => {
                 loadNextProfilePostsPage(feed).catch(() => {});
             }, 80);
@@ -2037,6 +2164,57 @@ const loadNextProfileListingsPage = async (feed) => {
     }
 };
 
+const maybeResolveProfilePostHashTarget = async (root = document) => {
+    const postId = getProfilePostHashTargetId();
+    if (!postId) {
+        activeProfileHashPostSearch = null;
+        return;
+    }
+
+    const activeFeed = getActiveProfileFeed(root);
+    if (!activeFeed || activeFeed.type !== 'posts') {
+        activeProfileHashPostSearch = null;
+        return;
+    }
+
+    if (scrollProfilePostIntoView(postId)) {
+        await maybeOpenProfilePostComments(postId);
+        activeProfileHashPostSearch = null;
+        return;
+    }
+
+    if (activeFeed.feed.dataset.hasMore !== '1') {
+        activeProfileHashPostSearch = null;
+        return;
+    }
+
+    if (activeProfileHashPostSearch === postId || isProfilePostsPageLoading) {
+        return;
+    }
+
+    activeProfileHashPostSearch = postId;
+
+    try {
+        while (activeFeed.feed.dataset.hasMore === '1') {
+            await loadNextProfilePostsPage(activeFeed.feed, { suppressAutoCascade: true });
+
+            if (scrollProfilePostIntoView(postId)) {
+                await maybeOpenProfilePostComments(postId);
+                activeProfileHashPostSearch = null;
+                return;
+            }
+
+            if (activeFeed.feed.dataset.hasMore !== '1') {
+                break;
+            }
+        }
+    } finally {
+        if (activeProfileHashPostSearch === postId) {
+            activeProfileHashPostSearch = null;
+        }
+    }
+};
+
 const initializeProfileFeedPagination = (root = document) => {
     teardownProfileInfiniteScrollListeners();
 
@@ -2068,6 +2246,7 @@ const reinitializeProfileActivityChunk = (root = document) => {
 
     bindProfileMarketplaceChunk(root);
     initializeProfileFeedPagination(root);
+    maybeResolveProfilePostHashTarget(root).catch(() => {});
 };
 
 const loadProfileActivityChunk = async (url) => {
@@ -2108,6 +2287,9 @@ if (isProfilePage) {
     bindProfileAvatarModal();
     bindProfileHeroActions();
     reinitializeProfileActivityChunk(document.querySelector('[data-profile-activity-root]') ?? document);
+    window.addEventListener('hashchange', () => {
+        maybeResolveProfilePostHashTarget(document.querySelector('[data-profile-activity-root]') ?? document).catch(() => {});
+    });
     document.addEventListener('profile:stats-refresh', () => {
         refreshProfileStats();
     });

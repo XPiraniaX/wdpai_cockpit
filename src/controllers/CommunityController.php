@@ -300,9 +300,13 @@ class CommunityController extends AppController
                 $postId = (int) ($_POST['post_id'] ?? 0);
                 if ($postId > 0) {
                     $repository->toggleLike($userId, $postId);
+                    $state = $repository->getLikeState($userId, $postId);
+                    if ($state['liked_by_current_user']) {
+                        (new NotificationRepository(Database::getConnection()))
+                            ->createPostLikeMilestoneNotification($userId, $postId);
+                    }
 
                     if ($this->isAjaxRequest()) {
-                        $state = $repository->getLikeState($userId, $postId);
                         $this->jsonResponse([
                             'success' => true,
                             'post_id' => $postId,
@@ -338,6 +342,10 @@ class CommunityController extends AppController
 
                 if ($postId > 0 && $content !== '') {
                     $comment = $repository->addComment($userId, $postId, $content);
+                    if (!empty($comment['id'])) {
+                        (new NotificationRepository(Database::getConnection()))
+                            ->createPostCommentNotification($userId, $postId, (int) $comment['id']);
+                    }
 
                     if ($comment !== null && $this->isAjaxRequest()) {
                         $comment['formatted_created_at'] = $this->formatDateTime($comment['created_at']);
