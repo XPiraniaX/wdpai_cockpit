@@ -14,6 +14,11 @@ const notificationBellIcons = {
     active: notificationTrigger?.getAttribute('data-notification-bell-active') || '/public/assets/icons/bell_icon_active.svg',
 };
 
+const csrfHeaders = () => {
+    const token = String(window.APP_CSRF_TOKEN || '');
+    return token !== '' ? { 'X-CSRF-Token': token } : {};
+};
+
 const getToast = () => {
     if (typeof window.showAppToast === 'function') {
         return window.showAppToast;
@@ -210,6 +215,7 @@ notificationBody?.addEventListener('click', async (event) => {
             body: formData,
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
+                ...csrfHeaders(),
             },
         });
 

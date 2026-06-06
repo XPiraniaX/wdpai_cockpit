@@ -136,6 +136,11 @@ body::before {
     transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 
+.auth-input.is-invalid {
+    border-color: rgba(248, 113, 113, 0.5);
+    box-shadow: 0 0 0 4px rgba(248, 113, 113, 0.08);
+}
+
 .auth-input::placeholder {
     color: rgba(148, 163, 184, 0.55);
 }
@@ -149,6 +154,49 @@ body::before {
     color: #fecaca;
     font-size: 12px;
     line-height: 1.35;
+}
+
+.auth-input-tooltip-wrap {
+    position: relative;
+}
+
+.auth-inline-tooltip {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(100% + 10px);
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(8, 17, 35, 0.96);
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    box-shadow: 0 18px 36px rgba(2, 8, 23, 0.34);
+    color: rgba(226, 232, 240, 0.88);
+    font-size: 12px;
+    line-height: 1.45;
+    opacity: 0;
+    transform: translateY(6px);
+    pointer-events: none;
+    transition: opacity 0.18s ease, transform 0.18s ease;
+    z-index: 6;
+}
+
+.auth-inline-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%;
+    left: 18px;
+    width: 10px;
+    height: 10px;
+    background: rgba(8, 17, 35, 0.96);
+    border-right: 1px solid rgba(148, 163, 184, 0.14);
+    border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+    transform: rotate(45deg) translateY(-4px);
+}
+
+.auth-input-tooltip-wrap:hover .auth-inline-tooltip,
+.auth-input-tooltip-wrap:focus-within .auth-inline-tooltip {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 .auth-submit {

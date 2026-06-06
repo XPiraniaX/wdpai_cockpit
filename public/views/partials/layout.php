@@ -55,6 +55,60 @@
 <?php endforeach; ?>
 
 <script>
+    window.APP_CSRF_TOKEN = <?= json_encode((string) ($csrfToken ?? ''), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
+
+    (() => {
+        const applyCsrfToken = (root = document) => {
+            root.querySelectorAll('form').forEach((form) => {
+                const method = String(form.getAttribute('method') || 'get').toLowerCase();
+                if (method !== 'post') {
+                    return;
+                }
+
+                let tokenInput = form.querySelector('input[name="_csrf"]');
+                if (!(tokenInput instanceof HTMLInputElement)) {
+                    tokenInput = document.createElement('input');
+                    tokenInput.type = 'hidden';
+                    tokenInput.name = '_csrf';
+                    form.appendChild(tokenInput);
+                }
+
+                tokenInput.value = window.APP_CSRF_TOKEN || '';
+            });
+        };
+
+        const boot = () => {
+            applyCsrfToken();
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    mutation.addedNodes.forEach((node) => {
+                        if (!(node instanceof HTMLElement)) {
+                            return;
+                        }
+
+                        if (node.matches('form')) {
+                            applyCsrfToken(node.parentElement ?? node);
+                            return;
+                        }
+
+                        applyCsrfToken(node);
+                    });
+                });
+            });
+
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+            });
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', boot, { once: true });
+        } else {
+            boot();
+        }
+    })();
+
     (() => {
         const toast = document.querySelector('[data-app-toast]');
         if (!toast) {

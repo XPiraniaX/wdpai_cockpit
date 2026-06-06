@@ -37,6 +37,13 @@ $menuItems = [
     </div>
 
     <div class="bottom">
+        <?php if (($currentUser['role'] ?? 'user') === 'admin'): ?>
+            <a href="/admin" class="menu-item<?= $currentPath === 'admin' ? ' active' : ''; ?>">
+                <span class="menu-icon"
+                      style="--icon-url: url('/public/assets/icons/settings.svg');"></span>
+                <span class="menu-label">Panel administratora</span>
+            </a>
+        <?php endif; ?>
         <a href="<?= htmlspecialchars($ownProfilePath, ENT_QUOTES, 'UTF-8'); ?>" class="menu-item menu-item-profile<?= $isProfileRoute ? ' active' : ''; ?>">
             <span class="menu-icon"
                   style="--icon-url: url('/public/assets/icons/profile.svg');"></span>

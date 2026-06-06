@@ -2,6 +2,28 @@
 
 class AppController
 {
+    public function enforceCsrfProtection(): void
+    {
+        if (!$this->isPost()) {
+            return;
+        }
+
+        $token = (string) ($_POST['_csrf'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
+        if ($token !== '' && hash_equals($this->getCsrfToken(), $token)) {
+            return;
+        }
+
+        if ($this->isAjaxRequest()) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Sesja formularza wygasła. Odśwież stronę i spróbuj ponownie.',
+            ], 403);
+        }
+
+        $this->setFlash('error', 'Sesja formularza wygasła. Odśwież stronę i spróbuj ponownie.');
+        $this->redirect($this->sanitizeBackRedirect((string) ($_SERVER['HTTP_REFERER'] ?? '/login')));
+    }
+
     protected function getCurrentUserId(): int
     {
         $sessionUserId = $_SESSION['auth_user_id'] ?? null;
@@ -57,6 +79,7 @@ class AppController
         $notificationUnreadCount = $this->isAuthenticated()
             ? $this->resolveNotificationUnreadCount($currentUserId)
             : 0;
+        $csrfToken = $this->getCsrfToken();
         $requiresPseudonymSetup = $this->isAuthenticated()
             && trim((string) ($currentUser['pseudonym'] ?? '')) === '';
         $flash = $this->consumeFlash();
@@ -94,8 +117,11 @@ class AppController
             'auth.css',
         ];
         $flash = $this->consumeFlash();
+        $csrfToken = $this->getCsrfToken();
 
         extract($variables);
+
+        $scriptFiles = $variables['scriptFiles'] ?? [];
 
         ob_start();
         include $templatePath;
@@ -118,6 +144,28 @@ class AppController
 
         $this->setFlash('error', 'Zaloguj się, aby przejść dalej.');
         $this->redirect('/login');
+    }
+
+    protected function isAdmin(): bool
+    {
+        if (!$this->isAuthenticated()) {
+            return false;
+        }
+
+        $currentUser = $this->resolveCurrentUser($this->getCurrentUserId());
+        return (string) ($currentUser['role'] ?? 'user') === 'admin';
+    }
+
+    protected function requireAdmin(): void
+    {
+        $this->requireAuthentication();
+
+        if ($this->isAdmin()) {
+            return;
+        }
+
+        $this->setFlash('error', 'Nie masz uprawnień do tej strony.');
+        $this->redirect('/dashboard');
     }
 
     protected function redirectIfAuthenticated(string $path = '/dashboard'): void
@@ -242,6 +290,61 @@ class AppController
         return $path;
     }
 
+    protected function validatePasswordStrength(string $password, string $subject = 'Hasło'): ?string
+    {
+        if ($password === '') {
+            return $subject . ' jest wymagane.';
+        }
+
+        if (strlen($password) < 8) {
+            return $subject . ' musi mieć co najmniej 8 znaków.';
+        }
+
+        if (strlen($password) > 255) {
+            return $subject . ' jest zbyt długie.';
+        }
+
+        $hasLowercase = preg_match('/\p{Ll}/u', $password) === 1;
+        $hasUppercase = preg_match('/\p{Lu}/u', $password) === 1;
+        $hasDigit = preg_match('/\d/u', $password) === 1;
+        $hasSpecial = preg_match('/[^\p{L}\p{N}]/u', $password) === 1;
+
+        if (!$hasLowercase || !$hasUppercase || !$hasDigit || !$hasSpecial) {
+            return $subject . ' musi zawierać małe i wielkie litery, cyfrę oraz znak specjalny.';
+        }
+
+        return null;
+    }
+
+    protected function getCsrfToken(): string
+    {
+        $token = $_SESSION['csrf_token'] ?? null;
+        if (is_string($token) && strlen($token) >= 32) {
+            return $token;
+        }
+
+        $token = bin2hex(random_bytes(32));
+        $_SESSION['csrf_token'] = $token;
+
+        return $token;
+    }
+
+    private function sanitizeBackRedirect(string $url): string
+    {
+        $path = (string) parse_url($url, PHP_URL_PATH);
+        $query = (string) parse_url($url, PHP_URL_QUERY);
+
+        if ($path === '' || !str_starts_with($path, '/')) {
+            return '/login';
+        }
+
+        if (str_starts_with($path, '//')) {
+            return '/login';
+        }
+
+        return $query !== '' ? $path . '?' . $query : $path;
+    }
+
     private function resolveCurrentUser(int $userId): array
     {
         $fallbackUser = [
@@ -249,6 +352,7 @@ class AppController
             'full_name' => 'Użytkownik testowy',
             'pseudonym' => null,
             'avatar_path' => null,
+            'role' => 'user',
             'membership_tier' => 'free',
         ];
 

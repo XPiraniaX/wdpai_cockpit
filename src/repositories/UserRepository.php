@@ -23,6 +23,7 @@ class UserRepository
                 pseudonym,
                 avatar_path,
                 CONCAT(first_name, ' ', last_name) AS full_name,
+                role,
                 membership_tier,
                 created_at
             FROM users
@@ -50,6 +51,7 @@ class UserRepository
                 first_name,
                 last_name,
                 pseudonym,
+                role,
                 membership_tier,
                 is_active
             FROM users
@@ -75,6 +77,7 @@ class UserRepository
             "SELECT
                 id,
                 password,
+                role,
                 is_active
             FROM users
             WHERE id = :user_id

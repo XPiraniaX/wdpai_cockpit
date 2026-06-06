@@ -540,11 +540,6 @@ class SettingsController extends AppController
 
     private function canAuthenticate(string $storedPassword, string $plainPassword): bool
     {
-        if (password_verify($plainPassword, $storedPassword)) {
-            return true;
-        }
-
-        return str_contains($storedPassword, 'examplehashedpasswordvalueforseedonly1234567890')
-            && hash_equals('password', $plainPassword);
+        return password_verify($plainPassword, $storedPassword);
     }
 }

@@ -4,6 +4,10 @@ require_once 'AppController.php';
 
 class SecurityController extends AppController
 {
+    private const LOGIN_RATE_LIMIT_WINDOW_SECONDS = 900;
+    private const LOGIN_RATE_LIMIT_MAX_ATTEMPTS_PER_LOGIN = 5;
+    private const LOGIN_RATE_LIMIT_MAX_ATTEMPTS_PER_IP = 20;
+
     public function login(): void
     {
         $this->redirectIfAuthenticated();
@@ -27,12 +31,22 @@ class SecurityController extends AppController
             }
 
             if ($errors === []) {
+                $clientIp = $this->resolveClientIp();
+                if ($this->isLoginRateLimited($clientIp, $form['login'])) {
+                    $errors['auth'] = 'Zbyt wiele nieudanych prób logowania. Spróbuj ponownie za kilka minut.';
+                    $this->registerFailedLoginAttempt($clientIp, $form['login']);
+                }
+            }
+
+            if ($errors === []) {
                 $repository = new UserRepository(Database::getConnection());
                 $user = $repository->findForAuthentication($form['login']);
 
                 if (!$user || !$this->canAuthenticate((string) $user['password'], $password)) {
+                    $this->registerFailedLoginAttempt($this->resolveClientIp(), $form['login']);
                     $errors['auth'] = 'Niepoprawny login lub hasło.';
                 } else {
+                    $this->clearLoginRateLimit($this->resolveClientIp(), $form['login']);
                     $this->loginUser((int) $user['id']);
                     $repository->updateLastLoginAt((int) $user['id']);
                     $this->redirect('/dashboard');
@@ -88,10 +102,9 @@ class SecurityController extends AppController
                 $errors['email'] = 'Podaj poprawny adres email.';
             }
 
-            if ($password === '') {
-                $errors['password'] = 'Podaj hasło.';
-            } elseif (strlen($password) < 8) {
-                $errors['password'] = 'Hasło musi mieć co najmniej 8 znaków.';
+            $passwordError = $this->validatePasswordStrength($password, 'Hasło');
+            if ($passwordError !== null) {
+                $errors['password'] = $passwordError;
             }
 
             if ($passwordConfirmation === '') {
@@ -104,11 +117,11 @@ class SecurityController extends AppController
                 $repository = new UserRepository(Database::getConnection());
 
                 if ($repository->usernameExists($form['username'])) {
-                    $errors['username'] = 'Ten login jest już zajęty.';
+                    $errors['username'] = 'Wybrany login jest niedostępny.';
                 }
 
                 if ($repository->emailExists($form['email'])) {
-                    $errors['email'] = 'Ten email jest już zajęty.';
+                    $errors['email'] = 'Nie można użyć tego adresu email.';
                 }
 
                 if ($errors === []) {
@@ -130,6 +143,7 @@ class SecurityController extends AppController
             'title' => $title,
             'errors' => $errors,
             'form' => $form,
+            'scriptFiles' => ['auth.js'],
         ]);
     }
 
@@ -185,12 +199,7 @@ class SecurityController extends AppController
 
     private function canAuthenticate(string $storedPassword, string $plainPassword): bool
     {
-        if (password_verify($plainPassword, $storedPassword)) {
-            return true;
-        }
-
-        return str_contains($storedPassword, 'examplehashedpasswordvalueforseedonly1234567890')
-            && hash_equals('password', $plainPassword);
+        return password_verify($plainPassword, $storedPassword);
     }
 
     private function sanitizeRedirectPath(string $redirectTo): string
@@ -206,5 +215,83 @@ class SecurityController extends AppController
         }
 
         return $path;
+    }
+
+    private function resolveClientIp(): string
+    {
+        $remoteAddr = trim((string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+        return $remoteAddr !== '' ? $remoteAddr : 'unknown';
+    }
+
+    private function isLoginRateLimited(string $ip, string $login): bool
+    {
+        $ipAttempts = $this->readRecentLoginAttempts($this->buildLoginRateLimitKey('ip', strtolower($ip)));
+        if (count($ipAttempts) >= self::LOGIN_RATE_LIMIT_MAX_ATTEMPTS_PER_IP) {
+            return true;
+        }
+
+        $loginAttempts = $this->readRecentLoginAttempts($this->buildLoginRateLimitKey('login', strtolower($login) . '|' . strtolower($ip)));
+        return count($loginAttempts) >= self::LOGIN_RATE_LIMIT_MAX_ATTEMPTS_PER_LOGIN;
+    }
+
+    private function registerFailedLoginAttempt(string $ip, string $login): void
+    {
+        $this->appendLoginAttempt($this->buildLoginRateLimitKey('ip', strtolower($ip)));
+        $this->appendLoginAttempt($this->buildLoginRateLimitKey('login', strtolower($login) . '|' . strtolower($ip)));
+    }
+
+    private function clearLoginRateLimit(string $ip, string $login): void
+    {
+        $this->deleteLoginRateLimitFile($this->buildLoginRateLimitKey('login', strtolower($login) . '|' . strtolower($ip)));
+    }
+
+    private function appendLoginAttempt(string $key): void
+    {
+        $attempts = $this->readRecentLoginAttempts($key);
+        $attempts[] = time();
+        @file_put_contents($this->getLoginRateLimitFilePath($key), json_encode($attempts, JSON_UNESCAPED_SLASHES));
+    }
+
+    private function readRecentLoginAttempts(string $key): array
+    {
+        $path = $this->getLoginRateLimitFilePath($key);
+        if (!is_file($path)) {
+            return [];
+        }
+
+        $raw = @file_get_contents($path);
+        $decoded = json_decode((string) $raw, true);
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        $threshold = time() - self::LOGIN_RATE_LIMIT_WINDOW_SECONDS;
+        $filtered = array_values(array_filter($decoded, static fn ($timestamp) => is_int($timestamp) && $timestamp >= $threshold));
+
+        @file_put_contents($path, json_encode($filtered, JSON_UNESCAPED_SLASHES));
+        return $filtered;
+    }
+
+    private function deleteLoginRateLimitFile(string $key): void
+    {
+        $path = $this->getLoginRateLimitFilePath($key);
+        if (is_file($path)) {
+            @unlink($path);
+        }
+    }
+
+    private function getLoginRateLimitFilePath(string $key): string
+    {
+        $directory = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'cockpit_login_rate_limit';
+        if (!is_dir($directory)) {
+            @mkdir($directory, 0777, true);
+        }
+
+        return $directory . DIRECTORY_SEPARATOR . hash('sha256', $key) . '.json';
+    }
+
+    private function buildLoginRateLimitKey(string $scope, string $identifier): string
+    {
+        return 'cockpit:' . $scope . ':' . $identifier;
     }
 }

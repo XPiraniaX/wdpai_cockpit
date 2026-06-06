@@ -9,6 +9,7 @@ class Routing {
         "complete-pseudonym" => ["controller" => "SecurityController", "action" => "completePseudonym"],
         "register" => ["controller" => "SecurityController", "action" => "register"],
         "dashboard" => ["controller" => "DashboardController", "action" => "index"],
+        "admin" => ["controller" => "AdminController", "action" => "index"],
         "dashboard/set-primary-vehicle" => ["controller" => "DashboardController", "action" => "setPrimaryVehicle"],
         "my-cars" => ["controller" => "CarsController", "action" => "index"],
         "my-cars/details" => ["controller" => "CarsController", "action" => "details"],
@@ -47,6 +48,9 @@ class Routing {
         $action = self::$routes[$normalizedPath]["action"];
 
         $controllerObj = new $controller();
+        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $controllerObj instanceof AppController) {
+            $controllerObj->enforceCsrfProtection();
+        }
         $controllerObj->$action();
     }
 }

@@ -6,6 +6,7 @@ CREATE TABLE users (
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     pseudonym VARCHAR(80),
+    role VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
     membership_tier VARCHAR(20) NOT NULL DEFAULT 'free' CHECK (membership_tier IN ('free', 'pro', 'business')),
     avatar_path TEXT,
     timezone VARCHAR(64) NOT NULL DEFAULT 'Europe/Warsaw',
@@ -416,6 +417,32 @@ INSERT INTO users (
         '2026-05-03 08:05:00+02'
     );
 
+INSERT INTO users (
+    username,
+    email,
+    password,
+    first_name,
+    last_name,
+    role,
+    membership_tier,
+    avatar_path,
+    timezone,
+    locale,
+    last_login_at
+) VALUES (
+    'admin',
+    'admin@cockpit.local',
+    '$2y$10$Oel5tNrw/aPpf7U9w4rTbeOJHF7R4IiMuHXOkz0QKn2Phe3ElA93O',
+    'Panel',
+    'Administratora',
+    'admin',
+    'free',
+    NULL,
+    'Europe/Warsaw',
+    'pl_PL',
+    NULL
+);
+
 INSERT INTO user_settings (
     user_id,
     email_notifications,
@@ -431,6 +458,11 @@ INSERT INTO user_settings (
     (4, TRUE, TRUE, TRUE, TRUE, TRUE, 'public'),
     (5, TRUE, FALSE, TRUE, TRUE, TRUE, 'friends'),
     (6, TRUE, TRUE, TRUE, TRUE, TRUE, 'public');
+
+INSERT INTO user_settings (user_id)
+SELECT id
+FROM users
+WHERE username = 'admin';
 
 INSERT INTO car_brands (name) VALUES
     ('Porsche'),
