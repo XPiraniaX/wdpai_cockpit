@@ -415,6 +415,32 @@ class CommunityController extends AppController
 
                 if ($postId > 0) {
                     $imagePaths = $repository->deletePostByOwner($userId, $postId);
+                    if ($imagePaths === null && $this->isAdmin()) {
+                        $moderationReason = $this->normalizeModerationReason($_POST['moderation_reason'] ?? '');
+                        if ($moderationReason === '') {
+                            if ($this->isAjaxRequest()) {
+                                $this->jsonResponse([
+                                    'success' => false,
+                                    'message' => 'Wybierz powód usunięcia posta.',
+                                ], 422);
+                            }
+
+                            $this->setFlash('error', 'Wybierz powód usunięcia posta.');
+                            $this->redirect($redirectTo);
+                            return;
+                        }
+
+                        $adminDeleteResult = $repository->deletePostByAdmin($postId);
+                        if ($adminDeleteResult !== null) {
+                            $imagePaths = $adminDeleteResult['image_paths'] ?? [];
+                            (new NotificationRepository(Database::getConnection()))
+                                ->createAdminPostRemovalNotification(
+                                    (int) ($adminDeleteResult['user_id'] ?? 0),
+                                    (string) ($adminDeleteResult['content'] ?? ''),
+                                    $moderationReason
+                                );
+                        }
+                    }
                     if ($imagePaths !== null) {
                         $this->deleteUploadedFiles($imagePaths);
 

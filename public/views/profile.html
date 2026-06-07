@@ -1,7 +1,8 @@
 <?php
+$isAdminProfileView = !empty($isAdminProfileView);
 $profileBasePath = !empty($profile['pseudonym'])
-    ? '/profile/' . rawurlencode((string) $profile['pseudonym'])
-    : '/profile?id=' . (int) $profile['id'];
+    ? (($isAdminProfileView ? '/admin/profile/' : '/profile/') . rawurlencode((string) $profile['pseudonym']))
+    : (($isAdminProfileView ? '/admin/profile' : '/profile') . '?id=' . (int) $profile['id'] . ($isAdminProfileView ? '&admin_preview=1' : ''));
 
 $listingScopes = [
     'all' => 'Wszystkie',
@@ -21,10 +22,10 @@ if (!empty($canViewMembershipTier)) {
     $profileMetaParts[] = (string) $profile['membership_tier'];
 }
 ?>
-<main class="profile-page community-page community-profile-page">
+<main class="profile-page community-page community-profile-page<?= $isAdminProfileView ? ' is-admin-profile-view' : ''; ?>"<?= $isAdminProfileView ? ' data-admin-profile-view="1"' : ''; ?>>
     <div class="community-shell community-shell-profile">
         <section class="community-profile-hero card">
-            <?php if (!$isOwnProfile): ?>
+            <?php if (!$isOwnProfile && !$isAdminProfileView): ?>
                 <div class="marketplace-post-menu profile-hero-menu" data-marketplace-menu>
                     <button type="button" class="marketplace-post-menu-trigger" aria-label="Opcje profilu" aria-expanded="false" data-marketplace-menu-trigger>
                         <span></span>
@@ -113,7 +114,7 @@ if (!empty($canViewMembershipTier)) {
                 </section>
             <?php endif; ?>
 
-            <?php if ($activityScope === 'listings' && $isOwnProfile): ?>
+            <?php if ($activityScope === 'listings' && ($isOwnProfile || $isAdminProfileView)): ?>
                 <section class="community-profile-filters card">
                     <div class="community-side-heading">Ogłoszenia</div>
                     <div class="community-scope-list community-profile-scope-list">

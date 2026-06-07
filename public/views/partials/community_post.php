@@ -1,5 +1,6 @@
 ﻿<?php
 $isOwnPost = ((int) ($currentUser['id'] ?? 0)) === (int) $post['user_id'];
+$isAdminProfileModeration = !empty($isAdminProfileView) && !$isOwnPost;
 $commentsModalId = 'community-comments-modal-' . (int) $post['id'];
 $editPostPayload = htmlspecialchars(json_encode([
     'id' => (int) $post['id'],
@@ -65,14 +66,14 @@ $postImages = array_values(array_filter(
                     <?php endif; ?>
                     <form
                         method="post"
-                        class="community-inline-form<?= $isOwnPost ? '' : ' community-report-form'; ?>"
-                        <?= $isOwnPost ? 'data-community-delete-post-form' : 'data-community-report-form' ?>
+                        class="community-inline-form<?= ($isOwnPost || $isAdminProfileModeration) ? '' : ' community-report-form'; ?>"
+                        <?= ($isOwnPost || $isAdminProfileModeration) ? 'data-community-delete-post-form' : 'data-community-report-form' ?>
                     >
                         <input type="hidden" name="post_id" value="<?= (int) $post['id']; ?>">
                         <input type="hidden" name="redirect_to" value="<?= htmlspecialchars($_SERVER['REQUEST_URI'] ?? '/community', ENT_QUOTES, 'UTF-8'); ?>">
-                        <input type="hidden" name="action" value="<?= $isOwnPost ? 'delete_post' : 'report_post'; ?>">
+                        <input type="hidden" name="action" value="<?= ($isOwnPost || $isAdminProfileModeration) ? 'delete_post' : 'report_post'; ?>">
                         <button type="submit" class="community-post-menu-action is-danger">
-                            <?= $isOwnPost ? 'Usuń post' : 'Zgłoś post'; ?>
+                            <?= ($isOwnPost || $isAdminProfileModeration) ? 'Usuń post' : 'Zgłoś post'; ?>
                         </button>
                     </form>
                 </div>

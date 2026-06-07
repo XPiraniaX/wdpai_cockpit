@@ -4,6 +4,8 @@ $isProfileRoute = $currentPath === 'profile'
     || $currentPath === 'community/profile'
     || str_starts_with($currentPath, 'profile/');
 $isVehicleDetailsRoute = $currentPath === 'my-cars/details' || str_starts_with($currentPath, 'my-cars/');
+$isAdminRoute = $currentPath === 'admin';
+$isAdminProfileRoute = $currentPath === 'admin/profile';
 $isOwnProfile = isset($profile['id'], $currentUser['id']) && (int) $profile['id'] === (int) $currentUser['id'];
 $profileSubtitle = $isOwnProfile
     ? 'Mój profil'
@@ -16,6 +18,7 @@ $pageMap = [
     'marketplace' => ['title' => 'Marketplace', 'subtitle' => 'Oferty'],
     'community' => ['title' => 'Społeczność', 'subtitle' => 'Feed'],
     'settings' => ['title' => 'Ustawienia', 'subtitle' => 'Preferencje'],
+    'admin' => ['title' => 'Panel zarządzania', 'subtitle' => 'Dashboard'],
 ];
 
 $pageMeta = $pageMap[$currentPath] ?? ['title' => 'Cockpit', 'subtitle' => 'Panel'];
@@ -24,6 +27,12 @@ if ($isVehicleDetailsRoute) {
 }
 if ($isProfileRoute) {
     $pageMeta = ['title' => 'Profil', 'subtitle' => $profileSubtitle];
+}
+if ($isAdminRoute) {
+    $pageMeta = ['title' => 'Panel zarządzania', 'subtitle' => 'Dashboard'];
+}
+if ($isAdminProfileRoute) {
+    $pageMeta = ['title' => 'Panel zarządzania', 'subtitle' => $profileSubtitle];
 }
 
 $headerUserName = trim((string) ($currentUser['pseudonym'] ?? '')) !== ''
@@ -39,9 +48,9 @@ $notificationBellIconActivePath = '/public/assets/icons/bell_icon_active.svg?v='
 ?>
 <header class="topbar">
     <div class="breadcrumbs">
-        <span class="breadcrumbs-current"><?= htmlspecialchars($pageMeta['title'], ENT_QUOTES, 'UTF-8'); ?></span>
+        <span class="breadcrumbs-current"<?= $isAdminRoute ? ' data-admin-breadcrumb-title' : ''; ?>><?= htmlspecialchars($pageMeta['title'], ENT_QUOTES, 'UTF-8'); ?></span>
         <span class="breadcrumbs-separator">/</span>
-        <span class="breadcrumbs-parent"><?= htmlspecialchars($pageMeta['subtitle'], ENT_QUOTES, 'UTF-8'); ?></span>
+        <span class="breadcrumbs-parent"<?= $isAdminRoute ? ' data-admin-breadcrumb-subtitle' : ''; ?>><?= htmlspecialchars($pageMeta['subtitle'], ENT_QUOTES, 'UTF-8'); ?></span>
     </div>
 
     <div class="topbar-actions">

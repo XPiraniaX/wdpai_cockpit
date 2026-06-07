@@ -158,14 +158,27 @@ class AppController
 
     protected function requireAdmin(): void
     {
-        $this->requireAuthentication();
+        $this->guardAdminRoute();
+    }
 
-        if ($this->isAdmin()) {
+    public function guardAdminRoute(): void
+    {
+        if ($this->isAuthenticated() && $this->isAdmin()) {
             return;
         }
 
-        $this->setFlash('error', 'Nie masz uprawnień do tej strony.');
-        $this->redirect('/dashboard');
+        if ($this->isAjaxRequest()) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie znaleziono strony.',
+            ], 404);
+        }
+
+        http_response_code(404);
+        $this->render('404', [
+            'title' => '404 - Nie znaleziono strony',
+        ]);
+        exit;
     }
 
     protected function redirectIfAuthenticated(string $path = '/dashboard'): void
@@ -250,6 +263,16 @@ class AppController
             'awd' => 'AWD',
             '4x4' => '4x4',
         ];
+    }
+
+    protected function normalizeModerationReason(mixed $value): string
+    {
+        $normalized = trim(preg_replace('/\s+/', ' ', (string) $value) ?? '');
+        if ($normalized === '') {
+            return '';
+        }
+
+        return mb_substr($normalized, 0, 800);
     }
 
     protected function slugify(string $value): string

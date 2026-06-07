@@ -669,6 +669,40 @@ class MarketplaceRepository
         return $statement->rowCount() > 0;
     }
 
+    public function deleteListingByAdmin(int $listingId): ?array
+    {
+        $contextStatement = $this->connection->prepare(
+            'SELECT user_id, title
+            FROM marketplace_listings
+            WHERE id = :listing_id
+            LIMIT 1'
+        );
+        $contextStatement->execute([
+            'listing_id' => $listingId,
+        ]);
+        $context = $contextStatement->fetch(PDO::FETCH_ASSOC) ?: null;
+        if ($context === null) {
+            return null;
+        }
+
+        $statement = $this->connection->prepare(
+            'DELETE FROM marketplace_listings
+            WHERE id = :listing_id'
+        );
+        $statement->execute([
+            'listing_id' => $listingId,
+        ]);
+
+        if ($statement->rowCount() < 1) {
+            return null;
+        }
+
+        return [
+            'user_id' => (int) $context['user_id'],
+            'title' => (string) $context['title'],
+        ];
+    }
+
     public function setListingActiveState(int $userId, int $listingId, bool $isActive): bool
     {
         $statement = $this->connection->prepare(

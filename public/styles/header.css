@@ -162,6 +162,20 @@
     border-color: rgba(148, 163, 184, 0.05);
 }
 
+.notification-item.is-danger {
+    background: rgba(127, 29, 29, 0.78);
+    border-color: rgba(248, 113, 113, 0.26);
+}
+
+.notification-item.is-danger:hover {
+    border-color: rgba(248, 113, 113, 0.4);
+}
+
+.notification-item.is-danger.is-read {
+    background: rgba(68, 20, 20, 0.58);
+    border-color: rgba(248, 113, 113, 0.16);
+}
+
 .notification-item-header {
     display: flex;
     align-items: center;
@@ -202,6 +216,102 @@
 
 .notification-item.is-read .notification-item-message {
     color: rgba(203, 213, 225, 0.58);
+}
+
+.notification-detail-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.notification-detail-modal[hidden] {
+    display: none !important;
+}
+
+.notification-detail-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.78);
+    backdrop-filter: blur(8px);
+}
+
+.notification-detail-shell {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 620px);
+}
+
+.notification-detail-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 24px;
+    border-radius: 24px;
+    border: 1px solid rgba(248, 113, 113, 0.24);
+    background: linear-gradient(180deg, rgba(47, 14, 14, 0.98), rgba(20, 9, 9, 0.98));
+    box-shadow: 0 28px 60px rgba(2, 6, 23, 0.44);
+}
+
+.notification-detail-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.notification-detail-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.notification-detail-kicker,
+.notification-detail-label {
+    color: rgba(254, 202, 202, 0.76);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-family: var(--font-sans);
+}
+
+.notification-detail-title {
+    margin: 0;
+    color: #fff1f2;
+    font-size: 24px;
+    font-weight: 700;
+    font-family: var(--font-serif);
+}
+
+.notification-detail-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.notification-detail-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.notification-detail-subject,
+.notification-detail-reason {
+    color: #ffe4e6;
+    font-size: 15px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: var(--font-sans);
+}
+
+.notification-detail-actions {
+    display: flex;
+    justify-content: flex-end;
 }
 
 .user-card {

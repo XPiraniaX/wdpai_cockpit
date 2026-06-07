@@ -14,6 +14,7 @@ class ProfileController extends CommunityController
         $carsRepository = new CarsRepository(Database::getConnection());
         $userRepository = new UserRepository(Database::getConnection());
         $currentUserId = $this->getCurrentUserId();
+        $isAdminProfileView = $this->isAdmin() && (string) ($_GET['admin_preview'] ?? '') === '1';
         $requestedPseudonym = trim((string) ($_GET['pseudonym'] ?? ''));
         $requestedId = isset($_GET['id']) ? (int) $_GET['id'] : null;
         $profileUserId = $requestedId ?? $currentUserId;
@@ -46,7 +47,8 @@ class ProfileController extends CommunityController
                 $query = $_GET;
                 unset($query['id'], $query['pseudonym']);
 
-                $redirectPath = '/profile/' . rawurlencode((string) $profile['pseudonym']);
+                $redirectBasePath = $isAdminProfileView ? '/admin/profile/' : '/profile/';
+                $redirectPath = $redirectBasePath . rawurlencode((string) $profile['pseudonym']);
                 if ($query !== []) {
                     $redirectPath .= '?' . http_build_query($query);
                 }
@@ -65,10 +67,11 @@ class ProfileController extends CommunityController
 
         $profileUserId = (int) $profile['id'];
         $isOwnProfile = $profileUserId === $currentUserId;
-        $canViewFullName = $isOwnProfile || (($profile['privacy_full_name_visibility'] ?? 'public') === 'public');
-        $canViewMembershipTier = $isOwnProfile || (($profile['privacy_membership_visibility'] ?? 'public') === 'public');
-        $canViewPosts = $isOwnProfile || (($profile['privacy_profile_posts_visibility'] ?? 'public') === 'public');
-        $canViewListings = $isOwnProfile || (($profile['privacy_profile_listings_visibility'] ?? 'public') === 'public');
+        $canBypassPrivacy = $isAdminProfileView && !$isOwnProfile;
+        $canViewFullName = $isOwnProfile || $canBypassPrivacy || (($profile['privacy_full_name_visibility'] ?? 'public') === 'public');
+        $canViewMembershipTier = $isOwnProfile || $canBypassPrivacy || (($profile['privacy_membership_visibility'] ?? 'public') === 'public');
+        $canViewPosts = $isOwnProfile || $canBypassPrivacy || (($profile['privacy_profile_posts_visibility'] ?? 'public') === 'public');
+        $canViewListings = $isOwnProfile || $canBypassPrivacy || (($profile['privacy_profile_listings_visibility'] ?? 'public') === 'public');
         $activityScopes = [];
         if ($canViewPosts) {
             $activityScopes['posts'] = 'Posty';
@@ -79,7 +82,12 @@ class ProfileController extends CommunityController
         if (!array_key_exists($activityScope, $activityScopes)) {
             $activityScope = array_key_first($activityScopes) ?? 'none';
         }
-        $listingVisibility = $isOwnProfile
+        $requestedScope = trim((string) ($_GET['scope'] ?? ''));
+        if ($requestedScope === '') {
+            $activityScope = 'none';
+        }
+
+        $listingVisibility = ($isOwnProfile || $canBypassPrivacy)
             ? $this->resolveProfileListingVisibility((string) ($_GET['listing_visibility'] ?? 'all'))
             : 'active';
 
@@ -175,6 +183,7 @@ class ProfileController extends CommunityController
             'title' => $profile['display_name'],
             'profile' => $profile,
             'isOwnProfile' => $isOwnProfile,
+            'isAdminProfileView' => $isAdminProfileView,
             'canViewFullName' => $canViewFullName,
             'canViewMembershipTier' => $canViewMembershipTier,
             'canViewPosts' => $canViewPosts,

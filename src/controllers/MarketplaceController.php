@@ -226,9 +226,36 @@ class MarketplaceController extends AppController
                 if ($listingId > 0) {
                     $imagePaths = $repository->getListingImagePaths($listingId);
                     $deleted = $repository->deleteListing($userId, $listingId);
+                    $adminDeleteResult = null;
+                    if (!$deleted && $this->isAdmin()) {
+                        $moderationReason = $this->normalizeModerationReason($_POST['moderation_reason'] ?? '');
+                        if ($moderationReason === '') {
+                            if ($this->isAjaxRequest()) {
+                                $this->jsonResponse([
+                                    'success' => false,
+                                    'message' => 'Wybierz powód usunięcia ogłoszenia.',
+                                ], 422);
+                            }
+
+                            $this->setFlash('error', 'Wybierz powód usunięcia ogłoszenia.');
+                            $this->redirect($redirectTo);
+                            return;
+                        }
+
+                        $adminDeleteResult = $repository->deleteListingByAdmin($listingId);
+                        $deleted = $adminDeleteResult !== null;
+                    }
 
                     if ($deleted) {
                         $this->deleteUploadedFiles($imagePaths);
+                        if ($adminDeleteResult !== null) {
+                            (new NotificationRepository(Database::getConnection()))
+                                ->createAdminListingRemovalNotification(
+                                    (int) ($adminDeleteResult['user_id'] ?? 0),
+                                    (string) ($adminDeleteResult['title'] ?? ''),
+                                    $moderationReason
+                                );
+                        }
 
                         if ($this->isAjaxRequest()) {
                             $this->jsonResponse([

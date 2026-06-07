@@ -3,6 +3,7 @@ $currentPath = trim(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH), '/'
 $isProfileRoute = $currentPath === 'profile'
     || $currentPath === 'community/profile'
     || str_starts_with($currentPath, 'profile/');
+$isAdminRoute = $currentPath === 'admin' || str_starts_with($currentPath, 'admin/');
 $ownProfilePath = trim((string) ($currentUser['pseudonym'] ?? '')) !== ''
     ? '/profile/' . rawurlencode((string) $currentUser['pseudonym'])
     : '/profile';
@@ -10,7 +11,7 @@ $menuItems = [
     ['href' => '/dashboard', 'path' => 'dashboard', 'label' => 'Dashboard', 'icon' => '/public/assets/icons/dashboard.svg'],
     ['href' => '/my-cars', 'path' => 'my-cars', 'label' => 'Moje samochody', 'icon' => '/public/assets/icons/my_cars.svg'],
     ['href' => '/marketplace', 'path' => 'marketplace', 'label' => 'Marketplace', 'icon' => '/public/assets/icons/marketplace.svg'],
-    ['href' => '/community', 'path' => 'community', 'label' => 'Spolecznosc', 'icon' => '/public/assets/icons/community.svg'],
+    ['href' => '/community', 'path' => 'community', 'label' => 'Społeczność', 'icon' => '/public/assets/icons/community.svg'],
 ];
 ?>
 <aside class="navi">
@@ -38,16 +39,16 @@ $menuItems = [
 
     <div class="bottom">
         <?php if (($currentUser['role'] ?? 'user') === 'admin'): ?>
-            <a href="/admin" class="menu-item<?= $currentPath === 'admin' ? ' active' : ''; ?>">
+            <a href="/admin" class="menu-item<?= $isAdminRoute ? ' active' : ''; ?>">
                 <span class="menu-icon"
-                      style="--icon-url: url('/public/assets/icons/settings.svg');"></span>
-                <span class="menu-label">Panel administratora</span>
+                      style="--icon-url: url('/public/assets/icons/admin_panel.svg');"></span>
+                <span class="menu-label">Panel zarządzania</span>
             </a>
         <?php endif; ?>
         <a href="<?= htmlspecialchars($ownProfilePath, ENT_QUOTES, 'UTF-8'); ?>" class="menu-item menu-item-profile<?= $isProfileRoute ? ' active' : ''; ?>">
             <span class="menu-icon"
                   style="--icon-url: url('/public/assets/icons/profile.svg');"></span>
-            <span class="menu-label">Moj profil</span>
+            <span class="menu-label">Mój profil</span>
         </a>
         <a href="/settings" class="menu-item<?= $currentPath === 'settings' ? ' active' : ''; ?>">
             <span class="menu-icon"

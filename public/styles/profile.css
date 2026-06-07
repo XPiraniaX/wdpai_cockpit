@@ -228,6 +228,121 @@
     flex-wrap: wrap;
 }
 
+.profile-moderation-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1810;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+}
+
+.profile-moderation-modal[hidden] {
+    display: none !important;
+}
+
+.profile-moderation-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(2, 6, 23, 0.78);
+    backdrop-filter: blur(8px);
+}
+
+.profile-moderation-modal-shell {
+    position: relative;
+    z-index: 1;
+    width: min(100%, 620px);
+}
+
+.profile-moderation-modal-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 24px;
+    border-radius: 24px;
+    border: 1px solid rgba(248, 113, 113, 0.2);
+    background: linear-gradient(180deg, rgba(22, 16, 28, 0.98), rgba(13, 10, 18, 0.98));
+    box-shadow: 0 24px 60px rgba(2, 10, 24, 0.42);
+}
+
+.profile-moderation-modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.profile-moderation-modal-copy,
+.profile-moderation-modal-body,
+.profile-moderation-other {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.profile-moderation-modal-kicker,
+.profile-moderation-modal-subtitle,
+.profile-moderation-other > span {
+    color: rgba(203, 213, 225, 0.68);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-family: var(--font-sans);
+}
+
+.profile-moderation-modal-title {
+    margin: 0;
+    color: #eef4ff;
+    font-size: 24px;
+    font-weight: 700;
+    font-family: var(--font-serif);
+}
+
+.profile-moderation-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.profile-moderation-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    background: rgba(15, 23, 42, 0.72);
+    color: #eef4ff;
+    font-size: 14px;
+    line-height: 1.45;
+    cursor: pointer;
+}
+
+.profile-moderation-option input {
+    margin-top: 2px;
+}
+
+.profile-moderation-other textarea {
+    width: 100%;
+    min-height: 110px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    background: rgba(11, 18, 32, 0.9);
+    color: #eef4ff;
+    resize: vertical;
+    box-sizing: border-box;
+    font: inherit;
+}
+
+.profile-moderation-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
 .profile-page .community-profile-scope-list {
     justify-content: center;
     flex-wrap: wrap;

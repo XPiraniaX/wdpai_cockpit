@@ -38,6 +38,7 @@ class NotificationRepository
                 title,
                 message,
                 target_path,
+                payload_json,
                 is_read,
                 created_at,
                 read_at
@@ -167,6 +168,52 @@ class NotificationRepository
             'Twój post: ' . $postPreview . ' osiągnął ' . $likeCount . ' polubień.',
             '/profile?scope=posts#post-' . $postId,
             'post_like_milestone_' . $postId . '_' . $likeCount
+        );
+    }
+
+    public function createAdminPostRemovalNotification(int $userId, string $postContent, string $reason): void
+    {
+        $reason = trim($reason);
+        if ($userId <= 0 || $reason === '') {
+            return;
+        }
+
+        $this->insertNotification(
+            $userId,
+            'admin_post_removed',
+            'Usunięto Twój post',
+            'Twój post: ' . $this->buildPostPreview($postContent) . ' został usunięty z powodu: ' . $reason,
+            '/profile?scope=posts',
+            null,
+            [
+                'accent' => 'danger',
+                'modal_intro' => 'Twój post:',
+                'modal_subject' => $postContent,
+                'modal_reason' => $reason,
+            ]
+        );
+    }
+
+    public function createAdminListingRemovalNotification(int $userId, string $listingTitle, string $reason): void
+    {
+        $reason = trim($reason);
+        if ($userId <= 0 || $reason === '') {
+            return;
+        }
+
+        $this->insertNotification(
+            $userId,
+            'admin_listing_removed',
+            'Usunięto Twoje ogłoszenie',
+            'Twoje ogłoszenie: ' . $this->buildPostPreview($listingTitle) . ' zostało usunięte z powodu: ' . $reason,
+            '/profile?scope=listings',
+            null,
+            [
+                'accent' => 'danger',
+                'modal_intro' => 'Twoje ogłoszenie:',
+                'modal_subject' => $listingTitle,
+                'modal_reason' => $reason,
+            ]
         );
     }
 
@@ -309,7 +356,8 @@ class NotificationRepository
         string $title,
         string $message,
         string $targetPath,
-        ?string $eventKey = null
+        ?string $eventKey = null,
+        ?array $payload = null
     ): void {
         $statement = $this->connection->prepare(
             'INSERT INTO user_notifications (
@@ -318,6 +366,7 @@ class NotificationRepository
                 title,
                 message,
                 target_path,
+                payload_json,
                 event_key
             ) VALUES (
                 :user_id,
@@ -325,6 +374,7 @@ class NotificationRepository
                 :title,
                 :message,
                 :target_path,
+                CAST(:payload_json AS JSONB),
                 :event_key
             )
             ON CONFLICT (event_key) WHERE event_key IS NOT NULL DO NOTHING'
@@ -335,6 +385,7 @@ class NotificationRepository
             'title' => $title,
             'message' => $message,
             'target_path' => $targetPath,
+            'payload_json' => $payload !== null ? json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : null,
             'event_key' => $eventKey,
         ]);
     }

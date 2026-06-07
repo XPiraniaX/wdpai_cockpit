@@ -2,6 +2,7 @@
 $detailsModalId = 'marketplace-details-modal-' . (int) $listing['id'];
 $hasImages = !empty($listing['images']);
 $isOwnListing = ((int) ($currentUser['id'] ?? 0)) === (int) $listing['user_id'];
+$isAdminProfileModeration = !empty($isAdminProfileView) && !$isOwnListing;
 $isActiveListing = (bool) ($listing['is_active'] ?? true);
 $authorAvatarPath = trim((string) ($listing['author_avatar_path'] ?? ''));
 $preferredContactChannel = in_array((string) ($listing['preferred_contact_channel'] ?? 'both'), ['both', 'phone', 'email'], true)
@@ -131,6 +132,7 @@ $editPayload = htmlspecialchars(json_encode([
                         </button>
                     </form>
 
+                    <?php if (!$hasImages): ?>
                     <div class="marketplace-post-menu" data-marketplace-menu>
                         <button type="button" class="marketplace-post-menu-trigger" aria-label="Opcje ogłoszenia" aria-expanded="false" data-marketplace-menu-trigger>
                             <span></span>
@@ -162,6 +164,7 @@ $editPayload = htmlspecialchars(json_encode([
                             <?php endif; ?>
                         </div>
                     </div>
+                    <?php endif; ?>
                 </div>
             </div>
 

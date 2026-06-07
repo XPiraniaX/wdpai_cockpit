@@ -655,6 +655,73 @@ class UserRepository
         ]);
     }
 
+    public function countAdminCatalogUsers(): int
+    {
+        $statement = $this->connection->query(
+            'SELECT COUNT(*)::INTEGER
+            FROM users
+            WHERE is_active = TRUE'
+        );
+
+        return (int) $statement->fetchColumn();
+    }
+
+    public function getAdminCatalogUsersPage(int $page, int $perPage): array
+    {
+        $page = max(1, $page);
+        $perPage = max(1, $perPage);
+        $offset = ($page - 1) * $perPage;
+
+        $statement = $this->connection->prepare(
+            "SELECT
+                u.id,
+                u.username,
+                u.email,
+                u.first_name,
+                u.last_name,
+                u.pseudonym,
+                u.avatar_path,
+                u.membership_tier,
+                COALESCE(NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), 'Użytkownik') AS full_name,
+                COALESCE(v.vehicle_count, 0)::INTEGER AS vehicle_count,
+                COALESCE(l.listing_count, 0)::INTEGER AS listing_count,
+                COALESCE(p.post_count, 0)::INTEGER AS post_count
+            FROM users u
+            LEFT JOIN (
+                SELECT
+                    user_id,
+                    COUNT(*)::INTEGER AS vehicle_count
+                FROM vehicles
+                WHERE status <> 'archived'
+                GROUP BY user_id
+            ) v ON v.user_id = u.id
+            LEFT JOIN (
+                SELECT
+                    user_id,
+                    COUNT(*)::INTEGER AS listing_count
+                FROM marketplace_listings
+                WHERE is_active = TRUE
+                GROUP BY user_id
+            ) l ON l.user_id = u.id
+            LEFT JOIN (
+                SELECT
+                    user_id,
+                    COUNT(*)::INTEGER AS post_count
+                FROM community_posts
+                WHERE is_active = TRUE
+                GROUP BY user_id
+            ) p ON p.user_id = u.id
+            WHERE u.is_active = TRUE
+            ORDER BY LOWER(COALESCE(NULLIF(u.pseudonym, ''), u.username)) ASC, u.id ASC
+            LIMIT :limit OFFSET :offset"
+        );
+        $statement->bindValue(':limit', $perPage, PDO::PARAM_INT);
+        $statement->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll() ?: [];
+    }
+
     public function deactivateAccount(int $userId): void
     {
         $this->connection->beginTransaction();

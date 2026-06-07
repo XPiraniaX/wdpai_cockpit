@@ -785,6 +785,57 @@ class CommunityRepository
         return $imagePaths;
     }
 
+    public function deletePostByAdmin(int $postId): ?array
+    {
+        $postStatement = $this->connection->prepare(
+            'SELECT user_id, content
+            FROM community_posts
+            WHERE id = :post_id
+                AND is_active = TRUE
+            LIMIT 1'
+        );
+        $postStatement->execute([
+            'post_id' => $postId,
+        ]);
+        $postRow = $postStatement->fetch(PDO::FETCH_ASSOC) ?: null;
+        if ($postRow === null) {
+            return null;
+        }
+
+        $statement = $this->connection->prepare(
+            'SELECT image_path
+            FROM community_post_images
+            WHERE post_id = :post_id
+            ORDER BY display_order ASC, id ASC'
+        );
+        $statement->execute([
+            'post_id' => $postId,
+        ]);
+        $imagePaths = array_map(
+            static fn (array $row): string => (string) $row['image_path'],
+            $statement->fetchAll(PDO::FETCH_ASSOC) ?: []
+        );
+
+        $deleteStatement = $this->connection->prepare(
+            'DELETE FROM community_posts
+            WHERE id = :post_id
+                AND is_active = TRUE'
+        );
+        $deleteStatement->execute([
+            'post_id' => $postId,
+        ]);
+
+        if ($deleteStatement->rowCount() === 0) {
+            return null;
+        }
+
+        return [
+            'image_paths' => $imagePaths,
+            'user_id' => (int) $postRow['user_id'],
+            'content' => (string) $postRow['content'],
+        ];
+    }
+
     public function getProfile(int $profileUserId): ?array
     {
         return $this->getProfileByCondition('u.id = :value', ['value' => $profileUserId]);

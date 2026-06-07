@@ -514,6 +514,184 @@ const renderProfileMarketplaceSaveIcon = (saved) => saved
     ? '<svg viewBox="0 0 24 24" class="marketplace-save-heart-svg is-filled"><path d="M12 21.35 10.55 20.03C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54Z"/></svg>'
     : '<svg viewBox="0 0 24 24" class="marketplace-save-heart-svg is-outline"><path d="M16.5 3c-1.74 0-3.41.81-4.5 2.09A5.964 5.964 0 0 0 7.5 3C4.42 3 2 5.42 2 8.5c0 3.78 3.4 6.86 8.55 11.54L12 21.35l1.45-1.31C18.6 15.36 22 12.28 22 8.5 22 5.42 19.58 3 16.5 3Zm-4.4 15.55-.1.1-.1-.1C7.14 14.24 4 11.39 4 8.5 4 6.5 5.5 5 7.5 5c1.54 0 3.04.99 3.57 2.36h1.87C13.46 5.99 14.96 5 16.5 5 18.5 5 20 6.5 20 8.5c0 2.89-3.14 5.74-7.9 10.05Z"/></svg>';
 
+const closeProfileCommunityPostMenus = (exceptMenu = null) => {
+    document.querySelectorAll('.profile-page [data-community-post-menu], [data-community-comments-modal] [data-community-post-menu]').forEach((menu) => {
+        if (!(menu instanceof HTMLElement) || menu === exceptMenu) {
+            return;
+        }
+
+        const trigger = menu.querySelector('[data-community-post-menu-trigger]');
+        const dropdown = menu.querySelector('[data-community-post-menu-dropdown]');
+
+        if (trigger instanceof HTMLElement) {
+            trigger.setAttribute('aria-expanded', 'false');
+        }
+
+        if (dropdown instanceof HTMLElement) {
+            dropdown.hidden = true;
+        }
+    });
+};
+
+const ensureProfileModerationReasonModal = () => {
+    let modal = document.querySelector('[data-profile-moderation-reason-modal]');
+    if (modal) {
+        return modal;
+    }
+
+    modal = document.createElement('div');
+    modal.className = 'profile-moderation-modal';
+    modal.hidden = true;
+    modal.setAttribute('data-profile-moderation-reason-modal', '');
+    modal.innerHTML = `
+        <div class="profile-moderation-modal-backdrop" data-profile-moderation-close></div>
+        <div class="profile-moderation-modal-shell">
+            <section class="profile-moderation-modal-panel">
+                <div class="profile-moderation-modal-head">
+                    <div class="profile-moderation-modal-copy">
+                        <div class="profile-moderation-modal-kicker" data-profile-moderation-kicker></div>
+                        <h3 class="profile-moderation-modal-title" data-profile-moderation-title></h3>
+                    </div>
+                    <button type="button" class="community-modal-close" aria-label="Zamknij" data-profile-moderation-close>
+                        <img src="/public/assets/icons/close.svg" alt="">
+                    </button>
+                </div>
+                <div class="profile-moderation-modal-body">
+                    <div class="profile-moderation-modal-subtitle">Wybierz powód usunięcia</div>
+                    <div class="profile-moderation-options" data-profile-moderation-options></div>
+                    <label class="profile-moderation-other" hidden data-profile-moderation-other-wrap>
+                        <span>Inny powód</span>
+                        <textarea rows="4" maxlength="800" data-profile-moderation-other-input></textarea>
+                    </label>
+                </div>
+                <div class="profile-moderation-modal-actions">
+                    <button type="button" class="marketplace-button marketplace-button-muted" data-profile-moderation-close>Anuluj</button>
+                    <button type="button" class="marketplace-button marketplace-confirm-submit is-danger" data-profile-moderation-submit>Zatwierdź</button>
+                </div>
+            </section>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    return modal;
+};
+
+const closeProfileModerationReasonModal = (result = null) => {
+    const modal = document.querySelector('[data-profile-moderation-reason-modal]');
+    if (!(modal instanceof HTMLElement)) {
+        return;
+    }
+
+    modal.hidden = true;
+    document.body.classList.remove('vehicle-modal-open');
+
+    if (typeof modal._resolveModerationReason === 'function') {
+        const resolve = modal._resolveModerationReason;
+        modal._resolveModerationReason = null;
+        resolve(result);
+    }
+};
+
+const openProfileModerationReasonModal = ({
+    kicker = 'Moderacja',
+    title = 'Usuń treść',
+    reasons = [],
+} = {}) => {
+    const modal = ensureProfileModerationReasonModal();
+    const kickerElement = modal.querySelector('[data-profile-moderation-kicker]');
+    const titleElement = modal.querySelector('[data-profile-moderation-title]');
+    const optionsRoot = modal.querySelector('[data-profile-moderation-options]');
+    const otherWrap = modal.querySelector('[data-profile-moderation-other-wrap]');
+    const otherInput = modal.querySelector('[data-profile-moderation-other-input]');
+    const submitButton = modal.querySelector('[data-profile-moderation-submit]');
+
+    if (!(kickerElement instanceof HTMLElement)
+        || !(titleElement instanceof HTMLElement)
+        || !(optionsRoot instanceof HTMLElement)
+        || !(otherWrap instanceof HTMLElement)
+        || !(otherInput instanceof HTMLTextAreaElement)
+        || !(submitButton instanceof HTMLButtonElement)) {
+        return Promise.resolve('');
+    }
+
+    kickerElement.textContent = kicker;
+    titleElement.textContent = title;
+    optionsRoot.innerHTML = '';
+    otherWrap.hidden = true;
+    otherInput.value = '';
+
+    const normalizedReasons = Array.isArray(reasons) ? reasons.filter((reason) => typeof reason === 'string' && reason.trim() !== '') : [];
+    normalizedReasons.forEach((reason, index) => {
+        const label = document.createElement('label');
+        label.className = 'profile-moderation-option';
+
+        const input = document.createElement('input');
+        input.type = 'radio';
+        input.name = 'profile_moderation_reason';
+        input.value = reason;
+        input.checked = index === 0;
+
+        const text = document.createElement('span');
+        text.textContent = reason;
+
+        label.appendChild(input);
+        label.appendChild(text);
+        optionsRoot.appendChild(label);
+    });
+
+    const otherLabel = document.createElement('label');
+    otherLabel.className = 'profile-moderation-option';
+    otherLabel.innerHTML = '<input type="radio" name="profile_moderation_reason" value="__other__"><span>Inny powód</span>';
+    optionsRoot.appendChild(otherLabel);
+
+    const syncOtherField = () => {
+        const selected = optionsRoot.querySelector('input[name="profile_moderation_reason"]:checked');
+        const isOther = selected instanceof HTMLInputElement && selected.value === '__other__';
+        otherWrap.hidden = !isOther;
+        if (isOther) {
+            window.setTimeout(() => otherInput.focus(), 20);
+        }
+    };
+
+    optionsRoot.querySelectorAll('input[name="profile_moderation_reason"]').forEach((input) => {
+        input.addEventListener('change', syncOtherField);
+    });
+    syncOtherField();
+
+    modal.querySelectorAll('[data-profile-moderation-close]').forEach((button) => {
+        if (button instanceof HTMLElement && button.dataset.boundProfileModerationClose !== 'true') {
+            button.addEventListener('click', () => closeProfileModerationReasonModal(null));
+            button.dataset.boundProfileModerationClose = 'true';
+        }
+    });
+
+    submitButton.onclick = () => {
+        const selected = optionsRoot.querySelector('input[name="profile_moderation_reason"]:checked');
+        if (!(selected instanceof HTMLInputElement)) {
+            return;
+        }
+
+        const value = selected.value === '__other__'
+            ? otherInput.value.trim()
+            : selected.value.trim();
+
+        if (value === '') {
+            if (typeof window.showAppToast === 'function') {
+                window.showAppToast('Wpisz powód usunięcia.', 'error');
+            }
+            return;
+        }
+
+        closeProfileModerationReasonModal(value);
+    };
+
+    modal.hidden = false;
+    document.body.classList.add('vehicle-modal-open');
+    return new Promise((resolve) => {
+        modal._resolveModerationReason = resolve;
+    });
+};
+
 const closeProfileMarketplaceMenus = (exceptMenu = null) => {
     document.querySelectorAll('.profile-page [data-marketplace-menu], [data-marketplace-details-modal] [data-marketplace-menu]').forEach((menu) => {
         if (exceptMenu && menu === exceptMenu) {
@@ -1674,6 +1852,35 @@ const bindProfileMarketplaceCreateForm = () => {
     form.dataset.boundProfileMarketplaceCreate = 'true';
 };
 
+const applyAdminProfileMarketplaceModeration = (root = document) => {
+    if (!document.querySelector('[data-admin-profile-view="1"]')) {
+        return;
+    }
+
+    if (!(root instanceof Element || root instanceof Document)) {
+        return;
+    }
+
+    root.querySelectorAll('[data-marketplace-report-form]').forEach((form) => {
+        if (!(form instanceof HTMLFormElement)) {
+            return;
+        }
+
+        form.removeAttribute('data-marketplace-report-form');
+        form.setAttribute('data-marketplace-delete-form', '');
+
+        const actionInput = form.querySelector('input[name="action"]');
+        if (actionInput instanceof HTMLInputElement) {
+            actionInput.value = 'delete_listing';
+        }
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        if (submitButton instanceof HTMLButtonElement) {
+            submitButton.textContent = 'Usuń ogłoszenie';
+        }
+    });
+};
+
 const bindProfileMarketplaceChunk = (root = document) => {
     if (!(root instanceof Element || root instanceof Document)) {
         return;
@@ -1701,6 +1908,7 @@ const bindProfileMarketplaceChunk = (root = document) => {
         }
     });
 
+    applyAdminProfileMarketplaceModeration(root);
     bindProfileMarketplaceFallbackWizard();
     bindProfileMarketplaceCreateForm();
 
@@ -2293,6 +2501,100 @@ if (isProfilePage) {
     document.addEventListener('profile:stats-refresh', () => {
         refreshProfileStats();
     });
+    document.addEventListener('submit', async (event) => {
+        const form = event.target instanceof HTMLFormElement ? event.target : null;
+        if (!(form instanceof HTMLFormElement) || !document.querySelector('[data-admin-profile-view="1"]')) {
+            return;
+        }
+
+        const actionInput = form.querySelector('input[name="action"]');
+        const action = String(actionInput?.value || '');
+        if (action !== 'delete_post' && action !== 'delete_listing') {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+
+        const isPostDelete = action === 'delete_post';
+        const reason = await openProfileModerationReasonModal({
+            kicker: 'Moderacja',
+            title: isPostDelete ? 'Usuń post użytkownika' : 'Usuń ogłoszenie użytkownika',
+            reasons: isPostDelete
+                ? [
+                    'Treść narusza regulamin serwisu.',
+                    'Treść ma charakter obraźliwy lub nękający.',
+                    'To spam lub niedozwolona promocja.',
+                    'Treść narusza prywatność lub dane osobowe.',
+                    'Treść jest niezgodna z tematyką serwisu.',
+                ]
+                : [
+                    'Ogłoszenie narusza regulamin serwisu.',
+                    'To spam lub duplikat ogłoszenia.',
+                    'Ogłoszenie zawiera wprowadzające w błąd informacje.',
+                    'Ogłoszenie zawiera niedozwoloną treść.',
+                    'Ogłoszenie narusza prywatność lub dane osobowe.',
+                ],
+        });
+
+        if (typeof reason !== 'string' || reason.trim() === '') {
+            return;
+        }
+
+        let reasonInput = form.querySelector('input[name="moderation_reason"]');
+        if (!(reasonInput instanceof HTMLInputElement)) {
+            reasonInput = document.createElement('input');
+            reasonInput.type = 'hidden';
+            reasonInput.name = 'moderation_reason';
+            form.appendChild(reasonInput);
+        }
+        reasonInput.value = reason.trim();
+
+        const formData = new FormData(form);
+        const endpoint = form.getAttribute('action') || (isPostDelete ? window.location.pathname + window.location.search : '/marketplace');
+
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            const payload = await response.json();
+            if (!response.ok || !payload.success) {
+                throw new Error(String(payload?.message || 'Request failed'));
+            }
+
+            if (isPostDelete) {
+                const postId = String(formData.get('post_id') || '');
+                document.querySelectorAll(`#post-${postId}`).forEach((element) => element.remove());
+                if (typeof window.showAppToast === 'function') {
+                    window.showAppToast(payload.message || 'Post został usunięty.', 'success');
+                }
+                closeProfileCommunityPostMenus();
+            } else {
+                const listingId = String(formData.get('listing_id') || '');
+                document.querySelectorAll(`#listing-${listingId}`).forEach((element) => element.remove());
+                document.querySelectorAll(`#marketplace-details-modal-${listingId}`).forEach((element) => element.remove());
+                if (typeof window.showAppToast === 'function') {
+                    window.showAppToast(payload.message || 'Ogłoszenie zostało usunięte.', 'success');
+                }
+                closeProfileMarketplaceMenus();
+            }
+
+            refreshProfileStats();
+        } catch (error) {
+            const message = error instanceof Error && error.message !== '' ? error.message : 'Nie udało się usunąć treści.';
+            if (typeof window.showAppToast === 'function') {
+                window.showAppToast(message, 'error');
+            } else {
+                form.submit();
+            }
+        }
+    }, true);
 
     document.addEventListener('click', (event) => {
         const target = event.target instanceof Element ? event.target : null;
@@ -2307,6 +2609,28 @@ if (isProfilePage) {
                 window.location.href = profileActivityLink.href;
             });
             return;
+        }
+
+        const communityMenuTrigger = target.closest('[data-community-post-menu-trigger]');
+        if (communityMenuTrigger && communityMenuTrigger.closest('.profile-page, [data-community-comments-modal]')) {
+            event.preventDefault();
+            event.stopPropagation();
+
+            const menu = communityMenuTrigger.closest('[data-community-post-menu]');
+            const dropdown = menu?.querySelector('[data-community-post-menu-dropdown]');
+            if (!(menu instanceof HTMLElement) || !(dropdown instanceof HTMLElement)) {
+                return;
+            }
+
+            const isOpen = communityMenuTrigger.getAttribute('aria-expanded') === 'true';
+            closeProfileCommunityPostMenus(isOpen ? null : menu);
+            communityMenuTrigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+            dropdown.hidden = isOpen;
+            return;
+        }
+
+        if (!target.closest('[data-community-post-menu]')) {
+            closeProfileCommunityPostMenus();
         }
 
         const menuTrigger = target.closest('[data-marketplace-menu-trigger]');

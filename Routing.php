@@ -10,6 +10,7 @@ class Routing {
         "register" => ["controller" => "SecurityController", "action" => "register"],
         "dashboard" => ["controller" => "DashboardController", "action" => "index"],
         "admin" => ["controller" => "AdminController", "action" => "index"],
+        "admin/profile" => ["controller" => "ProfileController", "action" => "index"],
         "dashboard/set-primary-vehicle" => ["controller" => "DashboardController", "action" => "setPrimaryVehicle"],
         "my-cars" => ["controller" => "CarsController", "action" => "index"],
         "my-cars/details" => ["controller" => "CarsController", "action" => "details"],
@@ -27,6 +28,12 @@ class Routing {
         if (str_starts_with($normalizedPath, 'profile/')) {
             $_GET['pseudonym'] = rawurldecode(substr($normalizedPath, strlen('profile/')));
             $normalizedPath = 'profile';
+        }
+
+        if (str_starts_with($normalizedPath, 'admin/profile/')) {
+            $_GET['pseudonym'] = rawurldecode(substr($normalizedPath, strlen('admin/profile/')));
+            $_GET['admin_preview'] = '1';
+            $normalizedPath = 'admin/profile';
         }
 
         if (str_starts_with($normalizedPath, 'my-cars/') && $normalizedPath !== 'my-cars/details') {
@@ -48,6 +55,9 @@ class Routing {
         $action = self::$routes[$normalizedPath]["action"];
 
         $controllerObj = new $controller();
+        if (str_starts_with($normalizedPath, 'admin') && $controllerObj instanceof AppController) {
+            $controllerObj->guardAdminRoute();
+        }
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && $controllerObj instanceof AppController) {
             $controllerObj->enforceCsrfProtection();
         }

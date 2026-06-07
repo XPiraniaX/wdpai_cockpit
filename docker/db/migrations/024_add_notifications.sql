@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS user_notifications (
     title VARCHAR(160) NOT NULL,
     message VARCHAR(255) NOT NULL,
     target_path VARCHAR(255) NOT NULL,
+    payload_json JSONB,
     event_key VARCHAR(255),
     is_read BOOLEAN NOT NULL DEFAULT FALSE,
     read_at TIMESTAMPTZ,

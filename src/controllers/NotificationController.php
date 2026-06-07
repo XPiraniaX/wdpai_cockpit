@@ -73,9 +73,24 @@ class NotificationController extends AppController
             'title' => (string) ($notification['title'] ?? ''),
             'message' => (string) ($notification['message'] ?? ''),
             'target_path' => (string) ($notification['target_path'] ?? '/dashboard'),
+            'payload' => $this->decodeNotificationPayload($notification['payload_json'] ?? null),
             'is_read' => (bool) ($notification['is_read'] ?? false),
             'created_at' => $createdAtRaw,
             'created_at_label' => $createdAt ? $createdAt->format('d.m.Y • H:i') : '',
         ];
+    }
+
+    private function decodeNotificationPayload(mixed $value): ?array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (!is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        $decoded = json_decode($value, true);
+        return is_array($decoded) ? $decoded : null;
     }
 }
