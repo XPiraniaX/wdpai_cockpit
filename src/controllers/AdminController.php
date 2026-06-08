@@ -25,7 +25,11 @@ class AdminController extends AppController
             $this->handleCatalogUsersPage();
         }
 
-        $catalog = $this->buildCatalogUsersPayload($this->normalizePositiveInt($_GET['catalog_page'] ?? 1));
+        $openUserId = $this->normalizeOptionalPositiveInt($_GET['open_user'] ?? null);
+        $initialCatalogPage = $openUserId !== null && $openUserId > 0
+            ? $this->userRepository->getAdminCatalogPageForUser($openUserId, self::CATALOG_USERS_PER_PAGE)
+            : $this->normalizePositiveInt($_GET['catalog_page'] ?? 1);
+        $catalog = $this->buildCatalogUsersPayload($initialCatalogPage);
 
         $this->render('admin_panel', [
             'title' => 'Panel zarządzania / Dashboard',
@@ -43,6 +47,7 @@ class AdminController extends AppController
             ],
             'scriptFiles' => ['admin_panel.js'],
             'adminCatalogUsers' => $catalog,
+            'adminCatalogOpenUserId' => $openUserId,
         ]);
     }
 
@@ -98,11 +103,20 @@ class AdminController extends AppController
             'post_count' => (int) ($user['post_count'] ?? 0),
             'admin_removed_listing_count' => (int) ($user['admin_removed_listing_count'] ?? 0),
             'admin_removed_post_count' => (int) ($user['admin_removed_post_count'] ?? 0),
-            'is_blocked' => $this->isUserCurrentlyBlocked($user),
-            'blocked_until_label' => $this->formatBanStatusLabel($user),
-            'presence_label' => $this->formatPresenceStatusLabel($user),
+            'is_blocked' => $this->isAccountRestrictionActive($user),
+            'blocked_until_label' => $this->formatAccountRestrictionLabel($user),
             'blocked_reason' => (string) ($user['blocked_reason'] ?? ''),
-            'last_ban_summary' => $this->formatLastBanSummary($user),
+            'last_ban_summary' => $this->formatLastRestrictionSummary($user, 'account'),
+            'is_community_blocked' => $this->isCommunityRestrictionActive($user),
+            'community_blocked_until_label' => $this->formatCommunityRestrictionLabel($user),
+            'community_blocked_reason' => (string) ($user['community_block_reason'] ?? ''),
+            'last_community_block_summary' => $this->formatLastRestrictionSummary($user, 'community'),
+            'is_marketplace_blocked' => $this->isMarketplaceRestrictionActive($user),
+            'marketplace_blocked_until_label' => $this->formatMarketplaceRestrictionLabel($user),
+            'marketplace_blocked_reason' => (string) ($user['marketplace_block_reason'] ?? ''),
+            'last_marketplace_block_summary' => $this->formatLastRestrictionSummary($user, 'marketplace'),
+            'restriction_status_label' => $this->formatCatalogStatusLabel($user),
+            'presence_label' => $this->formatPresenceStatusLabel($user),
             'profile_path' => $profilePath,
             'admin_profile_path' => $adminProfilePath,
         ];
@@ -117,6 +131,16 @@ class AdminController extends AppController
         return max(1, (int) $value);
     }
 
+    private function normalizeOptionalPositiveInt(mixed $value): ?int
+    {
+        if (filter_var($value, FILTER_VALIDATE_INT) === false) {
+            return null;
+        }
+
+        $normalizedValue = (int) $value;
+        return $normalizedValue > 0 ? $normalizedValue : null;
+    }
+
     private function handleAdminAction(): void
     {
         $action = (string) ($_POST['action'] ?? '');
@@ -128,6 +152,26 @@ class AdminController extends AppController
 
         if ($action === 'unban_user') {
             $this->handleUnbanUser();
+            return;
+        }
+
+        if ($action === 'block_community_functions') {
+            $this->handleCommunityBlockUser();
+            return;
+        }
+
+        if ($action === 'unblock_community_functions') {
+            $this->handleCommunityUnblockUser();
+            return;
+        }
+
+        if ($action === 'block_marketplace_functions') {
+            $this->handleMarketplaceBlockUser();
+            return;
+        }
+
+        if ($action === 'unblock_marketplace_functions') {
+            $this->handleMarketplaceUnblockUser();
             return;
         }
 
@@ -173,13 +217,7 @@ class AdminController extends AppController
             $isPermanent
         );
 
-        $user = $this->userRepository->getAdminCatalogUserById($userId);
-        if ($user === null) {
-            $this->jsonResponse([
-                'success' => false,
-                'message' => 'Nie udało się odświeżyć danych użytkownika po blokadzie.',
-            ], 500);
-        }
+        $user = $this->requireAdminCatalogUser($userId, 'Nie udało się odświeżyć danych użytkownika po blokadzie.');
 
         $this->jsonResponse([
             'success' => true,
@@ -199,17 +237,145 @@ class AdminController extends AppController
         }
 
         $this->userRepository->unbanUserByAdmin($userId);
-        $user = $this->userRepository->getAdminCatalogUserById($userId);
-        if ($user === null) {
-            $this->jsonResponse([
-                'success' => false,
-                'message' => 'Nie udało się odświeżyć danych użytkownika po odblokowaniu.',
-            ], 500);
-        }
+        $user = $this->requireAdminCatalogUser($userId, 'Nie udało się odświeżyć danych użytkownika po odblokowaniu.');
 
         $this->jsonResponse([
             'success' => true,
             'message' => 'Użytkownik został odblokowany.',
+            'user' => $this->mapCatalogUserRow($user),
+        ]);
+    }
+
+    private function handleCommunityBlockUser(): void
+    {
+        $userId = (int) ($_POST['user_id'] ?? 0);
+        $reason = trim((string) ($_POST['reason'] ?? ''));
+        $durationCode = $this->normalizeBanDurationCode((string) ($_POST['duration_code'] ?? ''));
+
+        if ($userId <= 0 || $reason === '' || $durationCode === null) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie udało się ograniczyć funkcji społeczności. Uzupełnij powód i czas blokady.',
+            ], 422);
+        }
+
+        if ($userId === $this->getCurrentUserId()) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie możesz ograniczyć własnego konta administratora.',
+            ], 422);
+        }
+
+        $currentUser = $this->requireAdminCatalogUser($userId, 'Nie udało się pobrać danych użytkownika.');
+        if ($this->isAccountRestrictionActive($currentUser)) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Najpierw odblokuj konto użytkownika, a dopiero potem ogranicz funkcje społeczności.',
+            ], 422);
+        }
+
+        [$durationLabel, $blockedUntil, $isPermanent] = $this->resolveBanDuration($durationCode);
+        $this->userRepository->blockCommunityFunctionsByAdmin(
+            $userId,
+            $reason,
+            $durationCode,
+            $durationLabel,
+            $blockedUntil,
+            $isPermanent
+        );
+
+        $user = $this->requireAdminCatalogUser($userId, 'Nie udało się odświeżyć danych użytkownika po ograniczeniu funkcji społeczności.');
+
+        $this->jsonResponse([
+            'success' => true,
+            'message' => 'Funkcje społeczności zostały ograniczone.',
+            'user' => $this->mapCatalogUserRow($user),
+        ]);
+    }
+
+    private function handleCommunityUnblockUser(): void
+    {
+        $userId = (int) ($_POST['user_id'] ?? 0);
+        if ($userId <= 0) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie udało się odblokować funkcji społeczności.',
+            ], 422);
+        }
+
+        $this->userRepository->unblockCommunityFunctionsByAdmin($userId);
+        $user = $this->requireAdminCatalogUser($userId, 'Nie udało się odświeżyć danych użytkownika po odblokowaniu funkcji społeczności.');
+
+        $this->jsonResponse([
+            'success' => true,
+            'message' => 'Funkcje społeczności zostały odblokowane.',
+            'user' => $this->mapCatalogUserRow($user),
+        ]);
+    }
+
+    private function handleMarketplaceBlockUser(): void
+    {
+        $userId = (int) ($_POST['user_id'] ?? 0);
+        $reason = trim((string) ($_POST['reason'] ?? ''));
+        $durationCode = $this->normalizeBanDurationCode((string) ($_POST['duration_code'] ?? ''));
+
+        if ($userId <= 0 || $reason === '' || $durationCode === null) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie udało się ograniczyć funkcji marketplace. Uzupełnij powód i czas blokady.',
+            ], 422);
+        }
+
+        if ($userId === $this->getCurrentUserId()) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie możesz ograniczyć własnego konta administratora.',
+            ], 422);
+        }
+
+        $currentUser = $this->requireAdminCatalogUser($userId, 'Nie udało się pobrać danych użytkownika.');
+        if ($this->isAccountRestrictionActive($currentUser)) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Najpierw odblokuj konto użytkownika, a dopiero potem ogranicz funkcje marketplace.',
+            ], 422);
+        }
+
+        [$durationLabel, $blockedUntil, $isPermanent] = $this->resolveBanDuration($durationCode);
+        $this->userRepository->blockMarketplaceFunctionsByAdmin(
+            $userId,
+            $reason,
+            $durationCode,
+            $durationLabel,
+            $blockedUntil,
+            $isPermanent
+        );
+
+        $user = $this->requireAdminCatalogUser($userId, 'Nie udało się odświeżyć danych użytkownika po ograniczeniu funkcji marketplace.');
+
+        $this->jsonResponse([
+            'success' => true,
+            'message' => 'Funkcje marketplace zostały ograniczone.',
+            'user' => $this->mapCatalogUserRow($user),
+        ]);
+    }
+
+    private function handleMarketplaceUnblockUser(): void
+    {
+        $userId = (int) ($_POST['user_id'] ?? 0);
+        if ($userId <= 0) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie udało się odblokować funkcji marketplace.',
+            ], 422);
+        }
+
+        $this->userRepository->unblockMarketplaceFunctionsByAdmin($userId);
+        $user = $this->requireAdminCatalogUser($userId, 'Nie udało się odświeżyć danych użytkownika po odblokowaniu funkcji marketplace.');
+
+        $this->jsonResponse([
+            'success' => true,
+            'message' => 'Funkcje marketplace zostały odblokowane.',
             'user' => $this->mapCatalogUserRow($user),
         ]);
     }
@@ -266,23 +432,34 @@ class AdminController extends AppController
         };
     }
 
-    private function isUserCurrentlyBlocked(array $user): bool
+    private function isAccountRestrictionActive(array $user): bool
     {
-        if (!(bool) ($user['is_blocked'] ?? false)) {
-            return false;
-        }
-
-        if ((bool) ($user['blocked_is_permanent'] ?? false)) {
-            return true;
-        }
-
-        $blockedUntil = trim((string) ($user['blocked_until'] ?? ''));
-        return $blockedUntil !== '' && strtotime($blockedUntil) !== false && strtotime($blockedUntil) > time();
+        return (bool) ($user['is_blocked'] ?? false)
+            && $this->isTimedRestrictionActive(
+                $user['blocked_until'] ?? null,
+                (bool) ($user['blocked_is_permanent'] ?? false)
+            );
     }
 
-    private function formatBanStatusLabel(array $user): string
+    private function isCommunityRestrictionActive(array $user): bool
     {
-        if (!$this->isUserCurrentlyBlocked($user)) {
+        return $this->isTimedRestrictionActive(
+            $user['community_blocked_until'] ?? null,
+            (bool) ($user['community_block_is_permanent'] ?? false)
+        );
+    }
+
+    private function isMarketplaceRestrictionActive(array $user): bool
+    {
+        return $this->isTimedRestrictionActive(
+            $user['marketplace_blocked_until'] ?? null,
+            (bool) ($user['marketplace_block_is_permanent'] ?? false)
+        );
+    }
+
+    private function formatAccountRestrictionLabel(array $user): string
+    {
+        if (!$this->isAccountRestrictionActive($user)) {
             return '';
         }
 
@@ -298,28 +475,101 @@ class AdminController extends AppController
         return 'Użytkownik zablokowany do: ' . $blockedUntil->format('d.m.Y • H:i');
     }
 
-    private function formatLastBanSummary(array $user): string
+    private function formatCommunityRestrictionLabel(array $user): string
     {
-        $durationLabel = trim((string) ($user['last_ban_duration_label'] ?? ''));
+        if (!$this->isCommunityRestrictionActive($user)) {
+            return '';
+        }
+
+        if ((bool) ($user['community_block_is_permanent'] ?? false)) {
+            return 'Społeczność zablokowana na stałe';
+        }
+
+        $blockedUntil = $this->createAdminDateTime((string) ($user['community_blocked_until'] ?? ''));
+        if ($blockedUntil === null) {
+            return 'Społeczność zablokowana na stałe';
+        }
+
+        return 'Społeczność zablokowana do: ' . $blockedUntil->format('d.m.Y • H:i');
+    }
+
+    private function formatMarketplaceRestrictionLabel(array $user): string
+    {
+        if (!$this->isMarketplaceRestrictionActive($user)) {
+            return '';
+        }
+
+        if ((bool) ($user['marketplace_block_is_permanent'] ?? false)) {
+            return 'Marketplace zablokowany na stałe';
+        }
+
+        $blockedUntil = $this->createAdminDateTime((string) ($user['marketplace_blocked_until'] ?? ''));
+        if ($blockedUntil === null) {
+            return 'Marketplace zablokowany na stałe';
+        }
+
+        return 'Marketplace zablokowany do: ' . $blockedUntil->format('d.m.Y • H:i');
+    }
+
+    private function formatCatalogStatusLabel(array $user): string
+    {
+        $accountLabel = $this->formatAccountRestrictionLabel($user);
+        if ($accountLabel !== '') {
+            return $accountLabel;
+        }
+
+        $communityLabel = $this->formatCommunityRestrictionLabel($user);
+        $marketplaceLabel = $this->formatMarketplaceRestrictionLabel($user);
+        if ($communityLabel !== '' && $marketplaceLabel !== '') {
+            return $communityLabel . ' / ' . $marketplaceLabel;
+        }
+
+        return $communityLabel !== '' ? $communityLabel : $marketplaceLabel;
+    }
+
+    private function formatLastRestrictionSummary(array $user, string $type): string
+    {
+        [$durationKey, $untilKey, $permanentKey, $emptyMessage] = match ($type) {
+            'community' => [
+                'last_community_block_duration_label',
+                'last_community_block_until',
+                'last_community_block_is_permanent',
+                'Brak wcześniejszych ograniczeń społeczności.',
+            ],
+            'marketplace' => [
+                'last_marketplace_block_duration_label',
+                'last_marketplace_block_until',
+                'last_marketplace_block_is_permanent',
+                'Brak wcześniejszych ograniczeń marketplace.',
+            ],
+            default => [
+                'last_ban_duration_label',
+                'last_ban_until',
+                'last_ban_is_permanent',
+                'Brak wcześniejszych blokad.',
+            ],
+        };
+
+        $durationLabel = trim((string) ($user[$durationKey] ?? ''));
         if ($durationLabel === '') {
-            return 'Brak wcześniejszych blokad.';
+            return $emptyMessage;
         }
 
-        if ((bool) ($user['last_ban_is_permanent'] ?? false)) {
+        if ((bool) ($user[$permanentKey] ?? false)) {
             return 'Ostatnia kara: ' . $durationLabel . '.';
         }
 
-        $lastBanUntil = $this->createAdminDateTime((string) ($user['last_ban_until'] ?? ''));
-        if ($lastBanUntil === null) {
+        $until = $this->createAdminDateTime((string) ($user[$untilKey] ?? ''));
+        if ($until === null) {
             return 'Ostatnia kara: ' . $durationLabel . '.';
         }
 
-        return 'Ostatnia kara: ' . $durationLabel . ' (do ' . $lastBanUntil->format('d.m.Y • H:i') . ').';
+        return 'Ostatnia kara: ' . $durationLabel . ' (do ' . $until->format('d.m.Y • H:i') . ').';
     }
 
     private function formatPresenceStatusLabel(array $user): string
     {
-        if ($this->isUserCurrentlyBlocked($user)) {
+        if ($this->formatCatalogStatusLabel($user) !== '') {
             return '';
         }
 
@@ -344,5 +594,32 @@ class AdminController extends AppController
         } catch (Throwable) {
             return null;
         }
+    }
+
+    private function requireAdminCatalogUser(int $userId, string $errorMessage): array
+    {
+        $user = $this->userRepository->getAdminCatalogUserById($userId);
+        if ($user === null) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => $errorMessage,
+            ], 500);
+        }
+
+        $currentRestrictionState = $this->userRepository->getById($userId);
+        if ($currentRestrictionState !== null) {
+            $user['community_blocked_until'] = $currentRestrictionState['community_blocked_until'] ?? null;
+            $user['community_block_reason'] = $currentRestrictionState['community_block_reason'] ?? null;
+            $user['community_block_is_permanent'] = $currentRestrictionState['community_block_is_permanent'] ?? false;
+            $user['marketplace_blocked_until'] = $currentRestrictionState['marketplace_blocked_until'] ?? null;
+            $user['marketplace_block_reason'] = $currentRestrictionState['marketplace_block_reason'] ?? null;
+            $user['marketplace_block_is_permanent'] = $currentRestrictionState['marketplace_block_is_permanent'] ?? false;
+            $user['blocked_until'] = $currentRestrictionState['blocked_until'] ?? ($user['blocked_until'] ?? null);
+            $user['blocked_reason'] = $currentRestrictionState['blocked_reason'] ?? ($user['blocked_reason'] ?? null);
+            $user['blocked_is_permanent'] = $currentRestrictionState['blocked_is_permanent'] ?? ($user['blocked_is_permanent'] ?? false);
+            $user['is_blocked'] = $currentRestrictionState['is_blocked'] ?? ($user['is_blocked'] ?? false);
+        }
+
+        return $user;
     }
 }

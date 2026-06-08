@@ -38,7 +38,7 @@
 <?php if (!empty($requiresAdminWarningLock ?? false)): ?>
     <div class="pseudonym-lock" data-admin-warning-lock>
         <div class="pseudonym-lock-backdrop"></div>
-        <section class="pseudonym-lock-modal account-warning-lock-modal">
+        <section class="pseudonym-lock-modal account-warning-lock-modal<?= (($currentUser['pending_admin_notice_type'] ?? 'warning') !== 'warning') ? ' is-restriction' : ''; ?>">
             <div class="account-warning-lock-copy">
                 <div class="account-warning-lock-kicker">Ostrzeżenie administratora</div>
                 <h2 class="account-warning-lock-title">Wymagane potwierdzenie komunikatu</h2>

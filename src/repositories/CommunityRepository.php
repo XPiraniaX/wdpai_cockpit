@@ -150,7 +150,7 @@ class CommunityRepository
         ?string $cursorCreatedAt,
         ?int $cursorId
     ): array {
-        $conditions = ['p.user_id = :profile_user_id', '(p.is_active = TRUE OR p.hidden_by_user_ban = TRUE)'];
+        $conditions = ['p.user_id = :profile_user_id', '(p.is_active = TRUE OR p.hidden_by_user_ban = TRUE OR p.hidden_by_community_block = TRUE)'];
         $params = [
             'current_user_id' => $currentUserId,
             'profile_user_id' => $profileUserId,
@@ -1052,13 +1052,13 @@ class CommunityRepository
                 SELECT COUNT(*)::INTEGER AS post_count
                 FROM community_posts p
                 WHERE p.user_id = u.id
-                    AND (p.is_active = TRUE OR p.hidden_by_user_ban = TRUE)
+                    AND (p.is_active = TRUE OR p.hidden_by_user_ban = TRUE OR p.hidden_by_community_block = TRUE)
             ) AS post_counts ON TRUE
             LEFT JOIN LATERAL (
                 SELECT COUNT(*)::INTEGER AS listing_count
                 FROM marketplace_listings l
                 WHERE l.user_id = u.id
-                    AND (l.is_active = TRUE OR l.hidden_by_user_ban = TRUE)
+                    AND (l.is_active = TRUE OR l.hidden_by_user_ban = TRUE OR l.hidden_by_marketplace_block = TRUE)
             ) AS listing_counts ON TRUE
             WHERE {$conditionSql}
                 AND u.is_active = TRUE

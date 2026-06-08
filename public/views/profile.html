@@ -25,6 +25,16 @@ if (!empty($canViewMembershipTier)) {
 <main class="profile-page community-page community-profile-page<?= $isAdminProfileView ? ' is-admin-profile-view' : ''; ?>"<?= $isAdminProfileView ? ' data-admin-profile-view="1"' : ''; ?>>
     <div class="community-shell community-shell-profile">
         <section class="community-profile-hero card">
+            <?php if ($isAdminProfileView && !$isOwnProfile): ?>
+                <a
+                    href="/admin?open_user=<?= (int) $profile['id']; ?>#dashboard"
+                    class="profile-hero-admin-link"
+                    aria-label="Przejdź do panelu zarządzania"
+                >
+                    <img src="/public/assets/icons/admin_panel.svg" alt="">
+                </a>
+            <?php endif; ?>
+
             <?php if (!$isOwnProfile && !$isAdminProfileView && empty($isBlockedForRegularViewer)): ?>
                 <div class="marketplace-post-menu profile-hero-menu" data-marketplace-menu>
                     <button type="button" class="marketplace-post-menu-trigger" aria-label="Opcje profilu" aria-expanded="false" data-marketplace-menu-trigger>

@@ -246,11 +246,11 @@ class MarketplaceRepository
 
         if ($visibility === 'active') {
             $conditions[] = $includeHiddenByUserBan
-                ? '(l.is_active = TRUE OR l.hidden_by_user_ban = TRUE)'
+                ? '(l.is_active = TRUE OR l.hidden_by_user_ban = TRUE OR l.hidden_by_marketplace_block = TRUE)'
                 : 'l.is_active = TRUE';
         } elseif ($visibility === 'ended') {
             $conditions[] = $includeHiddenByUserBan
-                ? '(l.is_active = FALSE OR l.hidden_by_user_ban = TRUE)'
+                ? '(l.is_active = FALSE OR l.hidden_by_user_ban = TRUE OR l.hidden_by_marketplace_block = TRUE)'
                 : 'l.is_active = FALSE';
         }
 
@@ -343,11 +343,11 @@ class MarketplaceRepository
 
         if ($visibility === 'active') {
             $conditions[] = $includeHiddenByUserBan
-                ? '(l.is_active = TRUE OR l.hidden_by_user_ban = TRUE)'
+                ? '(l.is_active = TRUE OR l.hidden_by_user_ban = TRUE OR l.hidden_by_marketplace_block = TRUE)'
                 : 'l.is_active = TRUE';
         } elseif ($visibility === 'ended') {
             $conditions[] = $includeHiddenByUserBan
-                ? '(l.is_active = FALSE OR l.hidden_by_user_ban = TRUE)'
+                ? '(l.is_active = FALSE OR l.hidden_by_user_ban = TRUE OR l.hidden_by_marketplace_block = TRUE)'
                 : 'l.is_active = FALSE';
         }
 

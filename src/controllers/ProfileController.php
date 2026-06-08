@@ -67,6 +67,21 @@ class ProfileController extends CommunityController
 
         $profileUserId = (int) $profile['id'];
         $isOwnProfile = $profileUserId === $currentUserId;
+        if ($this->isAdmin() && !$isOwnProfile && !$isAdminProfileView) {
+            $query = $_GET;
+            unset($query['id'], $query['pseudonym'], $query['admin_preview']);
+
+            $adminProfilePath = !empty($profile['pseudonym'])
+                ? '/admin/profile/' . rawurlencode((string) $profile['pseudonym'])
+                : '/admin/profile?id=' . $profileUserId . '&admin_preview=1';
+
+            if ($query !== []) {
+                $adminProfilePath .= (str_contains($adminProfilePath, '?') ? '&' : '?') . http_build_query($query);
+            }
+
+            $this->redirect($adminProfilePath);
+        }
+
         $canBypassPrivacy = $isAdminProfileView && !$isOwnProfile;
         $isProfileCurrentlyBlocked = (bool) ($profile['is_currently_banned'] ?? false);
         $isBlockedForRegularViewer = $isProfileCurrentlyBlocked && !$isOwnProfile && !$canBypassPrivacy;

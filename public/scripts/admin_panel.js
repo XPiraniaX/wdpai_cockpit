@@ -55,6 +55,9 @@
     const userModalRemovedPostCount = document.querySelector('[data-admin-user-modal-removed-post-count]');
     const userModalRemovedListingCount = document.querySelector('[data-admin-user-modal-removed-listing-count]');
     const userModalProfileLink = document.querySelector('[data-admin-user-modal-profile-link]');
+    const userModalWarningButton = document.querySelector('[data-admin-user-modal-action="warning"]');
+    const userModalMarketplaceButton = document.querySelector('[data-admin-user-modal-action="marketplace"]');
+    const userModalCommunityButton = document.querySelector('[data-admin-user-modal-action="community"]');
     const userModalBanButton = document.querySelector('[data-admin-user-modal-ban-button]');
 
     const moderationModalRoot = document.querySelector('[data-admin-ban-modal-root]');
@@ -105,10 +108,29 @@
         { value: 'permanent', label: 'Na stałe' },
     ];
 
+    const communityReasonOptions = [
+        'Naruszenie zasad publikacji postów',
+        'Nadużywanie komentarzy lub treści w społeczności',
+        'Spam lub flood w społeczności',
+        'Toksyczne zachowanie wobec innych użytkowników',
+        'Omijanie wcześniejszych ograniczeń społeczności',
+        'Inny powód',
+    ];
+
+    const marketplaceReasonOptions = [
+        'Naruszenie zasad publikacji ogłoszeń',
+        'Powtarzające się wprowadzające w błąd oferty',
+        'Spam lub masowe dodawanie ogłoszeń',
+        'Nadużycia w kontakcie ze sprzedającymi lub kupującymi',
+        'Omijanie wcześniejszych ograniczeń marketplace',
+        'Inny powód',
+    ];
+
     const catalogState = {
         page: Number(catalogRoot?.getAttribute('data-admin-catalog-page') || 1),
         totalPages: Number(catalogRoot?.getAttribute('data-admin-catalog-total-pages') || 1),
         totalUsers: Number(catalogRoot?.getAttribute('data-admin-catalog-total-users') || 0),
+        openUserId: Number(catalogRoot?.getAttribute('data-admin-open-user-id') || 0),
         isLoading: false,
     };
 
@@ -156,8 +178,123 @@
 
     const parseBoolean = (value) => String(value || '') === '1' || String(value || '').toLowerCase() === 'true';
 
-    const getBlockedStatusLabel = (user) => {
-        return String(user.blockedUntilLabel || '').trim();
+    const getRestrictionStatusLabel = (user) => {
+        return String(user.restrictionStatusLabel || '').trim();
+    };
+
+    const getReasonOptionsForMode = (mode) => {
+        if (mode === 'community_block') {
+            return communityReasonOptions;
+        }
+
+        if (mode === 'marketplace_block') {
+            return marketplaceReasonOptions;
+        }
+
+        return banReasonOptions;
+    };
+
+    const getLastSummaryForMode = (user, mode) => {
+        if (!user) {
+            return '';
+        }
+
+        if (mode === 'community_block') {
+            return String(user.lastCommunityBlockSummary || '').trim();
+        }
+
+        if (mode === 'marketplace_block') {
+            return String(user.lastMarketplaceBlockSummary || '').trim();
+        }
+
+        return String(user.lastBanSummary || '').trim();
+    };
+
+    const getModerationModeConfig = (mode) => {
+        if (mode === 'community_block') {
+            return {
+                title: 'Ogranicz funkcje społeczności',
+                copy: 'Wybierz powód ograniczenia funkcji społeczności dla konta {pseudonym}.',
+                durationTitle: 'Czas ograniczenia społeczności',
+                durationCopy: 'Wybierz czas ograniczenia funkcji społeczności dla konta {pseudonym}.',
+                confirmTitle: 'Potwierdź ograniczenie społeczności',
+                confirmCopy: 'Czy na pewno chcesz ograniczyć funkcje społeczności dla konta {pseudonym}?',
+                confirmLabel: 'Ogranicz funkcje społeczności',
+                progressLabel: 'Trwa ograniczanie...',
+                action: 'block_community_functions',
+                successFallback: 'Funkcje społeczności zostały ograniczone.',
+                emptyReasonMessage: 'Wybierz powód ograniczenia społeczności.',
+                emptyDurationMessage: 'Wybierz czas ograniczenia społeczności.',
+            };
+        }
+
+        if (mode === 'community_unblock') {
+            return {
+                title: 'Odblokuj funkcje społeczności',
+                copy: 'Czy na pewno chcesz odblokować funkcje społeczności dla konta {pseudonym}?',
+                confirmLabel: 'Odblokuj funkcje społeczności',
+                progressLabel: 'Trwa odblokowywanie...',
+                action: 'unblock_community_functions',
+                successFallback: 'Funkcje społeczności zostały odblokowane.',
+                isUnblock: true,
+            };
+        }
+
+        if (mode === 'marketplace_block') {
+            return {
+                title: 'Ogranicz funkcje marketplace',
+                copy: 'Wybierz powód ograniczenia funkcji marketplace dla konta {pseudonym}.',
+                durationTitle: 'Czas ograniczenia marketplace',
+                durationCopy: 'Wybierz czas ograniczenia funkcji marketplace dla konta {pseudonym}.',
+                confirmTitle: 'Potwierdź ograniczenie marketplace',
+                confirmCopy: 'Czy na pewno chcesz ograniczyć funkcje marketplace dla konta {pseudonym}?',
+                confirmLabel: 'Ogranicz funkcje marketplace',
+                progressLabel: 'Trwa ograniczanie...',
+                action: 'block_marketplace_functions',
+                successFallback: 'Funkcje marketplace zostały ograniczone.',
+                emptyReasonMessage: 'Wybierz powód ograniczenia marketplace.',
+                emptyDurationMessage: 'Wybierz czas ograniczenia marketplace.',
+            };
+        }
+
+        if (mode === 'marketplace_unblock') {
+            return {
+                title: 'Odblokuj funkcje marketplace',
+                copy: 'Czy na pewno chcesz odblokować funkcje marketplace dla konta {pseudonym}?',
+                confirmLabel: 'Odblokuj funkcje marketplace',
+                progressLabel: 'Trwa odblokowywanie...',
+                action: 'unblock_marketplace_functions',
+                successFallback: 'Funkcje marketplace zostały odblokowane.',
+                isUnblock: true,
+            };
+        }
+
+        if (mode === 'unban') {
+            return {
+                title: 'Odblokuj użytkownika',
+                copy: 'Czy na pewno chcesz odblokować konto {pseudonym}?',
+                confirmLabel: 'Odblokuj konto',
+                progressLabel: 'Trwa odblokowywanie...',
+                action: 'unban_user',
+                successFallback: 'Użytkownik został odblokowany.',
+                isUnblock: true,
+            };
+        }
+
+        return {
+            title: 'Zablokuj użytkownika',
+            copy: 'Wybierz powód blokady dla konta {pseudonym}.',
+            durationTitle: 'Czas blokady',
+            durationCopy: 'Wybierz czas blokady dla konta {pseudonym}.',
+            confirmTitle: 'Potwierdź blokadę',
+            confirmCopy: 'Czy na pewno chcesz zablokować konto {pseudonym}?',
+            confirmLabel: 'Zablokuj konto',
+            progressLabel: 'Trwa blokowanie...',
+            action: 'ban_user',
+            successFallback: 'Użytkownik został zablokowany.',
+            emptyReasonMessage: 'Wybierz powód blokady.',
+            emptyDurationMessage: 'Wybierz czas blokady.',
+        };
     };
 
     const parseUserFromRow = (trigger) => ({
@@ -175,6 +312,15 @@
         adminProfilePath: String(trigger.getAttribute('data-admin-user-admin-profile-path') || '/admin'),
         isBlocked: parseBoolean(trigger.getAttribute('data-admin-user-is-blocked')),
         blockedUntilLabel: String(trigger.getAttribute('data-admin-user-blocked-until-label') || '').trim(),
+        isCommunityBlocked: parseBoolean(trigger.getAttribute('data-admin-user-is-community-blocked')),
+        communityBlockedUntilLabel: String(trigger.getAttribute('data-admin-user-community-blocked-until-label') || '').trim(),
+        communityBlockedReason: String(trigger.getAttribute('data-admin-user-community-blocked-reason') || '').trim(),
+        lastCommunityBlockSummary: String(trigger.getAttribute('data-admin-user-last-community-block-summary') || '').trim(),
+        isMarketplaceBlocked: parseBoolean(trigger.getAttribute('data-admin-user-is-marketplace-blocked')),
+        marketplaceBlockedUntilLabel: String(trigger.getAttribute('data-admin-user-marketplace-blocked-until-label') || '').trim(),
+        marketplaceBlockedReason: String(trigger.getAttribute('data-admin-user-marketplace-blocked-reason') || '').trim(),
+        lastMarketplaceBlockSummary: String(trigger.getAttribute('data-admin-user-last-marketplace-block-summary') || '').trim(),
+        restrictionStatusLabel: String(trigger.getAttribute('data-admin-user-restriction-status-label') || '').trim(),
         presenceLabel: String(trigger.getAttribute('data-admin-user-presence-label') || '').trim(),
         blockedReason: String(trigger.getAttribute('data-admin-user-blocked-reason') || '').trim(),
         lastBanSummary: String(trigger.getAttribute('data-admin-user-last-ban-summary') || '').trim(),
@@ -186,8 +332,9 @@
         const pseudonym = escapeHtml(String(row.pseudonym || ''));
         const fullName = escapeHtml(String(row.full_name || ''));
         const email = escapeHtml(String(row.email || ''));
-        const statusMarkup = row.is_blocked && row.blocked_until_label
-            ? `<span class="admin-catalog-status-text">${escapeHtml(String(row.blocked_until_label || ''))}</span>`
+        const restrictionStatusLabel = String(row.restriction_status_label || '').trim();
+        const statusMarkup = restrictionStatusLabel !== ''
+            ? `<span class="admin-catalog-status-text">${escapeHtml(restrictionStatusLabel)}</span>`
             : (String(row.presence_label || '').trim() !== ''
                 ? `<span class="admin-catalog-status-text is-neutral${String(row.presence_label || '') === 'Online' ? ' is-online' : ''}">${escapeHtml(String(row.presence_label || ''))}</span>`
                 : '');
@@ -211,6 +358,16 @@
                 data-admin-user-admin-profile-path="${escapeAttribute(String(row.admin_profile_path || '/admin'))}"
                 data-admin-user-is-blocked="${row.is_blocked ? '1' : '0'}"
                 data-admin-user-blocked-until-label="${escapeAttribute(String(row.blocked_until_label || ''))}"
+                data-admin-user-is-community-blocked="${row.is_community_blocked ? '1' : '0'}"
+                data-admin-user-community-blocked-until-label="${escapeAttribute(String(row.community_blocked_until_label || ''))}"
+                data-admin-user-community-blocked-reason="${escapeAttribute(String(row.community_blocked_reason || ''))}"
+                data-admin-user-last-community-block-summary="${escapeAttribute(String(row.last_community_block_summary || ''))}"
+                data-admin-user-is-marketplace-blocked="${row.is_marketplace_blocked ? '1' : '0'}"
+                data-admin-user-marketplace-blocked-until-label="${escapeAttribute(String(row.marketplace_blocked_until_label || ''))}"
+                data-admin-user-marketplace-blocked-reason="${escapeAttribute(String(row.marketplace_blocked_reason || ''))}"
+                data-admin-user-last-marketplace-block-summary="${escapeAttribute(String(row.last_marketplace_block_summary || ''))}"
+                data-admin-user-restriction-status-label="${escapeAttribute(String(row.restriction_status_label || ''))}"
+                data-admin-user-presence-label="${escapeAttribute(String(row.presence_label || ''))}"
                 data-admin-user-blocked-reason="${escapeAttribute(String(row.blocked_reason || ''))}"
                 data-admin-user-last-ban-summary="${escapeAttribute(String(row.last_ban_summary || ''))}"
             >
@@ -311,16 +468,38 @@
         ensureAvatar(userModalAvatar, user.avatarPath || '', user.pseudonym || 'Użytkownik', 'admin-profile-modal-avatar-image');
 
         if (userModalBanStatus instanceof HTMLElement) {
-            const blockedLabel = getBlockedStatusLabel(user);
-            if (user.isBlocked && blockedLabel !== '') {
+            const restrictionStatusLabel = getRestrictionStatusLabel(user);
+            if (restrictionStatusLabel !== '') {
                 userModalBanStatus.hidden = false;
-                userModalBanStatus.textContent = blockedLabel;
+                userModalBanStatus.textContent = restrictionStatusLabel;
             } else {
                 userModalBanStatus.hidden = true;
                 userModalBanStatus.textContent = '';
             }
         }
 
+        if (userModalWarningButton instanceof HTMLButtonElement) {
+            userModalWarningButton.textContent = 'Wyślij ostrzeżenie';
+            userModalWarningButton.setAttribute('data-admin-user-modal-action', 'warning');
+        }
+        if (userModalMarketplaceButton instanceof HTMLButtonElement) {
+            userModalMarketplaceButton.textContent = user.isMarketplaceBlocked
+                ? 'Odblokuj funkcje marketplace'
+                : 'Zablokuj funkcje marketplace';
+            userModalMarketplaceButton.setAttribute(
+                'data-admin-user-modal-action',
+                user.isMarketplaceBlocked ? 'marketplace_unblock' : 'marketplace'
+            );
+        }
+        if (userModalCommunityButton instanceof HTMLButtonElement) {
+            userModalCommunityButton.textContent = user.isCommunityBlocked
+                ? 'Odblokuj funkcje społeczności'
+                : 'Zablokuj funkcje społeczności';
+            userModalCommunityButton.setAttribute(
+                'data-admin-user-modal-action',
+                user.isCommunityBlocked ? 'community_unblock' : 'community'
+            );
+        }
         if (userModalBanButton instanceof HTMLButtonElement) {
             userModalBanButton.textContent = user.isBlocked ? 'Odblokuj' : 'Zablokuj';
             userModalBanButton.setAttribute('data-admin-user-modal-action', user.isBlocked ? 'unban' : 'ban');
@@ -337,6 +516,23 @@
         applyUserToModal(user);
         userModalRoot.hidden = false;
         document.body.classList.add('admin-modal-open');
+    };
+
+    const tryOpenRequestedUserModal = () => {
+        if (!(catalogRowsRoot instanceof HTMLElement) || catalogState.openUserId <= 0) {
+            return;
+        }
+
+        const row = catalogRowsRoot.querySelector(`[data-admin-user-row][data-admin-user-id="${String(catalogState.openUserId)}"]`);
+        if (!(row instanceof HTMLElement)) {
+            return;
+        }
+
+        openUserModal(parseUserFromRow(row));
+        catalogState.openUserId = 0;
+        if (catalogRoot instanceof HTMLElement) {
+            catalogRoot.setAttribute('data-admin-open-user-id', '0');
+        }
     };
 
     const closeUserModal = () => {
@@ -428,6 +624,7 @@
 
         renderCatalogRows(Array.isArray(catalog.rows) ? catalog.rows : []);
         renderCatalogPagination();
+        tryOpenRequestedUserModal();
     };
 
     const loadCatalogPage = async (page) => {
@@ -552,7 +749,8 @@
             return;
         }
 
-        moderationModalOptions.innerHTML = banReasonOptions.map((option, index) => {
+        const reasonOptions = getReasonOptionsForMode(moderationState.mode);
+        moderationModalOptions.innerHTML = reasonOptions.map((option, index) => {
             const value = option === 'Inny powód' ? 'other' : `preset_${index}`;
             const checked = moderationState.reasonChoice === value ? ' checked' : '';
             return `
@@ -596,7 +794,8 @@
         }
 
         const index = Number(rawValue.replace('preset_', ''));
-        return Number.isInteger(index) && index >= 0 && banReasonOptions[index] ? banReasonOptions[index] : '';
+        const reasonOptions = getReasonOptionsForMode(moderationState.mode);
+        return Number.isInteger(index) && index >= 0 && reasonOptions[index] ? reasonOptions[index] : '';
     };
 
     const getResolvedDurationLabel = () => {
@@ -688,27 +887,112 @@
         `;
     };
 
-    const openBanFlow = (user) => {
-        moderationState.mode = 'ban';
-        moderationState.step = 'reason';
+    const renderModerationModalState = () => {
+        if (
+            !(moderationModalTitle instanceof HTMLElement)
+            || !(moderationModalCopy instanceof HTMLElement)
+            || !(moderationModalConfirm instanceof HTMLButtonElement)
+            || !(moderationModalBack instanceof HTMLButtonElement)
+            || !(moderationModalSummary instanceof HTMLElement)
+            || !(moderationModalLastSummary instanceof HTMLElement)
+            || !(moderationModalOptions instanceof HTMLElement)
+        ) {
+            return;
+        }
+
+        const user = moderationState.user;
+        if (!user) {
+            return;
+        }
+
+        const config = getModerationModeConfig(moderationState.mode);
+        if (moderationModalRoot instanceof HTMLElement) {
+            moderationModalRoot.querySelector('.admin-action-modal-panel')?.classList.toggle('is-unban', Boolean(config.isUnblock));
+        }
+
+        moderationModalSummary.hidden = true;
+        moderationModalSummary.innerHTML = '';
+        moderationModalLastSummary.hidden = true;
+        moderationModalLastSummary.textContent = '';
+        moderationModalBack.hidden = true;
+        moderationModalConfirm.disabled = moderationState.isSubmitting;
+        moderationModalBack.disabled = moderationState.isSubmitting;
+
+        if (config.isUnblock) {
+            moderationModalTitle.textContent = config.title;
+            moderationModalCopy.textContent = config.copy.replace('{pseudonym}', user.pseudonym);
+            moderationModalOptions.innerHTML = '';
+            if (moderationModalOther instanceof HTMLElement) {
+                moderationModalOther.hidden = true;
+            }
+            moderationModalConfirm.textContent = moderationState.isSubmitting ? config.progressLabel : config.confirmLabel;
+            moderationModalConfirm.classList.add('is-primary');
+            moderationModalConfirm.classList.remove('is-danger');
+            return;
+        }
+
+        moderationModalConfirm.classList.add('is-danger');
+        moderationModalConfirm.classList.remove('is-primary');
+
+        if (moderationState.step === 'reason') {
+            moderationModalTitle.textContent = config.title;
+            moderationModalCopy.textContent = config.copy.replace('{pseudonym}', user.pseudonym);
+            moderationModalConfirm.textContent = 'Dalej';
+            renderReasonOptions();
+            return;
+        }
+
+        if (moderationState.step === 'duration') {
+            moderationModalTitle.textContent = config.durationTitle;
+            moderationModalCopy.textContent = config.durationCopy.replace('{pseudonym}', user.pseudonym);
+            moderationModalBack.hidden = false;
+            moderationModalConfirm.textContent = 'Dalej';
+            renderDurationOptions();
+            const lastSummary = getLastSummaryForMode(user, moderationState.mode);
+            if (lastSummary !== '') {
+                moderationModalLastSummary.hidden = false;
+                moderationModalLastSummary.textContent = lastSummary;
+            }
+            if (moderationModalOther instanceof HTMLElement) {
+                moderationModalOther.hidden = true;
+            }
+            return;
+        }
+
+        moderationModalTitle.textContent = config.confirmTitle;
+        moderationModalCopy.textContent = config.confirmCopy.replace('{pseudonym}', user.pseudonym);
+        moderationModalBack.hidden = false;
+        moderationModalConfirm.textContent = moderationState.isSubmitting ? config.progressLabel : config.confirmLabel;
+        moderationModalOptions.innerHTML = '';
+        if (moderationModalOther instanceof HTMLElement) {
+            moderationModalOther.hidden = true;
+        }
+        moderationModalSummary.hidden = false;
+        moderationModalSummary.innerHTML = `
+            <div><strong>Powód:</strong> ${escapeHtml(getResolvedReason())}</div>
+            <div><strong>Czas blokady:</strong> ${escapeHtml(getResolvedDurationLabel())}</div>
+        `;
+    };
+
+    const openRestrictionFlow = (user, mode) => {
+        moderationState.mode = mode;
+        moderationState.step = getModerationModeConfig(mode).isUnblock ? 'confirm' : 'reason';
         moderationState.user = user;
         moderationState.reasonChoice = '';
         moderationState.customReason = '';
         moderationState.durationCode = '';
         moderationState.durationLabel = '';
         moderationState.isSubmitting = false;
-        renderModerationModal();
+        renderModerationModalState();
         openModerationModal();
     };
 
-    const openUnbanFlow = (user) => {
-        moderationState.mode = 'unban';
-        moderationState.step = 'confirm';
-        moderationState.user = user;
-        moderationState.isSubmitting = false;
-        renderModerationModal();
-        openModerationModal();
-    };
+    const openBanFlow = (user) => openRestrictionFlow(user, 'ban');
+    const openUnbanFlow = (user) => openRestrictionFlow(user, 'unban');
+    const openCommunityBlockFlow = (user) => openRestrictionFlow(user, 'community_block');
+    const openCommunityUnblockFlow = (user) => openRestrictionFlow(user, 'community_unblock');
+    const openMarketplaceBlockFlow = (user) => openRestrictionFlow(user, 'marketplace_block');
+    const openMarketplaceUnblockFlow = (user) => openRestrictionFlow(user, 'marketplace_unblock');
 
     const renderWarningModal = () => {
         if (
@@ -763,6 +1047,15 @@
             admin_profile_path: user.admin_profile_path ?? user.adminProfilePath ?? '/admin',
             is_blocked: user.is_blocked ?? user.isBlocked ?? false,
             blocked_until_label: user.blocked_until_label ?? user.blockedUntilLabel ?? '',
+            is_community_blocked: user.is_community_blocked ?? user.isCommunityBlocked ?? false,
+            community_blocked_until_label: user.community_blocked_until_label ?? user.communityBlockedUntilLabel ?? '',
+            community_blocked_reason: user.community_blocked_reason ?? user.communityBlockedReason ?? '',
+            last_community_block_summary: user.last_community_block_summary ?? user.lastCommunityBlockSummary ?? '',
+            is_marketplace_blocked: user.is_marketplace_blocked ?? user.isMarketplaceBlocked ?? false,
+            marketplace_blocked_until_label: user.marketplace_blocked_until_label ?? user.marketplaceBlockedUntilLabel ?? '',
+            marketplace_blocked_reason: user.marketplace_blocked_reason ?? user.marketplaceBlockedReason ?? '',
+            last_marketplace_block_summary: user.last_marketplace_block_summary ?? user.lastMarketplaceBlockSummary ?? '',
+            restriction_status_label: user.restriction_status_label ?? user.restrictionStatusLabel ?? '',
             presence_label: user.presence_label ?? user.presenceLabel ?? '',
             blocked_reason: user.blocked_reason ?? user.blockedReason ?? '',
             last_ban_summary: user.last_ban_summary ?? user.lastBanSummary ?? '',
@@ -788,6 +1081,15 @@
         adminProfilePath: String(user.admin_profile_path || '/admin'),
         isBlocked: Boolean(user.is_blocked),
         blockedUntilLabel: String(user.blocked_until_label || '').trim(),
+        isCommunityBlocked: Boolean(user.is_community_blocked),
+        communityBlockedUntilLabel: String(user.community_blocked_until_label || '').trim(),
+        communityBlockedReason: String(user.community_blocked_reason || '').trim(),
+        lastCommunityBlockSummary: String(user.last_community_block_summary || '').trim(),
+        isMarketplaceBlocked: Boolean(user.is_marketplace_blocked),
+        marketplaceBlockedUntilLabel: String(user.marketplace_blocked_until_label || '').trim(),
+        marketplaceBlockedReason: String(user.marketplace_blocked_reason || '').trim(),
+        lastMarketplaceBlockSummary: String(user.last_marketplace_block_summary || '').trim(),
+        restrictionStatusLabel: String(user.restriction_status_label || '').trim(),
         presenceLabel: String(user.presence_label || '').trim(),
         blockedReason: String(user.blocked_reason || '').trim(),
         lastBanSummary: String(user.last_ban_summary || '').trim(),
@@ -820,59 +1122,38 @@
         return result;
     };
 
-    const confirmBanFlow = async () => {
+    const confirmModerationFlow = async () => {
         if (!moderationState.user || moderationState.isSubmitting) {
             return;
         }
 
+        const config = getModerationModeConfig(moderationState.mode);
         moderationState.isSubmitting = true;
-        renderModerationModal();
+        renderModerationModalState();
 
         try {
-            const result = await submitAdminAction({
-                action: 'ban_user',
+            const payload = {
+                action: config.action,
                 user_id: moderationState.user.id,
-                reason: getResolvedReason(),
-                duration_code: moderationState.durationCode,
-            });
+            };
+
+            if (!config.isUnblock) {
+                payload.reason = getResolvedReason();
+                payload.duration_code = moderationState.durationCode;
+            }
+
+            const result = await submitAdminAction(payload);
             const user = normalizeApiUser(result.user || {});
             updateCatalogRow(result.user || {});
             applyUserToModal(user);
             moderationState.user = user;
             closeModerationModal();
             ensureBodyLockState();
-            showToast(String(result.message || 'Użytkownik został zablokowany.'), 'success');
+            showToast(String(result.message || config.successFallback), 'success');
         } catch (error) {
             moderationState.isSubmitting = false;
-            renderModerationModal();
-            showToast(error instanceof Error ? error.message : 'Nie udało się zablokować użytkownika.', 'error');
-        }
-    };
-
-    const confirmUnbanFlow = async () => {
-        if (!moderationState.user || moderationState.isSubmitting) {
-            return;
-        }
-
-        moderationState.isSubmitting = true;
-        renderModerationModal();
-
-        try {
-            const result = await submitAdminAction({
-                action: 'unban_user',
-                user_id: moderationState.user.id,
-            });
-            const user = normalizeApiUser(result.user || {});
-            updateCatalogRow(result.user || {});
-            applyUserToModal(user);
-            moderationState.user = user;
-            closeModerationModal();
-            ensureBodyLockState();
-            showToast(String(result.message || 'Użytkownik został odblokowany.'), 'success');
-        } catch (error) {
-            moderationState.isSubmitting = false;
-            renderModerationModal();
-            showToast(error instanceof Error ? error.message : 'Nie udało się odblokować użytkownika.', 'error');
+            renderModerationModalState();
+            showToast(error instanceof Error ? error.message : 'Nie udało się wykonać akcji administratora.', 'error');
         }
     };
 
@@ -907,8 +1188,9 @@
     };
 
     const proceedModerationModal = () => {
-        if (moderationState.mode === 'unban') {
-            void confirmUnbanFlow();
+        const config = getModerationModeConfig(moderationState.mode);
+        if (config.isUnblock) {
+            void confirmModerationFlow();
             return;
         }
 
@@ -920,7 +1202,7 @@
             }
 
             moderationState.step = 'duration';
-            renderModerationModal();
+            renderModerationModalState();
             return;
         }
 
@@ -932,11 +1214,11 @@
             }
 
             moderationState.step = 'confirm';
-            renderModerationModal();
+            renderModerationModalState();
             return;
         }
 
-        void confirmBanFlow();
+        void confirmModerationFlow();
     };
 
     if (catalogPrevButton instanceof HTMLButtonElement) {
@@ -954,6 +1236,8 @@
             }
         });
     }
+
+    tryOpenRequestedUserModal();
 
     root.addEventListener('click', (event) => {
         const trigger = event.target instanceof HTMLElement
@@ -999,31 +1283,38 @@
         }
 
         const action = String(actionTrigger.getAttribute('data-admin-user-modal-action') || '');
-        const user = {
-            id: Number(userModalRoot.getAttribute('data-admin-user-id') || 0),
-            pseudonym: String(userModalPseudonym?.textContent || '').trim(),
-            fullName: String(userModalFullName?.textContent || '').trim(),
-            email: String(userModalEmail?.textContent || '').trim(),
-            avatarPath: String(userModalAvatar?.querySelector('img')?.getAttribute('src') || '').trim(),
-            membershipTier: String(userModalMembershipTier?.textContent || '').trim(),
-            vehicleCount: Number(userModalVehicleCount?.textContent || 0),
-            listingCount: Number(userModalListingCount?.textContent || 0),
-            postCount: Number(userModalPostCount?.textContent || 0),
-            removedListingCount: Number(userModalRemovedListingCount?.textContent || 0),
-            removedPostCount: Number(userModalRemovedPostCount?.textContent || 0),
-            adminProfilePath: String(userModalProfileLink?.getAttribute('href') || '/admin'),
-            isBlocked: parseBoolean(userModalRoot.getAttribute('data-admin-user-is-blocked')),
-            blockedUntilLabel: String(userModalBanStatus?.textContent || '').trim(),
-            blockedReason: '',
-            lastBanSummary: '',
-        };
-
-        const matchingRow = catalogRowsRoot?.querySelector(`[data-admin-user-row][data-admin-user-id="${String(user.id)}"]`);
-        if (matchingRow instanceof HTMLElement) {
-            const rowUser = parseUserFromRow(matchingRow);
-            user.blockedReason = rowUser.blockedReason;
-            user.lastBanSummary = rowUser.lastBanSummary;
-        }
+        const userId = Number(userModalRoot.getAttribute('data-admin-user-id') || 0);
+        const matchingRow = catalogRowsRoot?.querySelector(`[data-admin-user-row][data-admin-user-id="${String(userId)}"]`);
+        const user = matchingRow instanceof HTMLElement
+            ? parseUserFromRow(matchingRow)
+            : {
+                id: userId,
+                pseudonym: String(userModalPseudonym?.textContent || '').trim(),
+                fullName: String(userModalFullName?.textContent || '').trim(),
+                email: String(userModalEmail?.textContent || '').trim(),
+                avatarPath: String(userModalAvatar?.querySelector('img')?.getAttribute('src') || '').trim(),
+                membershipTier: String(userModalMembershipTier?.textContent || '').trim(),
+                vehicleCount: Number(userModalVehicleCount?.textContent || 0),
+                listingCount: Number(userModalListingCount?.textContent || 0),
+                postCount: Number(userModalPostCount?.textContent || 0),
+                removedListingCount: Number(userModalRemovedListingCount?.textContent || 0),
+                removedPostCount: Number(userModalRemovedPostCount?.textContent || 0),
+                adminProfilePath: String(userModalProfileLink?.getAttribute('href') || '/admin'),
+                isBlocked: parseBoolean(userModalRoot.getAttribute('data-admin-user-is-blocked')),
+                blockedUntilLabel: String(userModalBanStatus?.textContent || '').trim(),
+                isCommunityBlocked: false,
+                communityBlockedUntilLabel: '',
+                communityBlockedReason: '',
+                lastCommunityBlockSummary: '',
+                isMarketplaceBlocked: false,
+                marketplaceBlockedUntilLabel: '',
+                marketplaceBlockedReason: '',
+                lastMarketplaceBlockSummary: '',
+                restrictionStatusLabel: String(userModalBanStatus?.textContent || '').trim(),
+                presenceLabel: '',
+                blockedReason: '',
+                lastBanSummary: '',
+            };
 
         if (action === 'ban') {
             openBanFlow(user);
@@ -1040,7 +1331,25 @@
             return;
         }
 
-        showToast(placeholderMessages[action] || 'Ta akcja jest jeszcze w przygotowaniu.', 'info');
+        if (action === 'community') {
+            openCommunityBlockFlow(user);
+            return;
+        }
+
+        if (action === 'community_unblock') {
+            openCommunityUnblockFlow(user);
+            return;
+        }
+
+        if (action === 'marketplace') {
+            openMarketplaceBlockFlow(user);
+            return;
+        }
+
+        if (action === 'marketplace_unblock') {
+            openMarketplaceUnblockFlow(user);
+            return;
+        }
     });
 
     if (moderationModalOptions instanceof HTMLElement) {
@@ -1052,7 +1361,7 @@
 
             if (target.name === 'admin_ban_reason') {
                 moderationState.reasonChoice = target.value;
-                renderModerationModal();
+                renderModerationModalState();
                 return;
             }
 
@@ -1070,13 +1379,13 @@
 
     if (moderationModalBack instanceof HTMLButtonElement) {
         moderationModalBack.addEventListener('click', () => {
-            if (moderationState.mode !== 'ban') {
+            if (getModerationModeConfig(moderationState.mode).isUnblock) {
                 return;
             }
 
             moderationState.step = moderationState.step === 'confirm' ? 'duration' : 'reason';
             moderationState.isSubmitting = false;
-            renderModerationModal();
+            renderModerationModalState();
         });
     }
 

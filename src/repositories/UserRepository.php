@@ -30,6 +30,14 @@ class UserRepository
                 blocked_reason,
                 blocked_is_permanent,
                 blocked_at,
+                community_blocked_until,
+                community_block_reason,
+                community_block_is_permanent,
+                community_blocked_at,
+                marketplace_blocked_until,
+                marketplace_block_reason,
+                marketplace_block_is_permanent,
+                marketplace_blocked_at,
                 admin_warning_message,
                 admin_warning_sent_at,
                 created_at
@@ -64,6 +72,14 @@ class UserRepository
                 blocked_until,
                 blocked_reason,
                 blocked_is_permanent,
+                community_blocked_until,
+                community_block_reason,
+                community_block_is_permanent,
+                community_blocked_at,
+                marketplace_blocked_until,
+                marketplace_block_reason,
+                marketplace_block_is_permanent,
+                marketplace_blocked_at,
                 admin_warning_message,
                 admin_warning_sent_at,
                 is_active
@@ -95,6 +111,14 @@ class UserRepository
                 blocked_until,
                 blocked_reason,
                 blocked_is_permanent,
+                community_blocked_until,
+                community_block_reason,
+                community_block_is_permanent,
+                community_blocked_at,
+                marketplace_blocked_until,
+                marketplace_block_reason,
+                marketplace_block_is_permanent,
+                marketplace_blocked_at,
                 admin_warning_message,
                 admin_warning_sent_at,
                 is_active
@@ -337,22 +361,13 @@ class UserRepository
 
     public function sendAdminWarning(int $userId, string $message): void
     {
-        $statement = $this->connection->prepare(
-            'UPDATE users
-            SET admin_warning_message = :message,
-                admin_warning_sent_at = CURRENT_TIMESTAMP,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = :user_id
-                AND is_active = TRUE'
+        $this->createAdminUserNotice(
+            $userId,
+            'warning',
+            'Ostrzeżenie administratora',
+            $message
         );
-        $statement->execute([
-            'user_id' => $userId,
-            'message' => $message,
-        ]);
-    }
 
-    public function clearAdminWarning(int $userId): void
-    {
         $statement = $this->connection->prepare(
             'UPDATE users
             SET admin_warning_message = NULL,
@@ -363,6 +378,89 @@ class UserRepository
         );
         $statement->execute([
             'user_id' => $userId,
+        ]);
+    }
+
+    public function clearAdminWarning(int $userId): void
+    {
+        $this->acknowledgeOldestAdminUserNotice($userId);
+
+        $statement = $this->connection->prepare(
+            'UPDATE users
+            SET admin_warning_message = NULL,
+                admin_warning_sent_at = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :user_id
+                AND is_active = TRUE'
+        );
+        $statement->execute([
+            'user_id' => $userId,
+        ]);
+    }
+
+    public function getPendingAdminUserNotice(int $userId): ?array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT
+                id,
+                notice_type,
+                title,
+                message,
+                created_at
+            FROM admin_user_notices
+            WHERE user_id = :user_id
+                AND acknowledged_at IS NULL
+            ORDER BY created_at ASC, id ASC
+            LIMIT 1'
+        );
+        $statement->execute([
+            'user_id' => $userId,
+        ]);
+
+        $row = $statement->fetch();
+        return $row ?: null;
+    }
+
+    public function acknowledgeOldestAdminUserNotice(int $userId): void
+    {
+        $statement = $this->connection->prepare(
+            'WITH next_notice AS (
+                SELECT id
+                FROM admin_user_notices
+                WHERE user_id = :user_id
+                    AND acknowledged_at IS NULL
+                ORDER BY created_at ASC, id ASC
+                LIMIT 1
+            )
+            UPDATE admin_user_notices
+            SET acknowledged_at = CURRENT_TIMESTAMP
+            WHERE id IN (SELECT id FROM next_notice)'
+        );
+        $statement->execute([
+            'user_id' => $userId,
+        ]);
+    }
+
+    public function createAdminUserNotice(int $userId, string $noticeType, string $title, string $message): void
+    {
+        $statement = $this->connection->prepare(
+            'INSERT INTO admin_user_notices (
+                user_id,
+                notice_type,
+                title,
+                message
+            ) VALUES (
+                :user_id,
+                :notice_type,
+                :title,
+                :message
+            )'
+        );
+        $statement->execute([
+            'user_id' => $userId,
+            'notice_type' => $noticeType,
+            'title' => $title,
+            'message' => $message,
         ]);
     }
 
@@ -716,6 +814,36 @@ class UserRepository
         return (int) $statement->fetchColumn();
     }
 
+    public function getAdminCatalogPageForUser(int $userId, int $perPage): int
+    {
+        $perPage = max(1, $perPage);
+
+        $statement = $this->connection->prepare(
+            "SELECT ranked.row_number
+            FROM (
+                SELECT
+                    id,
+                    ROW_NUMBER() OVER (
+                        ORDER BY LOWER(COALESCE(NULLIF(pseudonym, ''), username)) ASC, id ASC
+                    ) AS row_number
+                FROM users
+                WHERE is_active = TRUE
+            ) AS ranked
+            WHERE ranked.id = :user_id
+            LIMIT 1"
+        );
+        $statement->execute([
+            'user_id' => $userId,
+        ]);
+
+        $rowNumber = (int) $statement->fetchColumn();
+        if ($rowNumber <= 0) {
+            return 1;
+        }
+
+        return max(1, (int) ceil($rowNumber / $perPage));
+    }
+
     public function getAdminCatalogUsersPage(int $page, int $perPage): array
     {
         $page = max(1, $page);
@@ -737,6 +865,24 @@ class UserRepository
                 u.blocked_until,
                 u.blocked_reason,
                 u.blocked_is_permanent,
+                u.community_blocked_until,
+                u.community_block_reason,
+                u.community_block_is_permanent,
+                u.marketplace_blocked_until,
+                u.marketplace_block_reason,
+                u.marketplace_block_is_permanent,
+                u.community_blocked_until,
+                u.community_block_reason,
+                u.community_block_is_permanent,
+                u.marketplace_blocked_until,
+                u.marketplace_block_reason,
+                u.marketplace_block_is_permanent,
+                u.community_blocked_until,
+                u.community_block_reason,
+                u.community_block_is_permanent,
+                u.marketplace_blocked_until,
+                u.marketplace_block_reason,
+                u.marketplace_block_is_permanent,
                 COALESCE(NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), 'Użytkownik') AS full_name,
                 COALESCE(v.vehicle_count, 0)::INTEGER AS vehicle_count,
                 COALESCE(l.listing_count, 0)::INTEGER AS listing_count,
@@ -746,7 +892,15 @@ class UserRepository
                 last_ban.duration_label AS last_ban_duration_label,
                 last_ban.banned_until AS last_ban_until,
                 last_ban.is_permanent AS last_ban_is_permanent,
-                last_ban.created_at AS last_ban_created_at
+                last_ban.created_at AS last_ban_created_at,
+                last_community_block.duration_label AS last_community_block_duration_label,
+                last_community_block.blocked_until AS last_community_block_until,
+                last_community_block.is_permanent AS last_community_block_is_permanent,
+                last_community_block.created_at AS last_community_block_created_at,
+                last_marketplace_block.duration_label AS last_marketplace_block_duration_label,
+                last_marketplace_block.blocked_until AS last_marketplace_block_until,
+                last_marketplace_block.is_permanent AS last_marketplace_block_is_permanent,
+                last_marketplace_block.created_at AS last_marketplace_block_created_at
             FROM users u
             LEFT JOIN (
                 SELECT
@@ -763,6 +917,7 @@ class UserRepository
                 FROM marketplace_listings
                 WHERE is_active = TRUE
                     OR hidden_by_user_ban = TRUE
+                    OR hidden_by_marketplace_block = TRUE
                 GROUP BY user_id
             ) l ON l.user_id = u.id
             LEFT JOIN (
@@ -772,6 +927,7 @@ class UserRepository
                 FROM community_posts
                 WHERE is_active = TRUE
                     OR hidden_by_user_ban = TRUE
+                    OR hidden_by_community_block = TRUE
                 GROUP BY user_id
             ) p ON p.user_id = u.id
             LEFT JOIN (
@@ -799,6 +955,28 @@ class UserRepository
                 ORDER BY created_at DESC, id DESC
                 LIMIT 1
             ) AS last_ban ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT
+                    duration_label,
+                    blocked_until,
+                    is_permanent,
+                    created_at
+                FROM user_community_block_history
+                WHERE user_id = u.id
+                ORDER BY created_at DESC, id DESC
+                LIMIT 1
+            ) AS last_community_block ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT
+                    duration_label,
+                    blocked_until,
+                    is_permanent,
+                    created_at
+                FROM user_marketplace_block_history
+                WHERE user_id = u.id
+                ORDER BY created_at DESC, id DESC
+                LIMIT 1
+            ) AS last_marketplace_block ON TRUE
             WHERE u.is_active = TRUE
             ORDER BY LOWER(COALESCE(NULLIF(u.pseudonym, ''), u.username)) ASC, u.id ASC
             LIMIT :limit OFFSET :offset"
@@ -836,7 +1014,15 @@ class UserRepository
                 last_ban.duration_label AS last_ban_duration_label,
                 last_ban.banned_until AS last_ban_until,
                 last_ban.is_permanent AS last_ban_is_permanent,
-                last_ban.created_at AS last_ban_created_at
+                last_ban.created_at AS last_ban_created_at,
+                last_community_block.duration_label AS last_community_block_duration_label,
+                last_community_block.blocked_until AS last_community_block_until,
+                last_community_block.is_permanent AS last_community_block_is_permanent,
+                last_community_block.created_at AS last_community_block_created_at,
+                last_marketplace_block.duration_label AS last_marketplace_block_duration_label,
+                last_marketplace_block.blocked_until AS last_marketplace_block_until,
+                last_marketplace_block.is_permanent AS last_marketplace_block_is_permanent,
+                last_marketplace_block.created_at AS last_marketplace_block_created_at
             FROM users u
             LEFT JOIN (
                 SELECT user_id, COUNT(*)::INTEGER AS vehicle_count
@@ -849,6 +1035,7 @@ class UserRepository
                 FROM marketplace_listings
                 WHERE is_active = TRUE
                     OR hidden_by_user_ban = TRUE
+                    OR hidden_by_marketplace_block = TRUE
                 GROUP BY user_id
             ) l ON l.user_id = u.id
             LEFT JOIN (
@@ -856,6 +1043,7 @@ class UserRepository
                 FROM community_posts
                 WHERE is_active = TRUE
                     OR hidden_by_user_ban = TRUE
+                    OR hidden_by_community_block = TRUE
                 GROUP BY user_id
             ) p ON p.user_id = u.id
             LEFT JOIN (
@@ -879,6 +1067,28 @@ class UserRepository
                 ORDER BY created_at DESC, id DESC
                 LIMIT 1
             ) AS last_ban ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT
+                    duration_label,
+                    blocked_until,
+                    is_permanent,
+                    created_at
+                FROM user_community_block_history
+                WHERE user_id = u.id
+                ORDER BY created_at DESC, id DESC
+                LIMIT 1
+            ) AS last_community_block ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT
+                    duration_label,
+                    blocked_until,
+                    is_permanent,
+                    created_at
+                FROM user_marketplace_block_history
+                WHERE user_id = u.id
+                ORDER BY created_at DESC, id DESC
+                LIMIT 1
+            ) AS last_marketplace_block ON TRUE
             WHERE u.id = :user_id
                 AND u.is_active = TRUE
             LIMIT 1"
@@ -1002,30 +1212,259 @@ class UserRepository
         }
     }
 
+    public function blockCommunityFunctionsByAdmin(
+        int $userId,
+        string $reason,
+        string $durationCode,
+        string $durationLabel,
+        ?string $blockedUntil,
+        bool $isPermanent
+    ): void {
+        $this->connection->beginTransaction();
+
+        try {
+            $historyStatement = $this->connection->prepare(
+                'INSERT INTO user_community_block_history (
+                    user_id,
+                    reason,
+                    duration_code,
+                    duration_label,
+                    blocked_until,
+                    is_permanent
+                ) VALUES (
+                    :user_id,
+                    :reason,
+                    :duration_code,
+                    :duration_label,
+                    :blocked_until,
+                    :is_permanent
+                )'
+            );
+            $historyStatement->bindValue(':user_id', $userId, PDO::PARAM_INT);
+            $historyStatement->bindValue(':reason', $reason, PDO::PARAM_STR);
+            $historyStatement->bindValue(':duration_code', $durationCode, PDO::PARAM_STR);
+            $historyStatement->bindValue(':duration_label', $durationLabel, PDO::PARAM_STR);
+            if ($blockedUntil === null) {
+                $historyStatement->bindValue(':blocked_until', null, PDO::PARAM_NULL);
+            } else {
+                $historyStatement->bindValue(':blocked_until', $blockedUntil, PDO::PARAM_STR);
+            }
+            $historyStatement->bindValue(':is_permanent', $isPermanent, PDO::PARAM_BOOL);
+            $historyStatement->execute();
+
+            $this->createAdminUserNotice(
+                $userId,
+                'community_block',
+                'Ograniczenie funkcji społeczności',
+                $this->buildAdminRestrictionNoticeMessage(
+                    'Funkcje społeczności zostały ograniczone',
+                    $reason,
+                    $blockedUntil,
+                    $isPermanent
+                )
+            );
+
+            $userStatement = $this->connection->prepare(
+                'UPDATE users
+                SET community_blocked_until = :blocked_until,
+                    community_block_reason = :blocked_reason,
+                    community_block_is_permanent = :blocked_is_permanent,
+                    community_blocked_at = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = :user_id
+                    AND is_active = TRUE'
+            );
+            if ($blockedUntil === null) {
+                $userStatement->bindValue(':blocked_until', null, PDO::PARAM_NULL);
+            } else {
+                $userStatement->bindValue(':blocked_until', $blockedUntil, PDO::PARAM_STR);
+            }
+            $userStatement->bindValue(':blocked_reason', $reason, PDO::PARAM_STR);
+            $userStatement->bindValue(':blocked_is_permanent', $isPermanent, PDO::PARAM_BOOL);
+            $userStatement->bindValue(':user_id', $userId, PDO::PARAM_INT);
+            $userStatement->execute();
+
+            $postStatement = $this->connection->prepare(
+                'UPDATE community_posts
+                SET is_active = FALSE,
+                    hidden_by_community_block = TRUE,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = :user_id
+                    AND is_active = TRUE'
+            );
+            $postStatement->execute([
+                'user_id' => $userId,
+            ]);
+
+            $commentStatement = $this->connection->prepare(
+                'UPDATE community_comments
+                SET is_active = FALSE,
+                    hidden_by_community_block = TRUE
+                WHERE user_id = :user_id
+                    AND is_active = TRUE'
+            );
+            $commentStatement->execute([
+                'user_id' => $userId,
+            ]);
+
+            $this->connection->commit();
+        } catch (Throwable $exception) {
+            $this->connection->rollBack();
+            throw $exception;
+        }
+    }
+
+    public function unblockCommunityFunctionsByAdmin(int $userId): void
+    {
+        $this->connection->beginTransaction();
+
+        try {
+            $this->clearCommunityBlockStateForUsers([$userId], true);
+            $this->connection->commit();
+        } catch (Throwable $exception) {
+            $this->connection->rollBack();
+            throw $exception;
+        }
+    }
+
+    public function blockMarketplaceFunctionsByAdmin(
+        int $userId,
+        string $reason,
+        string $durationCode,
+        string $durationLabel,
+        ?string $blockedUntil,
+        bool $isPermanent
+    ): void {
+        $this->connection->beginTransaction();
+
+        try {
+            $historyStatement = $this->connection->prepare(
+                'INSERT INTO user_marketplace_block_history (
+                    user_id,
+                    reason,
+                    duration_code,
+                    duration_label,
+                    blocked_until,
+                    is_permanent
+                ) VALUES (
+                    :user_id,
+                    :reason,
+                    :duration_code,
+                    :duration_label,
+                    :blocked_until,
+                    :is_permanent
+                )'
+            );
+            $historyStatement->bindValue(':user_id', $userId, PDO::PARAM_INT);
+            $historyStatement->bindValue(':reason', $reason, PDO::PARAM_STR);
+            $historyStatement->bindValue(':duration_code', $durationCode, PDO::PARAM_STR);
+            $historyStatement->bindValue(':duration_label', $durationLabel, PDO::PARAM_STR);
+            if ($blockedUntil === null) {
+                $historyStatement->bindValue(':blocked_until', null, PDO::PARAM_NULL);
+            } else {
+                $historyStatement->bindValue(':blocked_until', $blockedUntil, PDO::PARAM_STR);
+            }
+            $historyStatement->bindValue(':is_permanent', $isPermanent, PDO::PARAM_BOOL);
+            $historyStatement->execute();
+
+            $this->createAdminUserNotice(
+                $userId,
+                'marketplace_block',
+                'Ograniczenie funkcji marketplace',
+                $this->buildAdminRestrictionNoticeMessage(
+                    'Funkcje marketplace zostały ograniczone',
+                    $reason,
+                    $blockedUntil,
+                    $isPermanent
+                )
+            );
+
+            $userStatement = $this->connection->prepare(
+                'UPDATE users
+                SET marketplace_blocked_until = :blocked_until,
+                    marketplace_block_reason = :blocked_reason,
+                    marketplace_block_is_permanent = :blocked_is_permanent,
+                    marketplace_blocked_at = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = :user_id
+                    AND is_active = TRUE'
+            );
+            if ($blockedUntil === null) {
+                $userStatement->bindValue(':blocked_until', null, PDO::PARAM_NULL);
+            } else {
+                $userStatement->bindValue(':blocked_until', $blockedUntil, PDO::PARAM_STR);
+            }
+            $userStatement->bindValue(':blocked_reason', $reason, PDO::PARAM_STR);
+            $userStatement->bindValue(':blocked_is_permanent', $isPermanent, PDO::PARAM_BOOL);
+            $userStatement->bindValue(':user_id', $userId, PDO::PARAM_INT);
+            $userStatement->execute();
+
+            $listingStatement = $this->connection->prepare(
+                'UPDATE marketplace_listings
+                SET is_active = FALSE,
+                    hidden_by_marketplace_block = TRUE,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = :user_id
+                    AND is_active = TRUE'
+            );
+            $listingStatement->execute([
+                'user_id' => $userId,
+            ]);
+
+            $this->connection->commit();
+        } catch (Throwable $exception) {
+            $this->connection->rollBack();
+            throw $exception;
+        }
+    }
+
+    public function unblockMarketplaceFunctionsByAdmin(int $userId): void
+    {
+        $this->connection->beginTransaction();
+
+        try {
+            $this->clearMarketplaceBlockStateForUsers([$userId], true);
+            $this->connection->commit();
+        } catch (Throwable $exception) {
+            $this->connection->rollBack();
+            throw $exception;
+        }
+    }
+
     public function releaseExpiredBans(): void
     {
-        $statement = $this->connection->query(
-            "SELECT id
-            FROM users
-            WHERE is_active = TRUE
-                AND is_blocked = TRUE
-                AND blocked_is_permanent = FALSE
-                AND blocked_until IS NOT NULL
-                AND blocked_until <= CURRENT_TIMESTAMP"
+        $banUserIds = $this->fetchExpiredRestrictionUserIds(
+            'blocked_at',
+            'blocked_is_permanent',
+            'blocked_until'
         );
-        $userIds = array_map(
-            static fn (array $row): int => (int) $row['id'],
-            $statement->fetchAll(PDO::FETCH_ASSOC) ?: []
+        $communityUserIds = $this->fetchExpiredRestrictionUserIds(
+            'community_blocked_at',
+            'community_block_is_permanent',
+            'community_blocked_until'
+        );
+        $marketplaceUserIds = $this->fetchExpiredRestrictionUserIds(
+            'marketplace_blocked_at',
+            'marketplace_block_is_permanent',
+            'marketplace_blocked_until'
         );
 
-        if ($userIds === []) {
+        if ($banUserIds === [] && $communityUserIds === [] && $marketplaceUserIds === []) {
             return;
         }
 
         $this->connection->beginTransaction();
 
         try {
-            $this->clearBanStateForUsers($userIds, false);
+            if ($banUserIds !== []) {
+                $this->clearBanStateForUsers($banUserIds, false);
+            }
+            if ($communityUserIds !== []) {
+                $this->clearCommunityBlockStateForUsers($communityUserIds, false);
+            }
+            if ($marketplaceUserIds !== []) {
+                $this->clearMarketplaceBlockStateForUsers($marketplaceUserIds, false);
+            }
             $this->connection->commit();
         } catch (Throwable $exception) {
             $this->connection->rollBack();
@@ -1247,6 +1686,187 @@ class UserRepository
             $historyStatement->bindValue($placeholder, $value, PDO::PARAM_INT);
         }
         $historyStatement->execute();
+    }
+
+    private function clearCommunityBlockStateForUsers(array $userIds, bool $markRevokedAtNow): void
+    {
+        $userIds = array_values(array_unique(array_map('intval', $userIds)));
+        if ($userIds === []) {
+            return;
+        }
+
+        [$inSql, $params] = $this->buildIdPlaceholders($userIds);
+
+        $userStatement = $this->connection->prepare(
+            "UPDATE users
+            SET community_blocked_until = NULL,
+                community_block_reason = NULL,
+                community_block_is_permanent = FALSE,
+                community_blocked_at = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id IN ({$inSql})"
+        );
+        $this->bindIntegerPlaceholderParams($userStatement, $params);
+        $userStatement->execute();
+
+        $postStatement = $this->connection->prepare(
+            "UPDATE community_posts
+            SET is_active = TRUE,
+                hidden_by_community_block = FALSE,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id IN ({$inSql})
+                AND hidden_by_community_block = TRUE"
+        );
+        $this->bindIntegerPlaceholderParams($postStatement, $params);
+        $postStatement->execute();
+
+        $commentStatement = $this->connection->prepare(
+            "UPDATE community_comments
+            SET is_active = TRUE,
+                hidden_by_community_block = FALSE
+            WHERE user_id IN ({$inSql})
+                AND hidden_by_community_block = TRUE"
+        );
+        $this->bindIntegerPlaceholderParams($commentStatement, $params);
+        $commentStatement->execute();
+
+        $historySql = $markRevokedAtNow
+            ? "UPDATE user_community_block_history
+                SET revoked_at = CURRENT_TIMESTAMP
+                WHERE user_id IN ({$inSql})
+                    AND revoked_at IS NULL"
+            : "UPDATE user_community_block_history
+                SET revoked_at = CURRENT_TIMESTAMP
+                WHERE user_id IN ({$inSql})
+                    AND revoked_at IS NULL
+                    AND is_permanent = FALSE
+                    AND blocked_until IS NOT NULL
+                    AND blocked_until <= CURRENT_TIMESTAMP";
+        $historyStatement = $this->connection->prepare($historySql);
+        $this->bindIntegerPlaceholderParams($historyStatement, $params);
+        $historyStatement->execute();
+    }
+
+    private function clearMarketplaceBlockStateForUsers(array $userIds, bool $markRevokedAtNow): void
+    {
+        $userIds = array_values(array_unique(array_map('intval', $userIds)));
+        if ($userIds === []) {
+            return;
+        }
+
+        [$inSql, $params] = $this->buildIdPlaceholders($userIds);
+
+        $userStatement = $this->connection->prepare(
+            "UPDATE users
+            SET marketplace_blocked_until = NULL,
+                marketplace_block_reason = NULL,
+                marketplace_block_is_permanent = FALSE,
+                marketplace_blocked_at = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id IN ({$inSql})"
+        );
+        $this->bindIntegerPlaceholderParams($userStatement, $params);
+        $userStatement->execute();
+
+        $listingStatement = $this->connection->prepare(
+            "UPDATE marketplace_listings
+            SET is_active = TRUE,
+                hidden_by_marketplace_block = FALSE,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id IN ({$inSql})
+                AND hidden_by_marketplace_block = TRUE"
+        );
+        $this->bindIntegerPlaceholderParams($listingStatement, $params);
+        $listingStatement->execute();
+
+        $historySql = $markRevokedAtNow
+            ? "UPDATE user_marketplace_block_history
+                SET revoked_at = CURRENT_TIMESTAMP
+                WHERE user_id IN ({$inSql})
+                    AND revoked_at IS NULL"
+            : "UPDATE user_marketplace_block_history
+                SET revoked_at = CURRENT_TIMESTAMP
+                WHERE user_id IN ({$inSql})
+                    AND revoked_at IS NULL
+                    AND is_permanent = FALSE
+                    AND blocked_until IS NOT NULL
+                    AND blocked_until <= CURRENT_TIMESTAMP";
+        $historyStatement = $this->connection->prepare($historySql);
+        $this->bindIntegerPlaceholderParams($historyStatement, $params);
+        $historyStatement->execute();
+    }
+
+    private function fetchExpiredRestrictionUserIds(
+        string $activityColumn,
+        string $permanentColumn,
+        string $untilColumn
+    ): array {
+        $statement = $this->connection->query(
+            "SELECT id
+            FROM users
+            WHERE is_active = TRUE
+                AND {$activityColumn} IS NOT NULL
+                AND {$permanentColumn} = FALSE
+                AND {$untilColumn} IS NOT NULL
+                AND {$untilColumn} <= CURRENT_TIMESTAMP"
+        );
+
+        return array_map(
+            static fn (array $row): int => (int) $row['id'],
+            $statement->fetchAll(PDO::FETCH_ASSOC) ?: []
+        );
+    }
+
+    private function buildIdPlaceholders(array $userIds): array
+    {
+        $placeholders = [];
+        $params = [];
+        foreach ($userIds as $index => $userId) {
+            $placeholder = ':user_id_' . $index;
+            $placeholders[] = $placeholder;
+            $params[$placeholder] = (int) $userId;
+        }
+
+        return [implode(', ', $placeholders), $params];
+    }
+
+    private function bindIntegerPlaceholderParams(PDOStatement $statement, array $params): void
+    {
+        foreach ($params as $placeholder => $value) {
+            $statement->bindValue($placeholder, (int) $value, PDO::PARAM_INT);
+        }
+    }
+
+    private function buildAdminRestrictionNoticeMessage(
+        string $intro,
+        string $reason,
+        ?string $blockedUntil,
+        bool $isPermanent
+    ): string {
+        $untilLabel = $this->formatAdminRestrictionNoticeUntil($blockedUntil, $isPermanent);
+
+        return $intro
+            . '. Powód: ' . trim($reason)
+            . '. Ograniczenie obowiązuje do: ' . $untilLabel . '.';
+    }
+
+    private function formatAdminRestrictionNoticeUntil(?string $blockedUntil, bool $isPermanent): string
+    {
+        if ($isPermanent) {
+            return 'na stałe';
+        }
+
+        $rawValue = trim((string) $blockedUntil);
+        if ($rawValue === '') {
+            return 'na stałe';
+        }
+
+        $timestamp = strtotime($rawValue);
+        if ($timestamp === false) {
+            return 'na stałe';
+        }
+
+        return date('d.m.Y • H:i', $timestamp);
     }
 
     private function hasCommunitySettingsColumns(): bool

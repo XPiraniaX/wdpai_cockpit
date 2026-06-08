@@ -988,13 +988,12 @@ document.querySelectorAll('[data-community-comment-form]').forEach((form) => {
                 },
             });
 
-            if (!response.ok) {
-                throw new Error('Request failed');
-            }
-
-            const payload = await response.json();
-            if (!payload.success || !payload.comment) {
-                throw new Error('Invalid payload');
+            const payload = await response.json().catch(() => null);
+            if (!response.ok || !payload?.success || !payload?.comment) {
+                const message = typeof payload?.message === 'string' && payload.message.trim() !== ''
+                    ? payload.message.trim()
+                    : 'Nie udało się dodać komentarza.';
+                throw new Error(message);
             }
 
             commentsList.querySelector('[data-community-comments-empty]')?.remove();
@@ -1004,7 +1003,7 @@ document.querySelectorAll('[data-community-comment-form]').forEach((form) => {
             initializeCommunityFeedChunk(commentsList);
             syncCommunityCommentTriggerState(postId, payload.comment_count ?? 0, payload.commented_by_current_user);
         } catch (error) {
-            form.submit();
+            showAppToast(error instanceof Error ? error.message : 'Nie udało się dodać komentarza.', 'error');
         } finally {
             submitButton.disabled = false;
         }
@@ -1330,13 +1329,12 @@ const bindCommunityCommentForms = (root) => {
                     },
                 });
 
-                if (!response.ok) {
-                    throw new Error('Request failed');
-                }
-
-                const payload = await response.json();
-                if (!payload.success || !payload.comment) {
-                    throw new Error('Invalid payload');
+                const payload = await response.json().catch(() => null);
+                if (!response.ok || !payload?.success || !payload?.comment) {
+                    const message = typeof payload?.message === 'string' && payload.message.trim() !== ''
+                        ? payload.message.trim()
+                        : 'Nie udało się dodać komentarza.';
+                    throw new Error(message);
                 }
 
                 commentsList.querySelector('[data-community-comments-empty]')?.remove();
@@ -1345,7 +1343,7 @@ const bindCommunityCommentForms = (root) => {
                 initializeCommunityFeedChunk(commentsList);
                 syncCommunityCommentTriggerState(postId, payload.comment_count ?? 0, payload.commented_by_current_user);
             } catch (error) {
-                form.submit();
+                showAppToast(error instanceof Error ? error.message : 'Nie udało się dodać komentarza.', 'error');
             } finally {
                 submitButton.disabled = false;
             }

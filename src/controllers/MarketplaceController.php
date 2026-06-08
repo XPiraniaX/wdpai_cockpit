@@ -85,6 +85,24 @@ class MarketplaceController extends AppController
     {
         $action = (string) ($_POST['action'] ?? '');
         $redirectTo = $this->sanitizeRedirectPath((string) ($_POST['redirect_to'] ?? '/marketplace'));
+        $currentUser = $this->getCurrentUserState();
+
+        if (
+            !empty($currentUser['is_marketplace_blocked'])
+            && in_array($action, ['create_listing', 'update_listing', 'delete_listing', 'end_listing', 'resume_listing'], true)
+        ) {
+            $message = $this->buildMarketplaceRestrictionMessage($currentUser);
+            if ($this->isAjaxRequest()) {
+                $this->jsonResponse([
+                    'success' => false,
+                    'message' => $message,
+                ], 423);
+            }
+
+            $this->setFlash('error', $message);
+            $this->redirect($redirectTo);
+            return;
+        }
 
         switch ($action) {
             case 'create_listing':

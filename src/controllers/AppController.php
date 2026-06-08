@@ -80,6 +80,17 @@ class AppController
         $viewPath = file_exists($templatePath) ? $templatePath : 'public/views/404.html';
         $currentUserId = $this->getCurrentUserId();
         $currentUser = $this->resolveCurrentUser($currentUserId);
+        if ($this->isAuthenticated()) {
+            $noticeRepository = new UserRepository(Database::getConnection());
+            $pendingAdminNotice = $noticeRepository->getPendingAdminUserNotice($currentUserId);
+            if ($pendingAdminNotice !== null) {
+                $currentUser['pending_admin_notice_id'] = (int) ($pendingAdminNotice['id'] ?? 0);
+                $currentUser['pending_admin_notice_type'] = (string) ($pendingAdminNotice['notice_type'] ?? '');
+                $currentUser['pending_admin_notice_title'] = (string) ($pendingAdminNotice['title'] ?? '');
+                $currentUser['pending_admin_notice_message'] = (string) ($pendingAdminNotice['message'] ?? '');
+                $currentUser['admin_warning_message'] = (string) ($pendingAdminNotice['message'] ?? '');
+            }
+        }
         $notificationUnreadCount = $this->isAuthenticated()
             ? $this->resolveNotificationUnreadCount($currentUserId)
             : 0;
@@ -87,7 +98,10 @@ class AppController
         $requiresPseudonymSetup = $this->isAuthenticated()
             && trim((string) ($currentUser['pseudonym'] ?? '')) === '';
         $requiresAdminWarningLock = $this->isAuthenticated()
-            && trim((string) ($currentUser['admin_warning_message'] ?? '')) !== '';
+            && (
+                trim((string) ($currentUser['pending_admin_notice_message'] ?? '')) !== ''
+                || trim((string) ($currentUser['admin_warning_message'] ?? '')) !== ''
+            );
         $requiresBanLock = $this->isAuthenticated()
             && !empty($currentUser['is_currently_banned'])
             && !$requiresAdminWarningLock;
@@ -167,7 +181,7 @@ class AppController
             return false;
         }
 
-        $currentUser = $this->resolveCurrentUser($this->getCurrentUserId());
+        $currentUser = $this->getCurrentUserState();
         return (string) ($currentUser['role'] ?? 'user') === 'admin';
     }
 
@@ -202,7 +216,7 @@ class AppController
             return;
         }
 
-        $currentUser = $this->resolveCurrentUser($this->getCurrentUserId());
+        $currentUser = $this->getCurrentUserState();
         if (empty($currentUser['is_currently_banned'])) {
             return;
         }
@@ -225,8 +239,10 @@ class AppController
             return;
         }
 
+        $repository = new UserRepository(Database::getConnection());
+        $pendingNotice = $repository->getPendingAdminUserNotice($this->getCurrentUserId());
         $currentUser = $this->resolveCurrentUser($this->getCurrentUserId());
-        if (trim((string) ($currentUser['admin_warning_message'] ?? '')) === '') {
+        if ($pendingNotice === null && trim((string) ($currentUser['admin_warning_message'] ?? '')) === '') {
             return;
         }
 
@@ -456,6 +472,16 @@ class AppController
             'blocked_until' => null,
             'blocked_until_label' => null,
             'blocked_is_permanent' => false,
+            'is_community_blocked' => false,
+            'community_block_reason' => null,
+            'community_blocked_until' => null,
+            'community_blocked_until_label' => null,
+            'community_block_is_permanent' => false,
+            'is_marketplace_blocked' => false,
+            'marketplace_block_reason' => null,
+            'marketplace_blocked_until' => null,
+            'marketplace_blocked_until_label' => null,
+            'marketplace_block_is_permanent' => false,
         ];
 
         try {
@@ -467,22 +493,41 @@ class AppController
             }
 
             $isCurrentlyBanned = (bool) ($user['is_blocked'] ?? false)
-                && ((bool) ($user['blocked_is_permanent'] ?? false)
-                    || (
-                        !empty($user['blocked_until'])
-                        && strtotime((string) $user['blocked_until']) !== false
-                        && strtotime((string) $user['blocked_until']) > time()
-                    ));
+                && $this->isTimedRestrictionActive(
+                    $user['blocked_until'] ?? null,
+                    (bool) ($user['blocked_is_permanent'] ?? false)
+                );
+            $isCommunityBlocked = $this->isTimedRestrictionActive(
+                $user['community_blocked_until'] ?? null,
+                (bool) ($user['community_block_is_permanent'] ?? false)
+            );
+            $isMarketplaceBlocked = $this->isTimedRestrictionActive(
+                $user['marketplace_blocked_until'] ?? null,
+                (bool) ($user['marketplace_block_is_permanent'] ?? false)
+            );
 
             $user['is_currently_banned'] = $isCurrentlyBanned;
             $user['blocked_until_label'] = $isCurrentlyBanned
                 ? $this->formatBanUntilLabel($user['blocked_until'] ?? null, (bool) ($user['blocked_is_permanent'] ?? false))
+                : null;
+            $user['is_community_blocked'] = $isCommunityBlocked;
+            $user['community_blocked_until_label'] = $isCommunityBlocked
+                ? $this->formatBanUntilLabel($user['community_blocked_until'] ?? null, (bool) ($user['community_block_is_permanent'] ?? false))
+                : null;
+            $user['is_marketplace_blocked'] = $isMarketplaceBlocked;
+            $user['marketplace_blocked_until_label'] = $isMarketplaceBlocked
+                ? $this->formatBanUntilLabel($user['marketplace_blocked_until'] ?? null, (bool) ($user['marketplace_block_is_permanent'] ?? false))
                 : null;
 
             return $user;
         } catch (Throwable) {
             return $fallbackUser;
         }
+    }
+
+    protected function getCurrentUserState(): array
+    {
+        return $this->resolveCurrentUser($this->getCurrentUserId());
     }
 
     private function resolveNotificationUnreadCount(int $userId): int
@@ -530,5 +575,35 @@ class AppController
         }
 
         return date('d.m.Y • H:i', $timestamp);
+    }
+    protected function isTimedRestrictionActive(mixed $blockedUntil, bool $isPermanent): bool
+    {
+        if ($isPermanent) {
+            return true;
+        }
+
+        $blockedUntilValue = trim((string) $blockedUntil);
+        if ($blockedUntilValue === '') {
+            return false;
+        }
+
+        $timestamp = strtotime($blockedUntilValue);
+        return $timestamp !== false && $timestamp > time();
+    }
+
+    protected function buildCommunityRestrictionMessage(array $user): string
+    {
+        $untilLabel = trim((string) ($user['community_blocked_until_label'] ?? ''));
+        return $untilLabel === 'na stałe'
+            ? 'Funkcje społeczności są ograniczone na stałe.'
+            : 'Funkcje społeczności są ograniczone do ' . $untilLabel . '.';
+    }
+
+    protected function buildMarketplaceRestrictionMessage(array $user): string
+    {
+        $untilLabel = trim((string) ($user['marketplace_blocked_until_label'] ?? ''));
+        return $untilLabel === 'na stałe'
+            ? 'Funkcje marketplace są ograniczone na stałe.'
+            : 'Funkcje marketplace są ograniczone do ' . $untilLabel . '.';
     }
 }
