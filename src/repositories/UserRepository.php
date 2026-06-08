@@ -25,6 +25,13 @@ class UserRepository
                 CONCAT(first_name, ' ', last_name) AS full_name,
                 role,
                 membership_tier,
+                is_blocked,
+                blocked_until,
+                blocked_reason,
+                blocked_is_permanent,
+                blocked_at,
+                admin_warning_message,
+                admin_warning_sent_at,
                 created_at
             FROM users
             WHERE id = :user_id
@@ -53,6 +60,12 @@ class UserRepository
                 pseudonym,
                 role,
                 membership_tier,
+                is_blocked,
+                blocked_until,
+                blocked_reason,
+                blocked_is_permanent,
+                admin_warning_message,
+                admin_warning_sent_at,
                 is_active
             FROM users
             WHERE (
@@ -78,6 +91,12 @@ class UserRepository
                 id,
                 password,
                 role,
+                is_blocked,
+                blocked_until,
+                blocked_reason,
+                blocked_is_permanent,
+                admin_warning_message,
+                admin_warning_sent_at,
                 is_active
             FROM users
             WHERE id = :user_id
@@ -310,6 +329,37 @@ class UserRepository
             SET last_login_at = CURRENT_TIMESTAMP,
                 updated_at = CURRENT_TIMESTAMP
             WHERE id = :user_id'
+        );
+        $statement->execute([
+            'user_id' => $userId,
+        ]);
+    }
+
+    public function sendAdminWarning(int $userId, string $message): void
+    {
+        $statement = $this->connection->prepare(
+            'UPDATE users
+            SET admin_warning_message = :message,
+                admin_warning_sent_at = CURRENT_TIMESTAMP,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :user_id
+                AND is_active = TRUE'
+        );
+        $statement->execute([
+            'user_id' => $userId,
+            'message' => $message,
+        ]);
+    }
+
+    public function clearAdminWarning(int $userId): void
+    {
+        $statement = $this->connection->prepare(
+            'UPDATE users
+            SET admin_warning_message = NULL,
+                admin_warning_sent_at = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = :user_id
+                AND is_active = TRUE'
         );
         $statement->execute([
             'user_id' => $userId,
@@ -682,10 +732,21 @@ class UserRepository
                 u.pseudonym,
                 u.avatar_path,
                 u.membership_tier,
+                u.last_login_at,
+                u.is_blocked,
+                u.blocked_until,
+                u.blocked_reason,
+                u.blocked_is_permanent,
                 COALESCE(NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), 'Użytkownik') AS full_name,
                 COALESCE(v.vehicle_count, 0)::INTEGER AS vehicle_count,
                 COALESCE(l.listing_count, 0)::INTEGER AS listing_count,
-                COALESCE(p.post_count, 0)::INTEGER AS post_count
+                COALESCE(p.post_count, 0)::INTEGER AS post_count,
+                COALESCE(arl.removed_listing_count, 0)::INTEGER AS admin_removed_listing_count,
+                COALESCE(arp.removed_post_count, 0)::INTEGER AS admin_removed_post_count,
+                last_ban.duration_label AS last_ban_duration_label,
+                last_ban.banned_until AS last_ban_until,
+                last_ban.is_permanent AS last_ban_is_permanent,
+                last_ban.created_at AS last_ban_created_at
             FROM users u
             LEFT JOIN (
                 SELECT
@@ -701,6 +762,7 @@ class UserRepository
                     COUNT(*)::INTEGER AS listing_count
                 FROM marketplace_listings
                 WHERE is_active = TRUE
+                    OR hidden_by_user_ban = TRUE
                 GROUP BY user_id
             ) l ON l.user_id = u.id
             LEFT JOIN (
@@ -709,8 +771,34 @@ class UserRepository
                     COUNT(*)::INTEGER AS post_count
                 FROM community_posts
                 WHERE is_active = TRUE
+                    OR hidden_by_user_ban = TRUE
                 GROUP BY user_id
             ) p ON p.user_id = u.id
+            LEFT JOIN (
+                SELECT
+                    user_id,
+                    COUNT(*)::INTEGER AS removed_listing_count
+                FROM admin_removed_listings
+                GROUP BY user_id
+            ) arl ON arl.user_id = u.id
+            LEFT JOIN (
+                SELECT
+                    user_id,
+                    COUNT(*)::INTEGER AS removed_post_count
+                FROM admin_removed_posts
+                GROUP BY user_id
+            ) arp ON arp.user_id = u.id
+            LEFT JOIN LATERAL (
+                SELECT
+                    duration_label,
+                    banned_until,
+                    is_permanent,
+                    created_at
+                FROM user_ban_history
+                WHERE user_id = u.id
+                ORDER BY created_at DESC, id DESC
+                LIMIT 1
+            ) AS last_ban ON TRUE
             WHERE u.is_active = TRUE
             ORDER BY LOWER(COALESCE(NULLIF(u.pseudonym, ''), u.username)) ASC, u.id ASC
             LIMIT :limit OFFSET :offset"
@@ -720,6 +808,229 @@ class UserRepository
         $statement->execute();
 
         return $statement->fetchAll() ?: [];
+    }
+
+    public function getAdminCatalogUserById(int $userId): ?array
+    {
+        $statement = $this->connection->prepare(
+            "SELECT
+                u.id,
+                u.username,
+                u.email,
+                u.first_name,
+                u.last_name,
+                u.pseudonym,
+                u.avatar_path,
+                u.membership_tier,
+                u.last_login_at,
+                u.is_blocked,
+                u.blocked_until,
+                u.blocked_reason,
+                u.blocked_is_permanent,
+                COALESCE(NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), 'Użytkownik') AS full_name,
+                COALESCE(v.vehicle_count, 0)::INTEGER AS vehicle_count,
+                COALESCE(l.listing_count, 0)::INTEGER AS listing_count,
+                COALESCE(p.post_count, 0)::INTEGER AS post_count,
+                COALESCE(arl.removed_listing_count, 0)::INTEGER AS admin_removed_listing_count,
+                COALESCE(arp.removed_post_count, 0)::INTEGER AS admin_removed_post_count,
+                last_ban.duration_label AS last_ban_duration_label,
+                last_ban.banned_until AS last_ban_until,
+                last_ban.is_permanent AS last_ban_is_permanent,
+                last_ban.created_at AS last_ban_created_at
+            FROM users u
+            LEFT JOIN (
+                SELECT user_id, COUNT(*)::INTEGER AS vehicle_count
+                FROM vehicles
+                WHERE status <> 'archived'
+                GROUP BY user_id
+            ) v ON v.user_id = u.id
+            LEFT JOIN (
+                SELECT user_id, COUNT(*)::INTEGER AS listing_count
+                FROM marketplace_listings
+                WHERE is_active = TRUE
+                    OR hidden_by_user_ban = TRUE
+                GROUP BY user_id
+            ) l ON l.user_id = u.id
+            LEFT JOIN (
+                SELECT user_id, COUNT(*)::INTEGER AS post_count
+                FROM community_posts
+                WHERE is_active = TRUE
+                    OR hidden_by_user_ban = TRUE
+                GROUP BY user_id
+            ) p ON p.user_id = u.id
+            LEFT JOIN (
+                SELECT user_id, COUNT(*)::INTEGER AS removed_listing_count
+                FROM admin_removed_listings
+                GROUP BY user_id
+            ) arl ON arl.user_id = u.id
+            LEFT JOIN (
+                SELECT user_id, COUNT(*)::INTEGER AS removed_post_count
+                FROM admin_removed_posts
+                GROUP BY user_id
+            ) arp ON arp.user_id = u.id
+            LEFT JOIN LATERAL (
+                SELECT
+                    duration_label,
+                    banned_until,
+                    is_permanent,
+                    created_at
+                FROM user_ban_history
+                WHERE user_id = u.id
+                ORDER BY created_at DESC, id DESC
+                LIMIT 1
+            ) AS last_ban ON TRUE
+            WHERE u.id = :user_id
+                AND u.is_active = TRUE
+            LIMIT 1"
+        );
+        $statement->execute([
+            'user_id' => $userId,
+        ]);
+
+        $row = $statement->fetch();
+
+        return $row ?: null;
+    }
+
+    public function banUserByAdmin(int $userId, string $reason, string $durationCode, string $durationLabel, ?string $blockedUntil, bool $isPermanent): void
+    {
+        $this->connection->beginTransaction();
+
+        try {
+            $historyStatement = $this->connection->prepare(
+                'INSERT INTO user_ban_history (
+                    user_id,
+                    reason,
+                    duration_code,
+                    duration_label,
+                    banned_until,
+                    is_permanent
+                ) VALUES (
+                    :user_id,
+                    :reason,
+                    :duration_code,
+                    :duration_label,
+                    :banned_until,
+                    :is_permanent
+                )'
+            );
+            $historyStatement->bindValue(':user_id', $userId, PDO::PARAM_INT);
+            $historyStatement->bindValue(':reason', $reason, PDO::PARAM_STR);
+            $historyStatement->bindValue(':duration_code', $durationCode, PDO::PARAM_STR);
+            $historyStatement->bindValue(':duration_label', $durationLabel, PDO::PARAM_STR);
+            if ($blockedUntil === null) {
+                $historyStatement->bindValue(':banned_until', null, PDO::PARAM_NULL);
+            } else {
+                $historyStatement->bindValue(':banned_until', $blockedUntil, PDO::PARAM_STR);
+            }
+            $historyStatement->bindValue(':is_permanent', $isPermanent, PDO::PARAM_BOOL);
+            $historyStatement->execute();
+
+            $userStatement = $this->connection->prepare(
+                'UPDATE users
+                SET is_blocked = TRUE,
+                    blocked_until = :blocked_until,
+                    blocked_reason = :blocked_reason,
+                    blocked_is_permanent = :blocked_is_permanent,
+                    blocked_at = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = :user_id
+                    AND is_active = TRUE'
+            );
+            if ($blockedUntil === null) {
+                $userStatement->bindValue(':blocked_until', null, PDO::PARAM_NULL);
+            } else {
+                $userStatement->bindValue(':blocked_until', $blockedUntil, PDO::PARAM_STR);
+            }
+            $userStatement->bindValue(':blocked_reason', $reason, PDO::PARAM_STR);
+            $userStatement->bindValue(':blocked_is_permanent', $isPermanent, PDO::PARAM_BOOL);
+            $userStatement->bindValue(':user_id', $userId, PDO::PARAM_INT);
+            $userStatement->execute();
+
+            $postStatement = $this->connection->prepare(
+                'UPDATE community_posts
+                SET is_active = FALSE,
+                    hidden_by_user_ban = TRUE,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = :user_id
+                    AND is_active = TRUE'
+            );
+            $postStatement->execute([
+                'user_id' => $userId,
+            ]);
+
+            $commentStatement = $this->connection->prepare(
+                'UPDATE community_comments
+                SET is_active = FALSE,
+                    hidden_by_user_ban = TRUE
+                WHERE user_id = :user_id
+                    AND is_active = TRUE'
+            );
+            $commentStatement->execute([
+                'user_id' => $userId,
+            ]);
+
+            $listingStatement = $this->connection->prepare(
+                'UPDATE marketplace_listings
+                SET is_active = FALSE,
+                    hidden_by_user_ban = TRUE,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE user_id = :user_id
+                    AND is_active = TRUE'
+            );
+            $listingStatement->execute([
+                'user_id' => $userId,
+            ]);
+
+            $this->connection->commit();
+        } catch (Throwable $exception) {
+            $this->connection->rollBack();
+            throw $exception;
+        }
+    }
+
+    public function unbanUserByAdmin(int $userId): void
+    {
+        $this->connection->beginTransaction();
+
+        try {
+            $this->clearBanStateForUsers([$userId], true);
+            $this->connection->commit();
+        } catch (Throwable $exception) {
+            $this->connection->rollBack();
+            throw $exception;
+        }
+    }
+
+    public function releaseExpiredBans(): void
+    {
+        $statement = $this->connection->query(
+            "SELECT id
+            FROM users
+            WHERE is_active = TRUE
+                AND is_blocked = TRUE
+                AND blocked_is_permanent = FALSE
+                AND blocked_until IS NOT NULL
+                AND blocked_until <= CURRENT_TIMESTAMP"
+        );
+        $userIds = array_map(
+            static fn (array $row): int => (int) $row['id'],
+            $statement->fetchAll(PDO::FETCH_ASSOC) ?: []
+        );
+
+        if ($userIds === []) {
+            return;
+        }
+
+        $this->connection->beginTransaction();
+
+        try {
+            $this->clearBanStateForUsers($userIds, false);
+            $this->connection->commit();
+        } catch (Throwable $exception) {
+            $this->connection->rollBack();
+            throw $exception;
+        }
     }
 
     public function deactivateAccount(int $userId): void
@@ -845,6 +1156,97 @@ class UserRepository
         $this->hasMarketplaceSettingsColumns = ((int) $statement->fetchColumn()) === 3;
 
         return $this->hasMarketplaceSettingsColumns;
+    }
+
+    private function clearBanStateForUsers(array $userIds, bool $markRevokedAtNow): void
+    {
+        $userIds = array_values(array_unique(array_map('intval', $userIds)));
+        if ($userIds === []) {
+            return;
+        }
+
+        $placeholders = [];
+        $params = [];
+        foreach ($userIds as $index => $userId) {
+            $placeholder = ':user_id_' . $index;
+            $placeholders[] = $placeholder;
+            $params[$placeholder] = $userId;
+        }
+        $inSql = implode(', ', $placeholders);
+
+        $userStatement = $this->connection->prepare(
+            "UPDATE users
+            SET is_blocked = FALSE,
+                blocked_until = NULL,
+                blocked_reason = NULL,
+                blocked_is_permanent = FALSE,
+                blocked_at = NULL,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id IN ({$inSql})"
+        );
+        foreach ($params as $placeholder => $value) {
+            $userStatement->bindValue($placeholder, $value, PDO::PARAM_INT);
+        }
+        $userStatement->execute();
+
+        $postStatement = $this->connection->prepare(
+            "UPDATE community_posts
+            SET is_active = TRUE,
+                hidden_by_user_ban = FALSE,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id IN ({$inSql})
+                AND hidden_by_user_ban = TRUE"
+        );
+        foreach ($params as $placeholder => $value) {
+            $postStatement->bindValue($placeholder, $value, PDO::PARAM_INT);
+        }
+        $postStatement->execute();
+
+        $commentStatement = $this->connection->prepare(
+            "UPDATE community_comments
+            SET is_active = TRUE,
+                hidden_by_user_ban = FALSE
+            WHERE user_id IN ({$inSql})
+                AND hidden_by_user_ban = TRUE"
+        );
+        foreach ($params as $placeholder => $value) {
+            $commentStatement->bindValue($placeholder, $value, PDO::PARAM_INT);
+        }
+        $commentStatement->execute();
+
+        $listingStatement = $this->connection->prepare(
+            "UPDATE marketplace_listings
+            SET is_active = TRUE,
+                hidden_by_user_ban = FALSE,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id IN ({$inSql})
+                AND hidden_by_user_ban = TRUE"
+        );
+        foreach ($params as $placeholder => $value) {
+            $listingStatement->bindValue($placeholder, $value, PDO::PARAM_INT);
+        }
+        $listingStatement->execute();
+
+        if ($markRevokedAtNow) {
+            $historySql = "UPDATE user_ban_history
+                SET revoked_at = CURRENT_TIMESTAMP
+                WHERE user_id IN ({$inSql})
+                    AND revoked_at IS NULL";
+        } else {
+            $historySql = "UPDATE user_ban_history
+                SET revoked_at = CURRENT_TIMESTAMP
+                WHERE user_id IN ({$inSql})
+                    AND revoked_at IS NULL
+                    AND is_permanent = FALSE
+                    AND banned_until IS NOT NULL
+                    AND banned_until <= CURRENT_TIMESTAMP";
+        }
+
+        $historyStatement = $this->connection->prepare($historySql);
+        foreach ($params as $placeholder => $value) {
+            $historyStatement->bindValue($placeholder, $value, PDO::PARAM_INT);
+        }
+        $historyStatement->execute();
     }
 
     private function hasCommunitySettingsColumns(): bool

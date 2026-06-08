@@ -25,7 +25,7 @@ if (!empty($canViewMembershipTier)) {
 <main class="profile-page community-page community-profile-page<?= $isAdminProfileView ? ' is-admin-profile-view' : ''; ?>"<?= $isAdminProfileView ? ' data-admin-profile-view="1"' : ''; ?>>
     <div class="community-shell community-shell-profile">
         <section class="community-profile-hero card">
-            <?php if (!$isOwnProfile && !$isAdminProfileView): ?>
+            <?php if (!$isOwnProfile && !$isAdminProfileView && empty($isBlockedForRegularViewer)): ?>
                 <div class="marketplace-post-menu profile-hero-menu" data-marketplace-menu>
                     <button type="button" class="marketplace-post-menu-trigger" aria-label="Opcje profilu" aria-expanded="false" data-marketplace-menu-trigger>
                         <span></span>
@@ -75,24 +75,31 @@ if (!empty($canViewMembershipTier)) {
                 </div>
             </div>
 
-            <div class="community-profile-stats">
-                <div class="community-profile-stat">
-                    <span class="community-profile-stat-value" data-profile-stat="vehicles"><?= (int) $profile['vehicle_count']; ?></span>
-                    <span class="community-profile-stat-label">Samochody</span>
+            <?php if (!empty($isBlockedForRegularViewer)): ?>
+                <div class="community-empty card">
+                    <h2>Konto zablokowane</h2>
+                    <p>To konto jest obecnie zablokowane.</p>
                 </div>
-                <?php if (!empty($canViewPosts)): ?>
+            <?php else: ?>
+                <div class="community-profile-stats">
                     <div class="community-profile-stat">
-                        <span class="community-profile-stat-value" data-profile-stat="posts"><?= (int) $profile['post_count']; ?></span>
-                        <span class="community-profile-stat-label">Posty</span>
+                        <span class="community-profile-stat-value" data-profile-stat="vehicles"><?= (int) $profile['vehicle_count']; ?></span>
+                        <span class="community-profile-stat-label">Samochody</span>
                     </div>
-                <?php endif; ?>
-                <?php if (!empty($canViewListings)): ?>
-                    <div class="community-profile-stat">
-                        <span class="community-profile-stat-value" data-profile-stat="listings"><?= (int) $profile['listing_count']; ?></span>
-                        <span class="community-profile-stat-label">Ogłoszenia</span>
-                    </div>
-                <?php endif; ?>
-            </div>
+                    <?php if (!empty($canViewPosts)): ?>
+                        <div class="community-profile-stat">
+                            <span class="community-profile-stat-value" data-profile-stat="posts"><?= (int) $profile['post_count']; ?></span>
+                            <span class="community-profile-stat-label">Posty</span>
+                        </div>
+                    <?php endif; ?>
+                    <?php if (!empty($canViewListings)): ?>
+                        <div class="community-profile-stat">
+                            <span class="community-profile-stat-value" data-profile-stat="listings"><?= (int) $profile['listing_count']; ?></span>
+                            <span class="community-profile-stat-label">Ogłoszenia</span>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
         </section>
 
         <div data-profile-activity-root>
@@ -114,7 +121,7 @@ if (!empty($canViewMembershipTier)) {
                 </section>
             <?php endif; ?>
 
-            <?php if ($activityScope === 'listings' && ($isOwnProfile || $isAdminProfileView)): ?>
+            <?php if (empty($isBlockedForRegularViewer) && $activityScope === 'listings' && ($isOwnProfile || $isAdminProfileView)): ?>
                 <section class="community-profile-filters card">
                     <div class="community-side-heading">Ogłoszenia</div>
                     <div class="community-scope-list community-profile-scope-list">
@@ -136,7 +143,7 @@ if (!empty($canViewMembershipTier)) {
                 </section>
             <?php endif; ?>
 
-            <?php if ($activityScope === 'posts'): ?>
+            <?php if (empty($isBlockedForRegularViewer) && $activityScope === 'posts'): ?>
                 <section
                     class="community-feed community-profile-feed"
                     data-community-feed
@@ -157,7 +164,7 @@ if (!empty($canViewMembershipTier)) {
                     <div class="community-feed-loader" hidden data-community-feed-loader>Ładowanie...</div>
                     <div class="community-feed-sentinel" data-community-feed-sentinel></div>
                 </section>
-            <?php elseif ($activityScope === 'listings'): ?>
+            <?php elseif (empty($isBlockedForRegularViewer) && $activityScope === 'listings'): ?>
                 <section
                     class="community-feed community-profile-feed"
                     data-marketplace-feed

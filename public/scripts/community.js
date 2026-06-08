@@ -3,6 +3,8 @@ if (document.querySelector('.community-profile-page')) {
     document.body.classList.add('is-community-profile-page');
 }
 
+const shouldBootstrapCommunityDocumentDirectly = !document.querySelector('.profile-page');
+
 document.querySelectorAll('.community-brand-select').forEach((brandSelect) => {
     const targetModelId = brandSelect.getAttribute('data-target-model');
     const modelSelect = targetModelId ? document.getElementById(targetModelId) : null;
@@ -701,26 +703,28 @@ document.querySelectorAll('[data-community-comments-modal]').forEach((commentsMo
     }
 });
 
-document.querySelectorAll('[data-open-comments-modal]').forEach((button) => {
-    button.addEventListener('click', () => {
-        const modalId = button.getAttribute('data-comments-modal-id');
-        if (!modalId) {
-            return;
-        }
+if (shouldBootstrapCommunityDocumentDirectly) {
+    document.querySelectorAll('[data-open-comments-modal]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const modalId = button.getAttribute('data-comments-modal-id');
+            if (!modalId) {
+                return;
+            }
 
-        const commentsModal = document.getElementById(modalId);
-        if (!commentsModal) {
-            return;
-        }
+            const commentsModal = document.getElementById(modalId);
+            if (!commentsModal) {
+                return;
+            }
 
-        openCommentsModal(commentsModal);
-        requestAnimationFrame(() => {
-            commentsModal.querySelectorAll('[data-community-carousel]').forEach((carousel) => {
-                initializeCommunityCarousel(carousel);
+            openCommentsModal(commentsModal);
+            requestAnimationFrame(() => {
+                commentsModal.querySelectorAll('[data-community-carousel]').forEach((carousel) => {
+                    initializeCommunityCarousel(carousel);
+                });
             });
         });
     });
-});
+}
 
 document.querySelectorAll('[data-community-comments-modal]').forEach((commentsModal) => {
     commentsModal.querySelectorAll('[data-close-comments-modal]').forEach((closeButton) => {
@@ -744,91 +748,95 @@ const renderCommunityLikeIcon = (liked) => {
     `;
 };
 
-document.querySelectorAll('[data-community-like-form]').forEach((form) => {
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault();
+if (shouldBootstrapCommunityDocumentDirectly) {
+    document.querySelectorAll('[data-community-like-form]').forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
 
-        const button = form.querySelector('[data-community-like-button]');
-        const icon = form.querySelector('[data-community-like-icon]');
-        const count = form.querySelector('[data-community-like-count]');
+            const button = form.querySelector('[data-community-like-button]');
+            const icon = form.querySelector('[data-community-like-icon]');
+            const count = form.querySelector('[data-community-like-count]');
 
-        if (!button || !icon || !count) {
-            form.submit();
-            return;
-        }
-
-        const formData = new FormData(form);
-
-        try {
-            const response = await fetch(window.location.pathname + window.location.search, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error('Request failed');
+            if (!button || !icon || !count) {
+                form.submit();
+                return;
             }
 
-            const payload = await response.json();
-            if (!payload.success) {
-                throw new Error('Invalid payload');
-            }
+            const formData = new FormData(form);
 
-            button.classList.toggle('is-active', Boolean(payload.liked_by_current_user));
-            icon.innerHTML = renderCommunityLikeIcon(Boolean(payload.liked_by_current_user));
-            count.textContent = String(payload.like_count ?? 0);
-        } catch (error) {
-            form.submit();
-        }
+            try {
+                const response = await fetch(window.location.pathname + window.location.search, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+
+                const payload = await response.json();
+                if (!payload.success) {
+                    throw new Error('Invalid payload');
+                }
+
+                button.classList.toggle('is-active', Boolean(payload.liked_by_current_user));
+                icon.innerHTML = renderCommunityLikeIcon(Boolean(payload.liked_by_current_user));
+                count.textContent = String(payload.like_count ?? 0);
+            } catch (error) {
+                form.submit();
+            }
+        });
     });
-});
+}
 
-document.querySelectorAll('[data-community-save-form]').forEach((form) => {
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault();
+if (shouldBootstrapCommunityDocumentDirectly) {
+    document.querySelectorAll('[data-community-save-form]').forEach((form) => {
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
 
-        const button = form.querySelector('[data-community-save-button]');
-        const icon = form.querySelector('[data-community-save-icon]');
-        const count = form.querySelector('[data-community-save-count]');
+            const button = form.querySelector('[data-community-save-button]');
+            const icon = form.querySelector('[data-community-save-icon]');
+            const count = form.querySelector('[data-community-save-count]');
 
-        if (!button || !icon || !count) {
-            form.submit();
-            return;
-        }
-
-        const formData = new FormData(form);
-
-        try {
-            const response = await fetch(window.location.pathname + window.location.search, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error('Request failed');
+            if (!button || !icon || !count) {
+                form.submit();
+                return;
             }
 
-            const payload = await response.json();
-            if (!payload.success) {
-                throw new Error('Invalid payload');
-            }
+            const formData = new FormData(form);
 
-            button.classList.toggle('is-active', Boolean(payload.saved_by_current_user));
-            icon.src = payload.saved_by_current_user
-                ? '/public/assets/icons/save_icon_full.svg'
-                : '/public/assets/icons/save_icon.svg';
-            count.textContent = String(payload.save_count ?? 0);
-        } catch (error) {
-            form.submit();
-        }
+            try {
+                const response = await fetch(window.location.pathname + window.location.search, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    throw new Error('Request failed');
+                }
+
+                const payload = await response.json();
+                if (!payload.success) {
+                    throw new Error('Invalid payload');
+                }
+
+                button.classList.toggle('is-active', Boolean(payload.saved_by_current_user));
+                icon.src = payload.saved_by_current_user
+                    ? '/public/assets/icons/save_icon_full.svg'
+                    : '/public/assets/icons/save_icon.svg';
+                count.textContent = String(payload.save_count ?? 0);
+            } catch (error) {
+                form.submit();
+            }
+        });
     });
-});
+}
 
 document.querySelectorAll('[data-community-report-form]').forEach((form) => {
     form.addEventListener('submit', async (event) => {
@@ -1587,43 +1595,45 @@ const initializeCommunityFeedChunk = (root) => {
 };
 
 window.initializeCommunityFeedChunk = initializeCommunityFeedChunk;
-document.querySelectorAll('[data-community-post-menu]').forEach((menu) => {
-    const trigger = menu.querySelector('[data-community-post-menu-trigger]');
-    const dropdown = menu.querySelector('[data-community-post-menu-dropdown]');
+if (shouldBootstrapCommunityDocumentDirectly) {
+    document.querySelectorAll('[data-community-post-menu]').forEach((menu) => {
+        const trigger = menu.querySelector('[data-community-post-menu-trigger]');
+        const dropdown = menu.querySelector('[data-community-post-menu-dropdown]');
 
-    if (!trigger || !dropdown) {
-        return;
-    }
+        if (!trigger || !dropdown) {
+            return;
+        }
 
-    trigger.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
+        trigger.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
 
-        const isOpen = trigger.getAttribute('aria-expanded') === 'true';
+            const isOpen = trigger.getAttribute('aria-expanded') === 'true';
 
-        document.querySelectorAll('[data-community-post-menu]').forEach((otherMenu) => {
-            if (otherMenu !== menu) {
-                closeCommunityPostMenu(otherMenu);
+            document.querySelectorAll('[data-community-post-menu]').forEach((otherMenu) => {
+                if (otherMenu !== menu) {
+                    closeCommunityPostMenu(otherMenu);
+                }
+            });
+
+            trigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
+            dropdown.hidden = isOpen;
+        });
+    });
+
+    document.addEventListener('click', (event) => {
+        document.querySelectorAll('[data-community-post-menu]').forEach((menu) => {
+            if (!menu.contains(event.target)) {
+                closeCommunityPostMenu(menu);
             }
         });
 
-        trigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-        dropdown.hidden = isOpen;
-    });
-});
-
-document.addEventListener('click', (event) => {
-    document.querySelectorAll('[data-community-post-menu]').forEach((menu) => {
-        if (!menu.contains(event.target)) {
-            closeCommunityPostMenu(menu);
+        const target = event.target instanceof Element ? event.target : null;
+        if (!target) {
+            return;
         }
     });
-
-    const target = event.target instanceof Element ? event.target : null;
-    if (!target) {
-        return;
-    }
-});
+}
 const initializeCommunityInfiniteFeed = (root = document) => {
     if (root === document && document.querySelector('.profile-page')) {
         return;

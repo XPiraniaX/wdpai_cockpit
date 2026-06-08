@@ -35,6 +35,62 @@
     </div>
 <?php endif; ?>
 
+<?php if (!empty($requiresAdminWarningLock ?? false)): ?>
+    <div class="pseudonym-lock" data-admin-warning-lock>
+        <div class="pseudonym-lock-backdrop"></div>
+        <section class="pseudonym-lock-modal account-warning-lock-modal">
+            <div class="account-warning-lock-copy">
+                <div class="account-warning-lock-kicker">Ostrzeżenie administratora</div>
+                <h2 class="account-warning-lock-title">Wymagane potwierdzenie komunikatu</h2>
+            </div>
+            <div class="account-warning-lock-body">
+                <p class="account-warning-lock-copy-text">
+                    Otrzymałeś komunikat od administratora. Potwierdź jego przeczytanie, aby kontynuować korzystanie z aplikacji.
+                </p>
+                <div class="account-warning-lock-block">
+                    <div class="account-warning-lock-label">Komunikat:</div>
+                    <div class="account-warning-lock-value"><?= htmlspecialchars((string) ($currentUser['admin_warning_message'] ?? 'Brak treści komunikatu.'), ENT_QUOTES, 'UTF-8'); ?></div>
+                </div>
+            </div>
+            <div class="account-warning-lock-actions">
+                <form method="post" action="<?= htmlspecialchars((string) ($_SERVER['REQUEST_URI'] ?? '/dashboard'), ENT_QUOTES, 'UTF-8'); ?>" class="account-warning-lock-form">
+                    <input type="hidden" name="action" value="acknowledge_admin_warning">
+                    <input type="hidden" name="redirect_to" value="<?= htmlspecialchars((string) ($_SERVER['REQUEST_URI'] ?? '/dashboard'), ENT_QUOTES, 'UTF-8'); ?>">
+                    <button type="submit" class="pseudonym-lock-submit">Potwierdź</button>
+                </form>
+            </div>
+        </section>
+    </div>
+<?php endif; ?>
+
+<?php if (!empty($requiresBanLock ?? false)): ?>
+    <div class="pseudonym-lock" data-account-ban-lock>
+        <div class="pseudonym-lock-backdrop"></div>
+        <section class="pseudonym-lock-modal account-ban-lock-modal">
+            <div class="account-ban-lock-copy">
+                <div class="account-ban-lock-kicker">Konto zablokowane</div>
+                <h2 class="account-ban-lock-title">Dostęp do konta został ograniczony</h2>
+            </div>
+            <div class="account-ban-lock-body">
+                <p class="account-ban-lock-copy-text">
+                Twoje konto jest obecnie zablokowane.
+                </p>
+                <div class="account-ban-lock-block">
+                    <div class="account-ban-lock-label">Powód:</div>
+                    <div class="account-ban-lock-value"><?= htmlspecialchars((string) ($currentUser['blocked_reason'] ?? 'Brak informacji'), ENT_QUOTES, 'UTF-8'); ?></div>
+                </div>
+                <div class="account-ban-lock-block">
+                    <div class="account-ban-lock-label">Blokada do:</div>
+                    <div class="account-ban-lock-value"><?= htmlspecialchars((string) ($currentUser['blocked_until_label'] ?? 'na stałe'), ENT_QUOTES, 'UTF-8'); ?></div>
+                </div>
+            </div>
+            <div class="account-ban-lock-actions">
+                <a href="/logout" class="pseudonym-lock-submit" style="text-decoration: none; text-align: center;">Wyloguj się</a>
+            </div>
+        </section>
+    </div>
+<?php endif; ?>
+
 <div class="app">
 
     <?php include __DIR__ . '/navi.php'; ?>

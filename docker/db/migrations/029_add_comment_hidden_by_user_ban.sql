@@ -1,0 +1,2 @@
+ALTER TABLE community_comments
+    ADD COLUMN IF NOT EXISTS hidden_by_user_ban BOOLEAN NOT NULL DEFAULT FALSE;

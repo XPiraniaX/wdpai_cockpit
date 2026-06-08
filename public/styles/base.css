@@ -165,6 +165,7 @@ body {
     align-items: center;
     justify-content: center;
     min-height: 46px;
+    align-self: center;
     border: 0;
     border-radius: 999px;
     background: #38bdf8;
@@ -181,4 +182,183 @@ body {
     background: #67d2ff;
     transform: translateY(-1px);
     box-shadow: 0 14px 28px rgba(56, 189, 248, 0.2);
+}
+
+.account-ban-lock-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: min(620px, calc(100vw - 32px));
+    padding: 24px;
+    border-radius: 24px;
+    border: 1px solid rgba(248, 113, 113, 0.24);
+    background: linear-gradient(180deg, rgba(47, 14, 14, 0.98), rgba(20, 9, 9, 0.98));
+    box-shadow:
+        0 28px 60px rgba(2, 6, 23, 0.44),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.account-ban-lock-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.account-ban-lock-kicker,
+.account-ban-lock-label {
+    color: rgba(254, 202, 202, 0.76);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-family: var(--font-sans);
+}
+
+.account-ban-lock-title {
+    margin: 0;
+    color: #fff1f2;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.08;
+    font-family: var(--font-serif);
+}
+
+.account-ban-lock-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.account-ban-lock-copy-text {
+    margin: 0;
+    color: #ffe4e6;
+    font-size: 15px;
+    line-height: 1.6;
+    font-family: var(--font-sans);
+}
+
+.account-ban-lock-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.account-ban-lock-value {
+    color: #ffe4e6;
+    font-size: 15px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: var(--font-sans);
+}
+
+.account-ban-lock-actions {
+    display: flex;
+    justify-content: center;
+}
+
+.account-ban-lock-actions .pseudonym-lock-submit {
+    min-width: 180px;
+    padding: 0 24px;
+    background: rgba(71, 85, 105, 0.92);
+    color: #eef4ff;
+    box-shadow: none;
+}
+
+.account-ban-lock-actions .pseudonym-lock-submit:hover {
+    background: rgba(100, 116, 139, 0.96);
+    color: #f8fbff;
+    box-shadow: 0 14px 28px rgba(2, 6, 23, 0.22);
+}
+
+.account-warning-lock-modal {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    width: min(620px, calc(100vw - 32px));
+    padding: 24px;
+    border-radius: 24px;
+    border: 1px solid rgba(56, 189, 248, 0.16);
+    background: linear-gradient(180deg, rgba(12, 25, 47, 0.98), rgba(8, 18, 35, 0.98));
+    box-shadow:
+        0 28px 60px rgba(2, 6, 23, 0.44),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.account-warning-lock-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.account-warning-lock-kicker,
+.account-warning-lock-label {
+    color: rgba(186, 230, 253, 0.8);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-family: var(--font-sans);
+}
+
+.account-warning-lock-title {
+    margin: 0;
+    color: #f0f9ff;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.08;
+    font-family: var(--font-serif);
+}
+
+.account-warning-lock-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.account-warning-lock-copy-text {
+    margin: 0;
+    color: #e0f2fe;
+    font-size: 15px;
+    line-height: 1.6;
+    font-family: var(--font-sans);
+}
+
+.account-warning-lock-block {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.account-warning-lock-value {
+    color: #f0f9ff;
+    font-size: 15px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: var(--font-sans);
+}
+
+.account-warning-lock-actions {
+    display: flex;
+    justify-content: center;
+}
+
+.account-warning-lock-form {
+    display: flex;
+    justify-content: center;
+}
+
+.account-warning-lock-actions .pseudonym-lock-submit {
+    min-width: 180px;
+    padding: 0 24px;
+    background: rgba(71, 85, 105, 0.92);
+    color: #eef4ff;
+    box-shadow: none;
+}
+
+.account-warning-lock-actions .pseudonym-lock-submit:hover {
+    background: rgba(100, 116, 139, 0.96);
+    color: #f8fbff;
+    box-shadow: 0 14px 28px rgba(2, 6, 23, 0.22);
 }

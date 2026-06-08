@@ -55,11 +55,22 @@ class Routing {
         $action = self::$routes[$normalizedPath]["action"];
 
         $controllerObj = new $controller();
+        if (
+            $_SERVER['REQUEST_METHOD'] === 'POST'
+            && $controllerObj instanceof AppController
+            && (string) ($_POST['action'] ?? '') === 'acknowledge_admin_warning'
+        ) {
+            $controllerObj->enforceCsrfProtection();
+            $controllerObj->handleAcknowledgeAdminWarningAction();
+            return;
+        }
         if (str_starts_with($normalizedPath, 'admin') && $controllerObj instanceof AppController) {
             $controllerObj->guardAdminRoute();
         }
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && $controllerObj instanceof AppController) {
             $controllerObj->enforceCsrfProtection();
+            $controllerObj->guardAdminWarningMutationRoute();
+            $controllerObj->guardBlockedUserMutationRoute();
         }
         $controllerObj->$action();
     }

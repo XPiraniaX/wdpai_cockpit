@@ -10,6 +10,7 @@ class SecurityController extends AppController
 
     public function login(): void
     {
+        $this->synchronizeUserBanState();
         $this->redirectIfAuthenticated();
 
         $title = 'Login - Cockpit';

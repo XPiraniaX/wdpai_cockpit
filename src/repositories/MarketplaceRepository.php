@@ -225,7 +225,12 @@ class MarketplaceRepository
         ];
     }
 
-    public function getListingsByUser(int $currentUserId, int $profileUserId, string $visibility = 'active'): array
+    public function getListingsByUser(
+        int $currentUserId,
+        int $profileUserId,
+        string $visibility = 'active',
+        bool $includeHiddenByUserBan = false
+    ): array
     {
         $conditions = ['l.user_id = :profile_user_id'];
         $preferredContactSelect = $this->hasMarketplacePreferredContactChannelColumn()
@@ -240,9 +245,13 @@ class MarketplaceRepository
             : '';
 
         if ($visibility === 'active') {
-            $conditions[] = 'l.is_active = TRUE';
+            $conditions[] = $includeHiddenByUserBan
+                ? '(l.is_active = TRUE OR l.hidden_by_user_ban = TRUE)'
+                : 'l.is_active = TRUE';
         } elseif ($visibility === 'ended') {
-            $conditions[] = 'l.is_active = FALSE';
+            $conditions[] = $includeHiddenByUserBan
+                ? '(l.is_active = FALSE OR l.hidden_by_user_ban = TRUE)'
+                : 'l.is_active = FALSE';
         }
 
         $statement = $this->connection->prepare(
@@ -317,7 +326,8 @@ class MarketplaceRepository
         int $profileUserId,
         string $visibility = 'active',
         int $limit = self::DEFAULT_FEED_PAGE_SIZE,
-        int $offset = 0
+        int $offset = 0,
+        bool $includeHiddenByUserBan = false
     ): array {
         $conditions = ['l.user_id = :profile_user_id'];
         $preferredContactSelect = $this->hasMarketplacePreferredContactChannelColumn()
@@ -332,9 +342,13 @@ class MarketplaceRepository
             : '';
 
         if ($visibility === 'active') {
-            $conditions[] = 'l.is_active = TRUE';
+            $conditions[] = $includeHiddenByUserBan
+                ? '(l.is_active = TRUE OR l.hidden_by_user_ban = TRUE)'
+                : 'l.is_active = TRUE';
         } elseif ($visibility === 'ended') {
-            $conditions[] = 'l.is_active = FALSE';
+            $conditions[] = $includeHiddenByUserBan
+                ? '(l.is_active = FALSE OR l.hidden_by_user_ban = TRUE)'
+                : 'l.is_active = FALSE';
         }
 
         $statement = $this->connection->prepare(
@@ -696,6 +710,16 @@ class MarketplaceRepository
         if ($statement->rowCount() < 1) {
             return null;
         }
+
+        $logStatement = $this->connection->prepare(
+            'INSERT INTO admin_removed_listings (listing_id, user_id, listing_title)
+            VALUES (:listing_id, :user_id, :listing_title)'
+        );
+        $logStatement->execute([
+            'listing_id' => $listingId,
+            'user_id' => (int) $context['user_id'],
+            'listing_title' => (string) $context['title'],
+        ]);
 
         return [
             'user_id' => (int) $context['user_id'],

@@ -281,6 +281,10 @@
     gap: 8px;
 }
 
+.profile-moderation-other[hidden] {
+    display: none !important;
+}
+
 .profile-moderation-modal-kicker,
 .profile-moderation-modal-subtitle,
 .profile-moderation-other > span {

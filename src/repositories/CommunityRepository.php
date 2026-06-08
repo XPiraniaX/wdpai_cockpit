@@ -18,8 +18,19 @@ class CommunityRepository
         int $profileUserId,
         int $limit = self::DEFAULT_FEED_PAGE_SIZE,
         ?string $cursorCreatedAt = null,
-        ?int $cursorId = null
+        ?int $cursorId = null,
+        bool $includeHiddenByUserBan = false
     ): array {
+        if ($includeHiddenByUserBan) {
+            return $this->getFeedPageByUserIncludingHiddenByBan(
+                $currentUserId,
+                $profileUserId,
+                $limit,
+                $cursorCreatedAt,
+                $cursorId
+            );
+        }
+
         $conditions = ['feed.user_id = :profile_user_id'];
         $params = [
             'current_user_id' => $currentUserId,
@@ -75,6 +86,158 @@ class CommunityRepository
         $statement->execute();
 
         $posts = $statement->fetchAll(PDO::FETCH_ASSOC);
+        $hasMore = count($posts) > $limit;
+        if ($hasMore) {
+            $posts = array_slice($posts, 0, $limit);
+        }
+
+        if ($posts === []) {
+            return [
+                'posts' => [],
+                'has_more' => false,
+                'next_cursor_created_at' => null,
+                'next_cursor_id' => null,
+            ];
+        }
+
+        $postIds = array_column($posts, 'id');
+        $commentsByPost = $this->getCommentsForPosts($postIds, $currentUserId);
+        $imagesByPost = $this->getImagesForPosts($postIds);
+
+        $mappedPosts = array_map(function (array $post) use ($commentsByPost, $imagesByPost, $currentUserId): array {
+            $postId = (int) $post['id'];
+            $brandName = $post['brand_name'] ?? null;
+            $modelName = $post['model_name'] ?? null;
+
+            return [
+                'id' => $postId,
+                'user_id' => (int) $post['user_id'],
+                'author_name' => (string) ($post['pseudonym'] ?? $post['full_name']),
+                'author_username' => $post['username'],
+                'author_avatar_path' => $post['avatar_path'] ?? null,
+                'author_tier' => strtoupper((string) $post['membership_tier']) . ' MEMBER',
+                'profile_path' => $this->buildProfilePath($currentUserId, (int) $post['user_id'], $post['pseudonym'] ?? null),
+                'content' => $post['content'],
+                'created_at' => $post['created_at'],
+                'category_label' => $this->buildCategoryLabel($brandName, $modelName),
+                'brand_id' => $post['brand_id'] !== null ? (int) $post['brand_id'] : null,
+                'model_id' => $post['model_id'] !== null ? (int) $post['model_id'] : null,
+                'like_count' => (int) $post['like_count'],
+                'save_count' => (int) $post['save_count'],
+                'comment_count' => (int) $post['comment_count'],
+                'liked_by_current_user' => (bool) $post['liked_by_current_user'],
+                'saved_by_current_user' => (bool) $post['saved_by_current_user'],
+                'commented_by_current_user' => (bool) $post['commented_by_current_user'],
+                'comments' => $commentsByPost[$postId] ?? [],
+                'images' => $imagesByPost[$postId] ?? [],
+            ];
+        }, $posts);
+
+        $lastPost = end($mappedPosts) ?: null;
+
+        return [
+            'posts' => $mappedPosts,
+            'has_more' => $hasMore,
+            'next_cursor_created_at' => $hasMore && $lastPost ? (string) $lastPost['created_at'] : null,
+            'next_cursor_id' => $hasMore && $lastPost ? (int) $lastPost['id'] : null,
+        ];
+    }
+
+    private function getFeedPageByUserIncludingHiddenByBan(
+        int $currentUserId,
+        int $profileUserId,
+        int $limit,
+        ?string $cursorCreatedAt,
+        ?int $cursorId
+    ): array {
+        $conditions = ['p.user_id = :profile_user_id', '(p.is_active = TRUE OR p.hidden_by_user_ban = TRUE)'];
+        $params = [
+            'current_user_id' => $currentUserId,
+            'profile_user_id' => $profileUserId,
+        ];
+
+        if ($cursorCreatedAt !== null && $cursorId !== null && $cursorId > 0) {
+            $conditions[] = '(p.created_at < :cursor_created_at OR (p.created_at = :cursor_created_at AND p.id < :cursor_id))';
+            $params['cursor_created_at'] = $cursorCreatedAt;
+            $params['cursor_id'] = $cursorId;
+        }
+
+        $statement = $this->connection->prepare(
+            "SELECT
+                p.id,
+                p.user_id,
+                p.brand_id,
+                p.model_id,
+                p.content,
+                p.created_at,
+                p.updated_at,
+                u.username,
+                u.pseudonym,
+                u.avatar_path,
+                CONCAT(u.first_name, ' ', u.last_name) AS full_name,
+                u.membership_tier,
+                cb.name AS brand_name,
+                cm.name AS model_name,
+                COALESCE(like_counts.like_count, 0) AS like_count,
+                COALESCE(save_counts.save_count, 0) AS save_count,
+                COALESCE(comment_counts.comment_count, 0) AS comment_count,
+                COALESCE(like_ref.is_liked, FALSE) AS liked_by_current_user,
+                COALESCE(save_ref.is_saved, FALSE) AS saved_by_current_user,
+                COALESCE(comment_ref.has_comment, FALSE) AS commented_by_current_user
+            FROM community_posts p
+            INNER JOIN users u ON u.id = p.user_id
+            LEFT JOIN car_brands cb ON cb.id = p.brand_id
+            LEFT JOIN car_models cm ON cm.id = p.model_id
+            LEFT JOIN LATERAL (
+                SELECT COUNT(*)::INTEGER AS like_count
+                FROM community_post_likes l
+                WHERE l.post_id = p.id
+            ) AS like_counts ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT COUNT(*)::INTEGER AS save_count
+                FROM community_post_saves s
+                WHERE s.post_id = p.id
+            ) AS save_counts ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT COUNT(*)::INTEGER AS comment_count
+                FROM community_comments c
+                WHERE c.post_id = p.id
+                    AND c.is_active = TRUE
+            ) AS comment_counts ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT TRUE AS is_liked
+                FROM community_post_likes l
+                WHERE l.post_id = p.id
+                    AND l.user_id = :current_user_id
+                LIMIT 1
+            ) AS like_ref ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT TRUE AS is_saved
+                FROM community_post_saves s
+                WHERE s.post_id = p.id
+                    AND s.user_id = :current_user_id
+                LIMIT 1
+            ) AS save_ref ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT TRUE AS has_comment
+                FROM community_comments c
+                WHERE c.post_id = p.id
+                    AND c.user_id = :current_user_id
+                    AND c.is_active = TRUE
+                LIMIT 1
+            ) AS comment_ref ON TRUE
+            WHERE " . implode(' AND ', $conditions) . "
+            ORDER BY p.created_at DESC, p.id DESC
+            LIMIT :limit_plus_one"
+        );
+        $statement->bindValue(':limit_plus_one', $limit + 1, PDO::PARAM_INT);
+        foreach ($params as $name => $value) {
+            $type = is_int($value) ? PDO::PARAM_INT : PDO::PARAM_STR;
+            $statement->bindValue(':' . $name, $value, $type);
+        }
+        $statement->execute();
+
+        $posts = $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
         $hasMore = count($posts) > $limit;
         if ($hasMore) {
             $posts = array_slice($posts, 0, $limit);
@@ -829,6 +992,16 @@ class CommunityRepository
             return null;
         }
 
+        $logStatement = $this->connection->prepare(
+            'INSERT INTO admin_removed_posts (post_id, user_id, post_excerpt)
+            VALUES (:post_id, :user_id, :post_excerpt)'
+        );
+        $logStatement->execute([
+            'post_id' => $postId,
+            'user_id' => (int) $postRow['user_id'],
+            'post_excerpt' => (string) $postRow['content'],
+        ]);
+
         return [
             'image_paths' => $imagePaths,
             'user_id' => (int) $postRow['user_id'],
@@ -856,6 +1029,10 @@ class CommunityRepository
                 u.avatar_path,
                 CONCAT(u.first_name, ' ', u.last_name) AS full_name,
                 u.membership_tier,
+                u.is_blocked,
+                u.blocked_until,
+                u.blocked_reason,
+                u.blocked_is_permanent,
                 COALESCE(us.privacy_full_name_visibility, 'public') AS privacy_full_name_visibility,
                 COALESCE(us.privacy_membership_visibility, 'public') AS privacy_membership_visibility,
                 COALESCE(us.privacy_profile_posts_visibility, 'public') AS privacy_profile_posts_visibility,
@@ -875,13 +1052,13 @@ class CommunityRepository
                 SELECT COUNT(*)::INTEGER AS post_count
                 FROM community_posts p
                 WHERE p.user_id = u.id
-                    AND p.is_active = TRUE
+                    AND (p.is_active = TRUE OR p.hidden_by_user_ban = TRUE)
             ) AS post_counts ON TRUE
             LEFT JOIN LATERAL (
                 SELECT COUNT(*)::INTEGER AS listing_count
                 FROM marketplace_listings l
                 WHERE l.user_id = u.id
-                    AND l.is_active = TRUE
+                    AND (l.is_active = TRUE OR l.hidden_by_user_ban = TRUE)
             ) AS listing_counts ON TRUE
             WHERE {$conditionSql}
                 AND u.is_active = TRUE
@@ -903,6 +1080,21 @@ class CommunityRepository
             'full_name' => $row['full_name'],
             'display_name' => $row['pseudonym'] ?: $row['full_name'],
             'membership_tier' => strtoupper((string) $row['membership_tier']) . ' MEMBER',
+            'is_currently_banned' => (bool) ($row['is_blocked'] ?? false)
+                && ((bool) ($row['blocked_is_permanent'] ?? false)
+                    || (
+                        !empty($row['blocked_until'])
+                        && strtotime((string) $row['blocked_until']) !== false
+                        && strtotime((string) $row['blocked_until']) > time()
+                    )),
+            'blocked_reason' => (string) ($row['blocked_reason'] ?? ''),
+            'blocked_until_label' => ((bool) ($row['blocked_is_permanent'] ?? false))
+                ? 'na stałe'
+                : (
+                    !empty($row['blocked_until']) && strtotime((string) $row['blocked_until']) !== false
+                        ? date('d.m.Y • H:i', strtotime((string) $row['blocked_until']))
+                        : ''
+                ),
             'privacy_full_name_visibility' => (string) ($row['privacy_full_name_visibility'] ?? 'public'),
             'privacy_membership_visibility' => (string) ($row['privacy_membership_visibility'] ?? 'public'),
             'privacy_profile_posts_visibility' => (string) ($row['privacy_profile_posts_visibility'] ?? 'public'),

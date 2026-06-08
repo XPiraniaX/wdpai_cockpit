@@ -549,7 +549,7 @@ class CommunityController extends AppController
         }, $posts);
     }
 
-    protected function renderCommunityPostsHtml(array $posts): string
+    protected function renderCommunityPostsHtml(array $posts, bool $isAdminProfileView = false): string
     {
         if ($posts === []) {
             return '';

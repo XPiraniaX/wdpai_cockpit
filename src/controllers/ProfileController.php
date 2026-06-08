@@ -68,10 +68,16 @@ class ProfileController extends CommunityController
         $profileUserId = (int) $profile['id'];
         $isOwnProfile = $profileUserId === $currentUserId;
         $canBypassPrivacy = $isAdminProfileView && !$isOwnProfile;
-        $canViewFullName = $isOwnProfile || $canBypassPrivacy || (($profile['privacy_full_name_visibility'] ?? 'public') === 'public');
-        $canViewMembershipTier = $isOwnProfile || $canBypassPrivacy || (($profile['privacy_membership_visibility'] ?? 'public') === 'public');
-        $canViewPosts = $isOwnProfile || $canBypassPrivacy || (($profile['privacy_profile_posts_visibility'] ?? 'public') === 'public');
-        $canViewListings = $isOwnProfile || $canBypassPrivacy || (($profile['privacy_profile_listings_visibility'] ?? 'public') === 'public');
+        $isProfileCurrentlyBlocked = (bool) ($profile['is_currently_banned'] ?? false);
+        $isBlockedForRegularViewer = $isProfileCurrentlyBlocked && !$isOwnProfile && !$canBypassPrivacy;
+        $canViewFullName = !$isBlockedForRegularViewer
+            && ($isOwnProfile || $canBypassPrivacy || (($profile['privacy_full_name_visibility'] ?? 'public') === 'public'));
+        $canViewMembershipTier = !$isBlockedForRegularViewer
+            && ($isOwnProfile || $canBypassPrivacy || (($profile['privacy_membership_visibility'] ?? 'public') === 'public'));
+        $canViewPosts = !$isBlockedForRegularViewer
+            && ($isOwnProfile || $canBypassPrivacy || (($profile['privacy_profile_posts_visibility'] ?? 'public') === 'public'));
+        $canViewListings = !$isBlockedForRegularViewer
+            && ($isOwnProfile || $canBypassPrivacy || (($profile['privacy_profile_listings_visibility'] ?? 'public') === 'public'));
         $activityScopes = [];
         if ($canViewPosts) {
             $activityScopes['posts'] = 'Posty';
@@ -107,13 +113,14 @@ class ProfileController extends CommunityController
                     $profileUserId,
                     self::PROFILE_POST_PAGE_SIZE,
                     $this->resolveCursorCreatedAt(),
-                    $this->resolveCursorId()
+                    $this->resolveCursorId(),
+                    $canBypassPrivacy
                 );
                 $mappedPosts = $this->mapPosts($feedPage['posts']);
 
                 $this->jsonResponse([
                     'success' => true,
-                    'html' => $this->renderCommunityPostsHtml($mappedPosts),
+                    'html' => $this->renderCommunityPostsHtml($mappedPosts, $isAdminProfileView),
                     'has_more' => $feedPage['has_more'],
                     'next_cursor_created_at' => $feedPage['next_cursor_created_at'],
                     'next_cursor_id' => $feedPage['next_cursor_id'],
@@ -126,7 +133,8 @@ class ProfileController extends CommunityController
                     $profileUserId,
                     $listingVisibility,
                     self::PROFILE_LISTING_PAGE_SIZE,
-                    $this->resolveOffset()
+                    $this->resolveOffset(),
+                    $canBypassPrivacy
                 );
                 $mappedListings = $this->mapProfileListings($feedPage['listings']);
 
@@ -156,7 +164,10 @@ class ProfileController extends CommunityController
             $feedPage = $repository->getFeedPageByUser(
                 $currentUserId,
                 $profileUserId,
-                self::PROFILE_POST_PAGE_SIZE
+                self::PROFILE_POST_PAGE_SIZE,
+                null,
+                null,
+                $canBypassPrivacy
             );
             $posts = $this->mapPosts($feedPage['posts']);
             $hasMorePosts = $feedPage['has_more'];
@@ -172,7 +183,9 @@ class ProfileController extends CommunityController
                 $currentUserId,
                 $profileUserId,
                 $listingVisibility,
-                self::PROFILE_LISTING_PAGE_SIZE
+                self::PROFILE_LISTING_PAGE_SIZE,
+                0,
+                $canBypassPrivacy
             );
             $listings = $this->mapProfileListings($feedPage['listings']);
             $hasMoreListings = $feedPage['has_more'];
@@ -184,6 +197,8 @@ class ProfileController extends CommunityController
             'profile' => $profile,
             'isOwnProfile' => $isOwnProfile,
             'isAdminProfileView' => $isAdminProfileView,
+            'isProfileCurrentlyBlocked' => $isProfileCurrentlyBlocked,
+            'isBlockedForRegularViewer' => $isBlockedForRegularViewer,
             'canViewFullName' => $canViewFullName,
             'canViewMembershipTier' => $canViewMembershipTier,
             'canViewPosts' => $canViewPosts,

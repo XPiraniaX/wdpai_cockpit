@@ -2,6 +2,8 @@
 
 class AppController
 {
+    private bool $banStateSynchronized = false;
+
     public function enforceCsrfProtection(): void
     {
         if (!$this->isPost()) {
@@ -72,6 +74,8 @@ class AppController
 
     protected function render(string $template, array $variables = []): void
     {
+        $this->synchronizeUserBanState();
+
         $templatePath = 'public/views/' . $template . '.html';
         $viewPath = file_exists($templatePath) ? $templatePath : 'public/views/404.html';
         $currentUserId = $this->getCurrentUserId();
@@ -82,6 +86,11 @@ class AppController
         $csrfToken = $this->getCsrfToken();
         $requiresPseudonymSetup = $this->isAuthenticated()
             && trim((string) ($currentUser['pseudonym'] ?? '')) === '';
+        $requiresAdminWarningLock = $this->isAuthenticated()
+            && trim((string) ($currentUser['admin_warning_message'] ?? '')) !== '';
+        $requiresBanLock = $this->isAuthenticated()
+            && !empty($currentUser['is_currently_banned'])
+            && !$requiresAdminWarningLock;
         $flash = $this->consumeFlash();
         $styleFiles = [
             'base.css',
@@ -111,6 +120,8 @@ class AppController
 
     protected function renderAuth(string $view, array $variables = []): void
     {
+        $this->synchronizeUserBanState();
+
         $templatePath = 'public/views/' . $view . '.html';
         $styleFiles = [
             'base.css',
@@ -138,6 +149,8 @@ class AppController
 
     protected function requireAuthentication(): void
     {
+        $this->synchronizeUserBanState();
+
         if ($this->isAuthenticated()) {
             return;
         }
@@ -148,6 +161,8 @@ class AppController
 
     protected function isAdmin(): bool
     {
+        $this->synchronizeUserBanState();
+
         if (!$this->isAuthenticated()) {
             return false;
         }
@@ -181,8 +196,67 @@ class AppController
         exit;
     }
 
+    public function guardBlockedUserMutationRoute(): void
+    {
+        if (!$this->isAuthenticated()) {
+            return;
+        }
+
+        $currentUser = $this->resolveCurrentUser($this->getCurrentUserId());
+        if (empty($currentUser['is_currently_banned'])) {
+            return;
+        }
+
+        $message = 'Konto jest zablokowane. Ta akcja jest obecnie niedostępna.';
+        if ($this->isAjaxRequest()) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => $message,
+            ], 423);
+        }
+
+        $this->setFlash('error', $message);
+        $this->redirect('/dashboard');
+    }
+
+    public function guardAdminWarningMutationRoute(): void
+    {
+        if (!$this->isAuthenticated()) {
+            return;
+        }
+
+        $currentUser = $this->resolveCurrentUser($this->getCurrentUserId());
+        if (trim((string) ($currentUser['admin_warning_message'] ?? '')) === '') {
+            return;
+        }
+
+        $message = 'Masz aktywne ostrzeżenie administratora. Potwierdź komunikat, aby kontynuować.';
+        if ($this->isAjaxRequest()) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => $message,
+            ], 423);
+        }
+
+        $this->setFlash('error', $message);
+        $this->redirect('/dashboard');
+    }
+
+    public function handleAcknowledgeAdminWarningAction(): void
+    {
+        $this->requireAuthentication();
+
+        $repository = new UserRepository(Database::getConnection());
+        $repository->clearAdminWarning($this->getCurrentUserId());
+
+        $redirectTo = $this->sanitizeBackRedirect((string) ($_POST['redirect_to'] ?? '/dashboard'));
+        $this->redirect($redirectTo);
+    }
+
     protected function redirectIfAuthenticated(string $path = '/dashboard'): void
     {
+        $this->synchronizeUserBanState();
+
         if ($this->isAuthenticated()) {
             $this->redirect($path);
         }
@@ -377,13 +451,35 @@ class AppController
             'avatar_path' => null,
             'role' => 'user',
             'membership_tier' => 'free',
+            'is_currently_banned' => false,
+            'blocked_reason' => null,
+            'blocked_until' => null,
+            'blocked_until_label' => null,
+            'blocked_is_permanent' => false,
         ];
 
         try {
+            $this->synchronizeUserBanState();
             $repository = new UserRepository(Database::getConnection());
             $user = $repository->getById($userId);
+            if (!$user) {
+                return $fallbackUser;
+            }
 
-            return $user ?: $fallbackUser;
+            $isCurrentlyBanned = (bool) ($user['is_blocked'] ?? false)
+                && ((bool) ($user['blocked_is_permanent'] ?? false)
+                    || (
+                        !empty($user['blocked_until'])
+                        && strtotime((string) $user['blocked_until']) !== false
+                        && strtotime((string) $user['blocked_until']) > time()
+                    ));
+
+            $user['is_currently_banned'] = $isCurrentlyBanned;
+            $user['blocked_until_label'] = $isCurrentlyBanned
+                ? $this->formatBanUntilLabel($user['blocked_until'] ?? null, (bool) ($user['blocked_is_permanent'] ?? false))
+                : null;
+
+            return $user;
         } catch (Throwable) {
             return $fallbackUser;
         }
@@ -392,6 +488,7 @@ class AppController
     private function resolveNotificationUnreadCount(int $userId): int
     {
         try {
+            $this->synchronizeUserBanState();
             $repository = new NotificationRepository(Database::getConnection());
             $repository->syncUserNotifications($userId);
 
@@ -399,5 +496,39 @@ class AppController
         } catch (Throwable) {
             return 0;
         }
+    }
+
+    protected function synchronizeUserBanState(): void
+    {
+        if ($this->banStateSynchronized) {
+            return;
+        }
+
+        $this->banStateSynchronized = true;
+
+        try {
+            $repository = new UserRepository(Database::getConnection());
+            $repository->releaseExpiredBans();
+        } catch (Throwable) {
+        }
+    }
+
+    private function formatBanUntilLabel(mixed $blockedUntil, bool $isPermanent): string
+    {
+        if ($isPermanent) {
+            return 'na stałe';
+        }
+
+        $blockedUntilValue = trim((string) $blockedUntil);
+        if ($blockedUntilValue === '') {
+            return 'na stałe';
+        }
+
+        $timestamp = strtotime($blockedUntilValue);
+        if ($timestamp === false) {
+            return 'na stałe';
+        }
+
+        return date('d.m.Y • H:i', $timestamp);
     }
 }
