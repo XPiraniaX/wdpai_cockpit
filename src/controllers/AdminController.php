@@ -2,7 +2,7 @@
 
 class AdminController extends AppController
 {
-    private const CATALOG_USERS_PER_PAGE = 5;
+    private const CATALOG_USERS_PER_PAGE = 7;
     private const ADMIN_TIMEZONE = 'Europe/Warsaw';
 
     private UserRepository $userRepository;
@@ -25,14 +25,19 @@ class AdminController extends AppController
             $this->handleCatalogUsersPage();
         }
 
+        if ($this->isAjaxRequest() && isset($_GET['catalog_search'])) {
+            $this->handleCatalogUserSearch();
+        }
+
         $openUserId = $this->normalizeOptionalPositiveInt($_GET['open_user'] ?? null);
         $initialCatalogPage = $openUserId !== null && $openUserId > 0
             ? $this->userRepository->getAdminCatalogPageForUser($openUserId, self::CATALOG_USERS_PER_PAGE)
             : $this->normalizePositiveInt($_GET['catalog_page'] ?? 1);
         $catalog = $this->buildCatalogUsersPayload($initialCatalogPage);
+        $globalStats = $this->userRepository->getAdminGlobalStats();
 
         $this->render('admin_panel', [
-            'title' => 'Panel zarządzania / Dashboard',
+            'title' => 'Panel zarządzania / Użytkownicy',
             'styleFiles' => [
                 'base.css',
                 'layout.css',
@@ -48,6 +53,7 @@ class AdminController extends AppController
             'scriptFiles' => ['admin_panel.js'],
             'adminCatalogUsers' => $catalog,
             'adminCatalogOpenUserId' => $openUserId,
+            'adminGlobalStats' => $globalStats,
         ]);
     }
 
@@ -57,6 +63,36 @@ class AdminController extends AppController
         $this->jsonResponse([
             'success' => true,
             'catalog' => $this->buildCatalogUsersPayload($page),
+        ]);
+    }
+
+    private function handleCatalogUserSearch(): void
+    {
+        $query = trim((string) ($_GET['catalog_search'] ?? ''));
+        if ($query === '') {
+            $this->jsonResponse([
+                'success' => true,
+                'suggestions' => [],
+            ]);
+        }
+
+        $rows = $this->userRepository->searchAdminCatalogUsers($query, 6);
+        $suggestions = array_map(function (array $user): array {
+            $mapped = $this->mapCatalogUserRow($user);
+
+            return [
+                'id' => (int) ($mapped['id'] ?? 0),
+                'pseudonym' => (string) ($mapped['pseudonym'] ?? ''),
+                'full_name' => (string) ($mapped['full_name'] ?? ''),
+                'email' => (string) ($mapped['email'] ?? ''),
+                'avatar_path' => (string) ($mapped['avatar_path'] ?? ''),
+                'page' => $this->userRepository->getAdminCatalogPageForUser((int) ($mapped['id'] ?? 0), self::CATALOG_USERS_PER_PAGE),
+            ];
+        }, $rows);
+
+        $this->jsonResponse([
+            'success' => true,
+            'suggestions' => $suggestions,
         ]);
     }
 

@@ -814,6 +814,40 @@ class UserRepository
         return (int) $statement->fetchColumn();
     }
 
+    public function getAdminGlobalStats(): array
+    {
+        $statement = $this->connection->query(
+            "SELECT
+                (SELECT COUNT(*)::INTEGER
+                 FROM users u
+                 WHERE u.is_active = TRUE) AS total_users,
+                (SELECT COUNT(*)::INTEGER
+                 FROM users u
+                 WHERE u.is_active = TRUE
+                   AND u.last_login_at IS NOT NULL
+                   AND u.last_login_at >= (CURRENT_TIMESTAMP - INTERVAL '10 minutes')) AS active_users,
+                (SELECT COUNT(*)::INTEGER
+                 FROM vehicles v
+                 WHERE v.status <> 'archived') AS vehicle_count,
+                (SELECT COUNT(*)::INTEGER
+                 FROM community_posts p
+                 WHERE p.is_active = TRUE) AS active_post_count,
+                (SELECT COUNT(*)::INTEGER
+                 FROM marketplace_listings l
+                 WHERE l.is_active = TRUE) AS active_listing_count"
+        );
+
+        $row = $statement->fetch() ?: [];
+
+        return [
+            'total_users' => (int) ($row['total_users'] ?? 0),
+            'active_users' => (int) ($row['active_users'] ?? 0),
+            'vehicle_count' => (int) ($row['vehicle_count'] ?? 0),
+            'active_post_count' => (int) ($row['active_post_count'] ?? 0),
+            'active_listing_count' => (int) ($row['active_listing_count'] ?? 0),
+        ];
+    }
+
     public function getAdminCatalogPageForUser(int $userId, int $perPage): int
     {
         $perPage = max(1, $perPage);
@@ -842,6 +876,59 @@ class UserRepository
         }
 
         return max(1, (int) ceil($rowNumber / $perPage));
+    }
+
+    public function searchAdminCatalogUsers(string $query, int $limit = 6): array
+    {
+        $normalizedQuery = trim($query);
+        if ($normalizedQuery === '') {
+            return [];
+        }
+
+        $limit = max(1, min(10, $limit));
+        $searchLike = '%' . $normalizedQuery . '%';
+        $prefixLike = $normalizedQuery . '%';
+
+        $statement = $this->connection->prepare(
+            "SELECT
+                u.id,
+                u.username,
+                u.email,
+                u.first_name,
+                u.last_name,
+                u.pseudonym,
+                u.avatar_path,
+                COALESCE(NULLIF(TRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), 'Użytkownik') AS full_name
+            FROM users u
+            WHERE u.is_active = TRUE
+                AND (
+                    COALESCE(u.pseudonym, '') ILIKE :search_like
+                    OR CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) ILIKE :search_like
+                    OR COALESCE(u.email, '') ILIKE :search_like
+                )
+            ORDER BY
+                CASE
+                    WHEN COALESCE(u.pseudonym, '') ILIKE :exact_value THEN 0
+                    WHEN COALESCE(u.pseudonym, '') ILIKE :prefix_like THEN 1
+                    WHEN CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) ILIKE :exact_value THEN 2
+                    WHEN CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) ILIKE :prefix_like THEN 3
+                    WHEN COALESCE(u.email, '') ILIKE :exact_value THEN 4
+                    WHEN COALESCE(u.email, '') ILIKE :prefix_like THEN 5
+                    WHEN COALESCE(u.pseudonym, '') ILIKE :search_like THEN 6
+                    WHEN CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')) ILIKE :search_like THEN 7
+                    ELSE 8
+                END ASC,
+                LOWER(COALESCE(NULLIF(u.pseudonym, ''), u.username)) ASC,
+                u.id ASC
+            LIMIT :limit"
+        );
+        $statement->bindValue(':search_like', $searchLike, PDO::PARAM_STR);
+        $statement->bindValue(':prefix_like', $prefixLike, PDO::PARAM_STR);
+        $statement->bindValue(':exact_value', $normalizedQuery, PDO::PARAM_STR);
+        $statement->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
     public function getAdminCatalogUsersPage(int $page, int $perPage): array

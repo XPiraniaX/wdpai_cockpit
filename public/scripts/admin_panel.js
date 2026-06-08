@@ -1,4 +1,4 @@
-(() => {
+﻿(() => {
     const fallbackShowAppToast = (message, type = 'info') => {
         const existingToast = document.querySelector('[data-app-toast]');
         existingToast?.remove();
@@ -41,6 +41,9 @@
     const catalogPageList = root.querySelector('[data-admin-catalog-page-list]');
     const catalogPrevButton = root.querySelector('[data-admin-catalog-prev]');
     const catalogNextButton = root.querySelector('[data-admin-catalog-next]');
+    const catalogSearchRoot = root.querySelector('[data-admin-catalog-search]');
+    const catalogSearchInput = root.querySelector('[data-admin-catalog-search-input]');
+    const catalogSearchResults = root.querySelector('[data-admin-catalog-search-results]');
 
     const userModalRoot = document.querySelector('[data-admin-user-modal-root]');
     const userModalAvatar = document.querySelector('[data-admin-user-modal-avatar]');
@@ -76,8 +79,7 @@
     const warningModalConfirm = document.querySelector('[data-admin-warning-modal-confirm]');
 
     const tabLabelMap = {
-        dashboard: 'Dashboard',
-        users: 'Użytkownicy',
+        dashboard: 'Użytkownicy',
         cars: 'Samochody',
         reports: 'Zgłoszenia',
     };
@@ -128,10 +130,14 @@
 
     const catalogState = {
         page: Number(catalogRoot?.getAttribute('data-admin-catalog-page') || 1),
+        perPage: Number(catalogRoot?.getAttribute('data-admin-catalog-per-page') || 7),
         totalPages: Number(catalogRoot?.getAttribute('data-admin-catalog-total-pages') || 1),
         totalUsers: Number(catalogRoot?.getAttribute('data-admin-catalog-total-users') || 0),
         openUserId: Number(catalogRoot?.getAttribute('data-admin-open-user-id') || 0),
+        highlightUserId: Number(catalogRoot?.getAttribute('data-admin-open-user-id') || 0),
         isLoading: false,
+        searchRequestId: 0,
+        searchDebounceId: 0,
     };
 
     const moderationState = {
@@ -408,6 +414,36 @@
         `;
     };
 
+    const buildSearchSuggestionMarkup = (suggestion, index) => {
+        const avatarPath = String(suggestion.avatar_path || '');
+        const hasImage = avatarPath.trim() !== '';
+        const pseudonym = escapeHtml(String(suggestion.pseudonym || ''));
+        const fullName = escapeHtml(String(suggestion.full_name || ''));
+        const email = escapeHtml(String(suggestion.email || ''));
+
+        return `
+            <button
+                type="button"
+                class="admin-catalog-search-option${index === 0 ? ' is-active' : ''}"
+                data-admin-search-option
+                data-admin-search-user-id="${Number(suggestion.id || 0)}"
+                data-admin-search-page="${Number(suggestion.page || 1)}"
+                data-admin-search-pseudonym="${escapeAttribute(String(suggestion.pseudonym || ''))}"
+                data-admin-search-full-name="${escapeAttribute(String(suggestion.full_name || ''))}"
+                data-admin-search-email="${escapeAttribute(String(suggestion.email || ''))}"
+            >
+                <span class="admin-catalog-avatar${hasImage ? ' has-image' : ''}">
+                    ${hasImage ? `<img src="${escapeAttribute(avatarPath)}" alt="${pseudonym}" class="admin-catalog-avatar-image">` : ''}
+                    <span class="admin-catalog-avatar-ring"></span>
+                </span>
+                <span class="admin-catalog-search-copy">
+                    <span class="admin-catalog-search-primary">${pseudonym}${fullName !== '' ? ` • ${fullName}` : ''}</span>
+                    <span class="admin-catalog-search-secondary">${email}</span>
+                </span>
+            </button>
+        `;
+    };
+
     const ensureAvatar = (container, avatarPath, pseudonym, imageClass) => {
         if (!(container instanceof HTMLElement)) {
             return;
@@ -535,6 +571,132 @@
         }
     };
 
+    const clearCatalogHighlight = () => {
+        if (!(catalogRowsRoot instanceof HTMLElement)) {
+            return;
+        }
+
+        catalogRowsRoot.querySelectorAll('.admin-catalog-table-row.is-highlighted').forEach((row) => {
+            row.classList.remove('is-highlighted');
+        });
+        catalogState.highlightUserId = 0;
+    };
+
+    const highlightCatalogRow = (userId, shouldScroll = false) => {
+        if (!(catalogRowsRoot instanceof HTMLElement) || userId <= 0) {
+            clearCatalogHighlight();
+            return;
+        }
+
+        clearCatalogHighlight();
+        const row = catalogRowsRoot.querySelector(`[data-admin-user-row][data-admin-user-id="${String(userId)}"]`);
+        if (!(row instanceof HTMLElement)) {
+            return;
+        }
+
+        row.classList.add('is-highlighted');
+        if (shouldScroll) {
+            row.scrollIntoView({ block: 'center', behavior: 'smooth' });
+        }
+    };
+
+    const closeCatalogSearchSuggestions = () => {
+        if (catalogSearchResults instanceof HTMLElement) {
+            catalogSearchResults.hidden = true;
+            catalogSearchResults.innerHTML = '';
+        }
+    };
+
+    const renderCatalogSearchSuggestions = (suggestions) => {
+        if (!(catalogSearchResults instanceof HTMLElement)) {
+            return;
+        }
+
+        if (!Array.isArray(suggestions) || suggestions.length === 0) {
+            catalogSearchResults.innerHTML = '<div class="admin-catalog-search-empty">Brak dopasowań.</div>';
+            catalogSearchResults.hidden = false;
+            return;
+        }
+
+        catalogSearchResults.innerHTML = suggestions
+            .map((suggestion, index) => buildSearchSuggestionMarkup(suggestion, index))
+            .join('');
+        catalogSearchResults.hidden = false;
+    };
+
+    const openCatalogSearchSuggestion = async (suggestion) => {
+        const userId = Number(suggestion.id || 0);
+        const targetPage = Math.max(1, Number(suggestion.page || 1));
+        if (userId <= 0) {
+            return;
+        }
+
+        catalogState.openUserId = userId;
+        catalogState.highlightUserId = userId;
+        if (catalogRoot instanceof HTMLElement) {
+            catalogRoot.setAttribute('data-admin-open-user-id', String(userId));
+        }
+
+        if (catalogSearchInput instanceof HTMLInputElement) {
+            const fullName = String(suggestion.full_name || '').trim();
+            catalogSearchInput.value = fullName !== ''
+                ? `${String(suggestion.pseudonym || '').trim()} • ${fullName}`
+                : String(suggestion.pseudonym || '').trim();
+        }
+        closeCatalogSearchSuggestions();
+
+        if (catalogState.page === targetPage) {
+            highlightCatalogRow(userId, true);
+            tryOpenRequestedUserModal();
+            return;
+        }
+
+        await loadCatalogPage(targetPage);
+    };
+
+    const fetchCatalogSearchSuggestions = async (query) => {
+        const normalizedQuery = String(query || '').trim();
+        if (normalizedQuery === '') {
+            closeCatalogSearchSuggestions();
+            return;
+        }
+
+        const requestId = ++catalogState.searchRequestId;
+
+        try {
+            const url = new URL(window.location.href);
+            url.hash = '#dashboard';
+            url.searchParams.delete('catalog_page');
+            url.searchParams.set('catalog_search', normalizedQuery);
+
+            const response = await window.fetch(url.toString(), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                credentials: 'same-origin',
+            });
+            const payload = await response.json().catch(() => null);
+            if (requestId !== catalogState.searchRequestId) {
+                return;
+            }
+            if (!response.ok || !payload?.success) {
+                throw new Error('catalog_search_failed');
+            }
+
+            renderCatalogSearchSuggestions(Array.isArray(payload.suggestions) ? payload.suggestions : []);
+        } catch {
+            if (requestId !== catalogState.searchRequestId) {
+                return;
+            }
+
+            if (catalogSearchResults instanceof HTMLElement) {
+                catalogSearchResults.innerHTML = '<div class="admin-catalog-search-empty">Nie udało się pobrać podpowiedzi.</div>';
+                catalogSearchResults.hidden = false;
+            }
+        }
+    };
+
     const closeUserModal = () => {
         if (!(userModalRoot instanceof HTMLElement)) {
             return;
@@ -608,7 +770,29 @@
             return;
         }
 
-        catalogRowsRoot.innerHTML = rows.map((row) => buildRowMarkup(row)).join('');
+        const safeRows = Array.isArray(rows) ? rows : [];
+        catalogRowsRoot.innerHTML = safeRows.map((row) => buildRowMarkup(row)).join('');
+    };
+
+    const syncCatalogRowsHeight = () => {
+        if (!(catalogRowsRoot instanceof HTMLElement)) {
+            return;
+        }
+
+        const rows = Array.from(catalogRowsRoot.querySelectorAll('.admin-catalog-table-row:not(.is-placeholder)'));
+        const elementRows = rows.filter((row) => row instanceof HTMLElement);
+        if (elementRows.length === 0) {
+            catalogRowsRoot.style.minHeight = '';
+            return;
+        }
+
+        const totalVisibleHeight = elementRows.reduce((sum, row) => sum + row.getBoundingClientRect().height, 0);
+        if (totalVisibleHeight <= 0) {
+            return;
+        }
+
+        const averageRowHeight = totalVisibleHeight / elementRows.length;
+        catalogRowsRoot.style.minHeight = `${Math.ceil(averageRowHeight * Math.max(1, catalogState.perPage))}px`;
     };
 
     const applyCatalogPayload = (catalog) => {
@@ -618,12 +802,15 @@
 
         if (catalogRoot instanceof HTMLElement) {
             catalogRoot.setAttribute('data-admin-catalog-page', String(catalogState.page));
+            catalogRoot.setAttribute('data-admin-catalog-per-page', String(catalogState.perPage));
             catalogRoot.setAttribute('data-admin-catalog-total-pages', String(catalogState.totalPages));
             catalogRoot.setAttribute('data-admin-catalog-total-users', String(catalogState.totalUsers));
         }
 
         renderCatalogRows(Array.isArray(catalog.rows) ? catalog.rows : []);
+        syncCatalogRowsHeight();
         renderCatalogPagination();
+        highlightCatalogRow(catalogState.highlightUserId, true);
         tryOpenRequestedUserModal();
     };
 
@@ -676,7 +863,7 @@
             breadcrumbTitle.textContent = 'Panel zarządzania';
         }
         if (breadcrumbSubtitle instanceof HTMLElement) {
-            breadcrumbSubtitle.textContent = tabLabelMap[tabName] || 'Dashboard';
+            breadcrumbSubtitle.textContent = tabLabelMap[tabName] || 'Użytkownicy';
         }
     };
 
@@ -1062,6 +1249,7 @@
         });
         const nextRow = wrapper.firstElementChild;
         if (nextRow instanceof HTMLElement) {
+            nextRow.classList.toggle('is-highlighted', Number(user.id || 0) === catalogState.highlightUserId);
             row.replaceWith(nextRow);
         }
     };
@@ -1164,7 +1352,7 @@
 
         const message = String(warningState.message || '').trim();
         if (message === '') {
-            showToast('Wpisz treĹ›Ä‡ ostrzeĹĽenia przed wysĹ‚aniem.', 'error');
+            showToast('Wpisz treść ostrzeżenia przed wysłaniem.', 'error');
             return;
         }
 
@@ -1179,11 +1367,11 @@
             });
             closeWarningModal();
             ensureBodyLockState();
-            showToast(String(result.message || 'OstrzeĹĽenie zostaĹ‚o wysĹ‚ane.'), 'success');
+            showToast(String(result.message || 'Ostrzeżenie zostało wysłane.'), 'success');
         } catch (error) {
             warningState.isSubmitting = false;
             renderWarningModal();
-            showToast(error instanceof Error ? error.message : 'Nie udaĹ‚o siÄ™ wysĹ‚aÄ‡ ostrzeĹĽenia.', 'error');
+            showToast(error instanceof Error ? error.message : 'Nie udało się wysłać ostrzeżenia.', 'error');
         }
     };
 
@@ -1237,9 +1425,53 @@
         });
     }
 
+    if (catalogSearchInput instanceof HTMLInputElement) {
+        catalogSearchInput.addEventListener('input', () => {
+            const query = catalogSearchInput.value;
+            clearCatalogHighlight();
+            window.clearTimeout(catalogState.searchDebounceId);
+
+            if (String(query || '').trim() === '') {
+                closeCatalogSearchSuggestions();
+                return;
+            }
+
+            catalogState.searchDebounceId = window.setTimeout(() => {
+                void fetchCatalogSearchSuggestions(query);
+            }, 180);
+        });
+
+        catalogSearchInput.addEventListener('focus', () => {
+            if (String(catalogSearchInput.value || '').trim() !== '' && catalogSearchResults instanceof HTMLElement && catalogSearchResults.innerHTML.trim() !== '') {
+                catalogSearchResults.hidden = false;
+            }
+        });
+    }
+
+    window.addEventListener('scroll', () => {
+        if (catalogState.highlightUserId > 0) {
+            clearCatalogHighlight();
+        }
+    }, { passive: true });
+
     tryOpenRequestedUserModal();
 
     root.addEventListener('click', (event) => {
+        const suggestionTrigger = event.target instanceof HTMLElement
+            ? event.target.closest('[data-admin-search-option]')
+            : null;
+        if (suggestionTrigger instanceof HTMLElement) {
+            event.preventDefault();
+            void openCatalogSearchSuggestion({
+                id: Number(suggestionTrigger.getAttribute('data-admin-search-user-id') || 0),
+                page: Number(suggestionTrigger.getAttribute('data-admin-search-page') || 1),
+                pseudonym: String(suggestionTrigger.getAttribute('data-admin-search-pseudonym') || ''),
+                full_name: String(suggestionTrigger.getAttribute('data-admin-search-full-name') || ''),
+                email: String(suggestionTrigger.getAttribute('data-admin-search-email') || ''),
+            });
+            return;
+        }
+
         const trigger = event.target instanceof HTMLElement
             ? event.target.closest('[data-admin-user-row]')
             : null;
@@ -1247,7 +1479,23 @@
             return;
         }
 
+        const selectedUserId = Number(trigger.getAttribute('data-admin-user-id') || 0);
+        catalogState.highlightUserId = selectedUserId;
+        highlightCatalogRow(selectedUserId);
         openUserModal(parseUserFromRow(trigger));
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!(catalogSearchRoot instanceof HTMLElement)) {
+            return;
+        }
+
+        const target = event.target;
+        if (target instanceof Node && catalogSearchRoot.contains(target)) {
+            return;
+        }
+
+        closeCatalogSearchSuggestions();
     });
 
     document.addEventListener('click', (event) => {
@@ -1408,6 +1656,11 @@
     }
 
     document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && catalogSearchResults instanceof HTMLElement && !catalogSearchResults.hidden) {
+            closeCatalogSearchSuggestions();
+            return;
+        }
+
         if (event.key !== 'Escape') {
             return;
         }
@@ -1435,3 +1688,4 @@
     renderCatalogPagination();
     syncFromHash();
 })();
+

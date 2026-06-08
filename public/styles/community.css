@@ -422,7 +422,7 @@
 .community-feed {
     display: flex;
     flex-direction: column;
-    gap: 0px;
+    gap: -0px;
 }
 
 .community-feed-loader {
