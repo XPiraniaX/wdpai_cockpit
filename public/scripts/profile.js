@@ -730,21 +730,30 @@ const bindProfileHeroActions = () => {
             event.stopPropagation();
             event.stopImmediatePropagation();
 
-            const confirmed = await openProfileMarketplaceConfirmModal({
-                kicker: 'Zgłoszenie profilu',
-                title: 'Zgłosić profil?',
-                message: 'Czy na pewno chcesz zgłosić ten profil do weryfikacji?',
-                confirmLabel: 'Zgłoś profil',
-                tone: 'danger',
-            });
-            if (!confirmed) {
+            const selection = typeof window.openContentReportModal === 'function'
+                ? await window.openContentReportModal({
+                    kicker: 'Zgłoszenie profilu',
+                    title: 'Wybierz powód zgłoszenia profilu',
+                    reasons: [
+                        { value: 'impersonation_profile', label: 'Profil podszywa się pod inną osobę lub markę' },
+                        { value: 'abusive_profile', label: 'Profil narusza zasady społeczności' },
+                        { value: 'spam_profile', label: 'Profil służy do spamu lub nadużyć' },
+                        { value: 'fraud_profile', label: 'Profil wygląda na próbę oszustwa' },
+                    ],
+                })
+                : null;
+            if (!selection || typeof selection.code !== 'string' || selection.code.trim() === '') {
                 return;
             }
+
+            const formData = new FormData(form);
+            formData.set('report_reason_code', selection.code);
+            formData.set('report_reason_text', typeof selection.text === 'string' ? selection.text : '');
 
             try {
                 const response = await fetch(form.getAttribute('action') || window.location.pathname + window.location.search, {
                     method: 'POST',
-                    body: new FormData(form),
+                    body: formData,
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
                     },
@@ -1976,18 +1985,26 @@ const bindProfileMarketplaceChunk = (root = document) => {
             event.stopPropagation();
             event.stopImmediatePropagation();
 
-            const confirmed = await openProfileMarketplaceConfirmModal({
-                kicker: 'Usuwanie ogĹ‚oszenia',
-                title: 'UsunÄ…Ä‡ ogĹ‚oszenie?',
-                message: 'UsuniÄ™cie ogĹ‚oszenia skasuje je na staĹ‚e wraz z jego zdjÄ™ciami. Tej operacji nie da siÄ™ cofnÄ…Ä‡.',
-                confirmLabel: 'UsuĹ„ ogĹ‚oszenie',
-                tone: 'danger',
-            });
-            if (!confirmed) {
+            const selection = typeof window.openContentReportModal === 'function'
+                ? await window.openContentReportModal({
+                    kicker: 'Zgłoszenie ogłoszenia',
+                    title: 'Wybierz powód zgłoszenia ogłoszenia',
+                    reasons: [
+                        { value: 'misleading_listing', label: 'Ogłoszenie zawiera wprowadzające w błąd informacje' },
+                        { value: 'prohibited_listing', label: 'Ogłoszenie zawiera niedozwoloną treść' },
+                        { value: 'spam_listing', label: 'To spam lub duplikat ogłoszenia' },
+                        { value: 'privacy_listing', label: 'Ogłoszenie narusza prywatność lub dane osobowe' },
+                        { value: 'scam_listing', label: 'Ogłoszenie wygląda na próbę oszustwa' },
+                    ],
+                })
+                : null;
+            if (!selection || typeof selection.code !== 'string' || selection.code.trim() === '') {
                 return;
             }
 
             const formData = new FormData(form);
+            formData.set('report_reason_code', selection.code);
+            formData.set('report_reason_text', typeof selection.text === 'string' ? selection.text : '');
             const endpoint = form.getAttribute('action') || '/marketplace';
 
             try {
@@ -2005,7 +2022,7 @@ const bindProfileMarketplaceChunk = (root = document) => {
 
                 const payload = await response.json();
                 if (!payload.success) {
-                    throw new Error('Invalid payload');
+                    throw new Error(String(payload.message || 'Invalid payload'));
                 }
 
                 if (typeof window.showAppToast === 'function') {

@@ -461,6 +461,33 @@ class ProfileController extends CommunityController
             $this->redirect($redirectPath);
         }
 
+        $reason = $this->resolveValidatedReportReason(
+            'profile',
+            $_POST['report_reason_code'] ?? null,
+            $_POST['report_reason_text'] ?? null
+        );
+        if (
+            $reason === null
+            || !(new ReportsRepository(Database::getConnection()))->createReport(
+                $currentUserId,
+                'profile',
+                (int) $profile['id'],
+                (string) $reason['code'],
+                (string) $reason['label'],
+                isset($reason['text']) ? (string) $reason['text'] : null
+            )
+        ) {
+            if ($this->isAjaxRequest()) {
+                $this->jsonResponse([
+                    'success' => false,
+                    'message' => 'Nie udało się zgłosić profilu.',
+                ], 422);
+            }
+
+            $this->setFlash('error', 'Nie udało się zgłosić profilu.');
+            $this->redirect($redirectPath);
+        }
+
         if ($this->isAjaxRequest()) {
             $this->jsonResponse([
                 'success' => true,

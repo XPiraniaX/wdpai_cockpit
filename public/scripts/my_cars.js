@@ -84,6 +84,10 @@ window.initMyCarsPage = () => {
         arrow.appendChild(tooltip);
     });
 
+    document.querySelectorAll('.cars-page .dashboard-card-tooltip, .cars-page .cars-card-tooltip').forEach((tooltip) => {
+        tooltip.remove();
+    });
+
     const pendingToast = sessionStorage.getItem('myCarsToast');
     if (pendingToast) {
         sessionStorage.removeItem('myCarsToast');

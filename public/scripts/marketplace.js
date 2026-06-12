@@ -143,6 +143,167 @@ const openMarketplaceConfirmModal = ({
 };
 window.openMarketplaceConfirmModal = openMarketplaceConfirmModal;
 
+const ensureContentReportModal = () => {
+    let modal = document.querySelector('[data-content-report-modal]');
+    if (modal) {
+        return modal;
+    }
+
+    modal = document.createElement('div');
+    modal.className = 'profile-moderation-modal';
+    modal.hidden = true;
+    modal.setAttribute('data-content-report-modal', '');
+    modal.innerHTML = `
+        <div class="profile-moderation-modal-backdrop" data-content-report-close></div>
+        <div class="profile-moderation-modal-shell">
+            <section class="profile-moderation-modal-panel">
+                <div class="profile-moderation-modal-head">
+                    <div class="profile-moderation-modal-copy">
+                        <div class="profile-moderation-modal-kicker" data-content-report-kicker></div>
+                        <h3 class="profile-moderation-modal-title" data-content-report-title></h3>
+                    </div>
+                    <button type="button" class="community-modal-close" aria-label="Zamknij" data-content-report-close>
+                        <img src="/public/assets/icons/close.svg" alt="">
+                    </button>
+                </div>
+                <div class="profile-moderation-modal-body">
+                    <div class="profile-moderation-modal-subtitle">Wybierz powód zgłoszenia</div>
+                    <div class="profile-moderation-options" data-content-report-options></div>
+                    <label class="profile-moderation-other" hidden data-content-report-other-wrap>
+                        <span>Inny powód</span>
+                        <textarea rows="4" maxlength="800" data-content-report-other-input></textarea>
+                    </label>
+                </div>
+                <div class="profile-moderation-modal-actions">
+                    <button type="button" class="marketplace-button marketplace-button-muted" data-content-report-close>Anuluj</button>
+                    <button type="button" class="marketplace-button marketplace-confirm-submit is-danger" data-content-report-submit>Zgłoś</button>
+                </div>
+            </section>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    return modal;
+};
+
+const closeContentReportModal = (result = null) => {
+    const modal = document.querySelector('[data-content-report-modal]');
+    if (!(modal instanceof HTMLElement)) {
+        return;
+    }
+
+    modal.hidden = true;
+    document.body.classList.remove('vehicle-modal-open');
+
+    if (typeof modal._resolveContentReport === 'function') {
+        modal._resolveContentReport(result);
+        modal._resolveContentReport = null;
+    }
+};
+
+const openContentReportModal = ({
+    kicker = 'Zgłoszenie',
+    title = 'Wybierz powód zgłoszenia',
+    reasons = [],
+} = {}) => {
+    const modal = ensureContentReportModal();
+    const kickerElement = modal.querySelector('[data-content-report-kicker]');
+    const titleElement = modal.querySelector('[data-content-report-title]');
+    const optionsRoot = modal.querySelector('[data-content-report-options]');
+    const otherWrap = modal.querySelector('[data-content-report-other-wrap]');
+    const otherInput = modal.querySelector('[data-content-report-other-input]');
+    const submitButton = modal.querySelector('[data-content-report-submit]');
+
+    if (!(kickerElement instanceof HTMLElement)
+        || !(titleElement instanceof HTMLElement)
+        || !(optionsRoot instanceof HTMLElement)
+        || !(otherWrap instanceof HTMLElement)
+        || !(otherInput instanceof HTMLTextAreaElement)
+        || !(submitButton instanceof HTMLButtonElement)
+    ) {
+        return Promise.resolve(null);
+    }
+
+    const normalizedReasons = Array.isArray(reasons)
+        ? reasons.filter((reason) => reason && typeof reason.value === 'string' && typeof reason.label === 'string')
+        : [];
+
+    kickerElement.textContent = kicker;
+    titleElement.textContent = title;
+    optionsRoot.innerHTML = '';
+    otherInput.value = '';
+
+    normalizedReasons.forEach((reason, index) => {
+        const label = document.createElement('label');
+        label.className = 'profile-moderation-option';
+        label.innerHTML = `
+            <input type="radio" name="content_report_reason" value="${String(reason.value)}"${index === 0 ? ' checked' : ''}>
+            <span>${String(reason.label)}</span>
+        `;
+        optionsRoot.appendChild(label);
+    });
+
+    const otherLabel = document.createElement('label');
+    otherLabel.className = 'profile-moderation-option';
+    otherLabel.innerHTML = '<input type="radio" name="content_report_reason" value="other"><span>Inny powód</span>';
+    optionsRoot.appendChild(otherLabel);
+
+    const syncOtherField = () => {
+        const selected = optionsRoot.querySelector('input[name="content_report_reason"]:checked');
+        const isOther = selected instanceof HTMLInputElement && selected.value === 'other';
+        otherWrap.hidden = !isOther;
+        if (isOther) {
+            window.setTimeout(() => otherInput.focus(), 20);
+        }
+    };
+
+    optionsRoot.querySelectorAll('input[name="content_report_reason"]').forEach((input) => {
+        input.addEventListener('change', syncOtherField);
+    });
+    syncOtherField();
+
+    modal.querySelectorAll('[data-content-report-close]').forEach((button) => {
+        if (button instanceof HTMLElement && button.dataset.boundContentReportClose !== 'true') {
+            button.addEventListener('click', () => closeContentReportModal(null));
+            button.dataset.boundContentReportClose = 'true';
+        }
+    });
+
+    submitButton.onclick = () => {
+        const selected = optionsRoot.querySelector('input[name="content_report_reason"]:checked');
+        if (!(selected instanceof HTMLInputElement)) {
+            return;
+        }
+
+        if (selected.value === 'other') {
+            const text = otherInput.value.trim();
+            if (text === '') {
+                otherInput.focus();
+                return;
+            }
+
+            closeContentReportModal({
+                code: 'other',
+                text,
+            });
+            return;
+        }
+
+        closeContentReportModal({
+            code: selected.value,
+            text: '',
+        });
+    };
+
+    modal.hidden = false;
+    document.body.classList.add('vehicle-modal-open');
+
+    return new Promise((resolve) => {
+        modal._resolveContentReport = resolve;
+    });
+};
+window.openContentReportModal = openContentReportModal;
+
 let activeMarketplaceDetailsModal = null;
 let marketplaceLockedScrollY = 0;
 
@@ -1729,7 +1890,26 @@ const bindMarketplaceReportForms = (root) => {
             event.preventDefault();
             event.stopPropagation();
 
+            const selection = typeof window.openContentReportModal === 'function'
+                ? await window.openContentReportModal({
+                    kicker: 'Zgłoszenie ogłoszenia',
+                    title: 'Wybierz powód zgłoszenia ogłoszenia',
+                    reasons: [
+                        { value: 'misleading_listing', label: 'Ogłoszenie zawiera wprowadzające w błąd informacje' },
+                        { value: 'prohibited_listing', label: 'Ogłoszenie zawiera niedozwoloną treść' },
+                        { value: 'spam_listing', label: 'To spam lub duplikat ogłoszenia' },
+                        { value: 'privacy_listing', label: 'Ogłoszenie narusza prywatność lub dane osobowe' },
+                        { value: 'scam_listing', label: 'Ogłoszenie wygląda na próbę oszustwa' },
+                    ],
+                })
+                : null;
+            if (!selection || typeof selection.code !== 'string' || selection.code.trim() === '') {
+                return;
+            }
+
             const formData = new FormData(form);
+            formData.set('report_reason_code', selection.code);
+            formData.set('report_reason_text', typeof selection.text === 'string' ? selection.text : '');
 
             try {
                 const response = await fetch(resolveMarketplaceFormEndpoint(form), {
@@ -1746,7 +1926,7 @@ const bindMarketplaceReportForms = (root) => {
 
                 const payload = await response.json();
                 if (!payload.success) {
-                    throw new Error('Invalid payload');
+                    throw new Error(String(payload.message || 'Invalid payload'));
                 }
 
                 showAppToast(payload.message || 'Ogloszenie zostalo zgloszone.', 'success');
@@ -2033,6 +2213,21 @@ const initializeMarketplaceChunk = (root) => {
 };
 window.initializeMarketplaceChunk = initializeMarketplaceChunk;
 
+const maybeOpenRequestedMarketplaceListing = () => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedListingId = params.get('open_listing');
+    if (!requestedListingId) {
+        return;
+    }
+
+    const modal = document.getElementById(`marketplace-details-modal-${requestedListingId}`);
+    if (!(modal instanceof HTMLElement)) {
+        return;
+    }
+
+    openMarketplaceDetailsModal(modal);
+};
+
 document.addEventListener('click', (event) => {
     const target = event.target instanceof Element ? event.target : null;
 
@@ -2250,6 +2445,7 @@ const bootstrapMarketplaceInteractions = () => {
     initializeMarketplaceDecimalInputs(document);
     initializeMarketplaceChunk(document);
     initializeMarketplaceInfiniteFeed(document);
+    maybeOpenRequestedMarketplaceListing();
 };
 
 if (document.readyState === 'loading') {

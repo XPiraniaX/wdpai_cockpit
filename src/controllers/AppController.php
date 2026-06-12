@@ -365,6 +365,71 @@ class AppController
         return mb_substr($normalized, 0, 800);
     }
 
+    protected function normalizeReportContentType(mixed $value): ?string
+    {
+        $normalized = trim(strtolower((string) $value));
+        return in_array($normalized, ['listing', 'post', 'comment', 'profile'], true)
+            ? $normalized
+            : null;
+    }
+
+    protected function getReportReasonOptionsFor(string $contentType): array
+    {
+        return match ($contentType) {
+            'listing' => [
+                'misleading_listing' => 'Ogłoszenie zawiera wprowadzające w błąd informacje',
+                'prohibited_listing' => 'Ogłoszenie zawiera niedozwoloną treść',
+                'spam_listing' => 'To spam lub duplikat ogłoszenia',
+                'privacy_listing' => 'Ogłoszenie narusza prywatność lub dane osobowe',
+                'scam_listing' => 'Ogłoszenie wygląda na próbę oszustwa',
+                'other' => 'Inny powód',
+            ],
+            'post' => [
+                'abusive_post' => 'Treść ma charakter obraźliwy lub nękający',
+                'spam_post' => 'To spam lub niedozwolona promocja',
+                'privacy_post' => 'Treść narusza prywatność lub dane osobowe',
+                'offtopic_post' => 'Treść jest niezgodna z tematyką serwisu',
+                'prohibited_post' => 'Treść narusza regulamin serwisu',
+                'other' => 'Inny powód',
+            ],
+            'comment' => [
+                'abusive_comment' => 'Komentarz ma charakter obraźliwy lub nękający',
+                'spam_comment' => 'To spam lub flood',
+                'privacy_comment' => 'Komentarz narusza prywatność lub dane osobowe',
+                'prohibited_comment' => 'Komentarz narusza regulamin serwisu',
+                'other' => 'Inny powód',
+            ],
+            'profile' => [
+                'impersonation_profile' => 'Profil podszywa się pod inną osobę lub markę',
+                'abusive_profile' => 'Profil narusza zasady społeczności',
+                'spam_profile' => 'Profil służy do spamu lub nadużyć',
+                'fraud_profile' => 'Profil wygląda na próbę oszustwa',
+                'other' => 'Inny powód',
+            ],
+            default => [],
+        };
+    }
+
+    protected function resolveValidatedReportReason(string $contentType, mixed $reasonCode, mixed $reasonText): ?array
+    {
+        $options = $this->getReportReasonOptionsFor($contentType);
+        $normalizedCode = trim((string) $reasonCode);
+        if ($normalizedCode === '' || !array_key_exists($normalizedCode, $options)) {
+            return null;
+        }
+
+        $normalizedText = $this->normalizeModerationReason($reasonText);
+        if ($normalizedCode === 'other' && $normalizedText === '') {
+            return null;
+        }
+
+        return [
+            'code' => $normalizedCode,
+            'label' => (string) $options[$normalizedCode],
+            'text' => $normalizedText !== '' ? $normalizedText : null,
+        ];
+    }
+
     protected function slugify(string $value): string
     {
         $normalized = trim($value);

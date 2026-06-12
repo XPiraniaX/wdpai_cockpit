@@ -194,6 +194,29 @@ class NotificationRepository
         );
     }
 
+    public function createAdminCommentRemovalNotification(int $userId, string $commentContent, string $reason): void
+    {
+        $reason = trim($reason);
+        if ($userId <= 0 || $reason === '') {
+            return;
+        }
+
+        $this->insertNotification(
+            $userId,
+            'admin_comment_removed',
+            'Usunięto Twój komentarz',
+            'Twój komentarz: ' . $this->buildPostPreview($commentContent) . ' został usunięty z powodu: ' . $reason,
+            '/community',
+            null,
+            [
+                'accent' => 'danger',
+                'modal_intro' => 'Twój komentarz:',
+                'modal_subject' => $commentContent,
+                'modal_reason' => $reason,
+            ]
+        );
+    }
+
     public function createAdminListingRemovalNotification(int $userId, string $listingTitle, string $reason): void
     {
         $reason = trim($reason);
@@ -252,6 +275,31 @@ class NotificationRepository
             null,
             [
                 'accent' => 'danger',
+            ]
+        );
+    }
+
+    public function createVehicleRemovedNotification(int $userId, string $displayName, string $reason): void
+    {
+        $reason = trim($reason);
+        if ($userId <= 0 || $reason === '') {
+            return;
+        }
+
+        $vehicleName = $this->normalizeVehicleDisplayName($displayName);
+
+        $this->insertNotification(
+            $userId,
+            'vehicle_removed',
+            'Samochód usunięty',
+            'Twój samochód: ' . $vehicleName . ', został usunięty z powodu: ' . $reason,
+            '/my-cars',
+            null,
+            [
+                'accent' => 'danger',
+                'modal_intro' => 'Twój samochód:',
+                'modal_subject' => $vehicleName,
+                'modal_reason' => $reason,
             ]
         );
     }

@@ -1192,7 +1192,39 @@ const bindCommunityReportForms = (root) => {
         form.addEventListener('submit', async (event) => {
             event.preventDefault();
 
+            const action = String(form.querySelector('input[name="action"]')?.value || '');
+            const modalConfig = action === 'report_comment'
+                ? {
+                    kicker: 'Zgłoszenie komentarza',
+                    title: 'Wybierz powód zgłoszenia komentarza',
+                    reasons: [
+                        { value: 'abusive_comment', label: 'Komentarz ma charakter obraźliwy lub nękający' },
+                        { value: 'spam_comment', label: 'To spam lub flood' },
+                        { value: 'privacy_comment', label: 'Komentarz narusza prywatność lub dane osobowe' },
+                        { value: 'prohibited_comment', label: 'Komentarz narusza regulamin serwisu' },
+                    ],
+                }
+                : {
+                    kicker: 'Zgłoszenie postu',
+                    title: 'Wybierz powód zgłoszenia postu',
+                    reasons: [
+                        { value: 'abusive_post', label: 'Treść ma charakter obraźliwy lub nękający' },
+                        { value: 'spam_post', label: 'To spam lub niedozwolona promocja' },
+                        { value: 'privacy_post', label: 'Treść narusza prywatność lub dane osobowe' },
+                        { value: 'offtopic_post', label: 'Treść jest niezgodna z tematyką serwisu' },
+                        { value: 'prohibited_post', label: 'Treść narusza regulamin serwisu' },
+                    ],
+                };
+            const selection = typeof window.openContentReportModal === 'function'
+                ? await window.openContentReportModal(modalConfig)
+                : null;
+            if (!selection || typeof selection.code !== 'string' || selection.code.trim() === '') {
+                return;
+            }
+
             const formData = new FormData(form);
+            formData.set('report_reason_code', selection.code);
+            formData.set('report_reason_text', typeof selection.text === 'string' ? selection.text : '');
 
             try {
                 const response = await fetch(window.location.pathname + window.location.search, {
@@ -1209,10 +1241,10 @@ const bindCommunityReportForms = (root) => {
 
                 const payload = await response.json();
                 if (!payload.success) {
-                    throw new Error('Invalid payload');
+                    throw new Error(String(payload.message || 'Invalid payload'));
                 }
 
-            showAppToast(payload.message || 'Zgloszenie zostalo przyjete.', 'success');
+                showAppToast(payload.message || 'Zgloszenie zostalo przyjete.', 'success');
 
                 const menu = form.closest('[data-community-post-menu]');
                 if (menu) {
@@ -1739,8 +1771,38 @@ const initializeCommunityInfiniteFeed = (root = document) => {
 window.initializeCommunityInfiniteFeed = initializeCommunityInfiniteFeed;
 initializeCommunityInfiniteFeed(document);
 
+const maybeOpenRequestedCommunityComments = () => {
+    const params = new URLSearchParams(window.location.search);
+    const postId = params.get('open_comments_post');
+    if (!postId) {
+        return;
+    }
+
+    const modal = document.getElementById(`community-comments-modal-${postId}`);
+    if (!(modal instanceof HTMLElement)) {
+        return;
+    }
+
+    openCommentsModal(modal);
+
+    const highlightCommentId = params.get('highlight_comment');
+    if (!highlightCommentId) {
+        return;
+    }
+
+    const comment = modal.querySelector(`[data-community-comment-id="${highlightCommentId}"]`);
+    if (!(comment instanceof HTMLElement)) {
+        return;
+    }
+
+    comment.classList.add('is-report-highlight');
+    comment.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    window.setTimeout(() => comment.classList.remove('is-report-highlight'), 2800);
+};
+
 bindCommunityCommentEditActions(document);
 bindCommunityCommentDeleteForms(document);
 bindCommunityEditPostButtons(document);
 bindCommunityDeletePostForms(document);
 resetPostImagesGallery();
+maybeOpenRequestedCommunityComments();

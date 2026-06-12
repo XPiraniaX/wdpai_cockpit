@@ -1009,6 +1009,138 @@ class CommunityRepository
         ];
     }
 
+    public function deleteCommentByAdmin(int $commentId): ?array
+    {
+        $contextStatement = $this->connection->prepare(
+            'SELECT user_id, post_id, content
+            FROM community_comments
+            WHERE id = :comment_id
+                AND is_active = TRUE
+            LIMIT 1'
+        );
+        $contextStatement->execute([
+            'comment_id' => $commentId,
+        ]);
+        $context = $contextStatement->fetch(PDO::FETCH_ASSOC) ?: null;
+        if ($context === null) {
+            return null;
+        }
+
+        $statement = $this->connection->prepare(
+            'DELETE FROM community_comments
+            WHERE id = :comment_id
+                AND is_active = TRUE'
+        );
+        $statement->execute([
+            'comment_id' => $commentId,
+        ]);
+
+        if ($statement->rowCount() < 1) {
+            return null;
+        }
+
+        return [
+            'user_id' => (int) ($context['user_id'] ?? 0),
+            'post_id' => (int) ($context['post_id'] ?? 0),
+            'content' => (string) ($context['content'] ?? ''),
+        ];
+    }
+
+    public function getPostByIdForDisplay(int $currentUserId, int $postId): ?array
+    {
+        $statement = $this->connection->prepare(
+            "SELECT
+                feed.*,
+                COALESCE(like_ref.is_liked, FALSE) AS liked_by_current_user,
+                COALESCE(save_ref.is_saved, FALSE) AS saved_by_current_user,
+                COALESCE(comment_ref.has_comment, FALSE) AS commented_by_current_user
+            FROM vw_community_feed feed
+            LEFT JOIN LATERAL (
+                SELECT TRUE AS is_liked
+                FROM community_post_likes l
+                WHERE l.post_id = feed.id
+                    AND l.user_id = :current_user_id
+                LIMIT 1
+            ) AS like_ref ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT TRUE AS is_saved
+                FROM community_post_saves s
+                WHERE s.post_id = feed.id
+                    AND s.user_id = :current_user_id
+                LIMIT 1
+            ) AS save_ref ON TRUE
+            LEFT JOIN LATERAL (
+                SELECT TRUE AS has_comment
+                FROM community_comments c
+                WHERE c.post_id = feed.id
+                    AND c.user_id = :current_user_id
+                    AND c.is_active = TRUE
+                LIMIT 1
+            ) AS comment_ref ON TRUE
+            WHERE feed.id = :post_id
+            LIMIT 1"
+        );
+        $statement->execute([
+            'current_user_id' => $currentUserId,
+            'post_id' => $postId,
+        ]);
+
+        $row = $statement->fetch(PDO::FETCH_ASSOC) ?: null;
+        if ($row === null) {
+            return null;
+        }
+
+        $postIds = [(int) $row['id']];
+        $commentsByPost = $this->getCommentsForPosts($postIds, $currentUserId);
+        $imagesByPost = $this->getImagesForPosts($postIds);
+        $brandName = $row['brand_name'] ?? null;
+        $modelName = $row['model_name'] ?? null;
+
+        return [
+            'id' => (int) $row['id'],
+            'user_id' => (int) $row['user_id'],
+            'author_name' => (string) ($row['pseudonym'] ?? $row['full_name']),
+            'author_username' => $row['username'],
+            'author_avatar_path' => $row['avatar_path'] ?? null,
+            'author_tier' => strtoupper((string) $row['membership_tier']) . ' MEMBER',
+            'profile_path' => $this->buildProfilePath($currentUserId, (int) $row['user_id'], $row['pseudonym'] ?? null),
+            'content' => $row['content'],
+            'created_at' => $row['created_at'],
+            'category_label' => $this->buildCategoryLabel($brandName, $modelName),
+            'brand_id' => $row['brand_id'] !== null ? (int) $row['brand_id'] : null,
+            'model_id' => $row['model_id'] !== null ? (int) $row['model_id'] : null,
+            'like_count' => (int) $row['like_count'],
+            'save_count' => (int) $row['save_count'],
+            'comment_count' => (int) $row['comment_count'],
+            'liked_by_current_user' => (bool) $row['liked_by_current_user'],
+            'saved_by_current_user' => (bool) $row['saved_by_current_user'],
+            'commented_by_current_user' => (bool) $row['commented_by_current_user'],
+            'comments' => $commentsByPost[(int) $row['id']] ?? [],
+            'images' => $imagesByPost[(int) $row['id']] ?? [],
+        ];
+    }
+
+    public function getPostByCommentIdForDisplay(int $currentUserId, int $commentId): ?array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT post_id
+            FROM community_comments
+            WHERE id = :comment_id
+                AND is_active = TRUE
+            LIMIT 1'
+        );
+        $statement->execute([
+            'comment_id' => $commentId,
+        ]);
+
+        $postId = $statement->fetchColumn();
+        if ($postId === false) {
+            return null;
+        }
+
+        return $this->getPostByIdForDisplay($currentUserId, (int) $postId);
+    }
+
     public function getProfile(int $profileUserId): ?array
     {
         return $this->getProfileByCondition('u.id = :value', ['value' => $profileUserId]);

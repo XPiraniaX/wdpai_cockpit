@@ -17,14 +17,35 @@ class CommunityController extends AppController
 
         $communitySettings = $userRepository->getCommunitySettings($userId);
         $filters = $this->resolveFilters($communitySettings);
-        $feedPage = $repository->getFeedPage(
-            $userId,
-            $filters,
-            CommunityRepository::DEFAULT_FEED_PAGE_SIZE,
-            $this->resolveCursorCreatedAt(),
-            $this->resolveCursorId()
-        );
-        $mappedPosts = $this->mapPosts($feedPage['posts']);
+        $focusPostId = (int) ($_GET['focus_post_id'] ?? 0);
+        $focusCommentId = (int) ($_GET['focus_comment_id'] ?? 0);
+
+        if ($focusCommentId > 0) {
+            $focusedPost = $repository->getPostByCommentIdForDisplay($userId, $focusCommentId);
+            $mappedPosts = $focusedPost !== null ? $this->mapPosts([$focusedPost]) : [];
+            $feedPage = [
+                'has_more' => false,
+                'next_cursor_created_at' => null,
+                'next_cursor_id' => null,
+            ];
+        } elseif ($focusPostId > 0) {
+            $focusedPost = $repository->getPostByIdForDisplay($userId, $focusPostId);
+            $mappedPosts = $focusedPost !== null ? $this->mapPosts([$focusedPost]) : [];
+            $feedPage = [
+                'has_more' => false,
+                'next_cursor_created_at' => null,
+                'next_cursor_id' => null,
+            ];
+        } else {
+            $feedPage = $repository->getFeedPage(
+                $userId,
+                $filters,
+                CommunityRepository::DEFAULT_FEED_PAGE_SIZE,
+                $this->resolveCursorCreatedAt(),
+                $this->resolveCursorId()
+            );
+            $mappedPosts = $this->mapPosts($feedPage['posts']);
+        }
 
         if ($this->isAjaxRequest() && $this->isFeedPageRequest()) {
             $this->jsonResponse([
@@ -488,35 +509,87 @@ class CommunityController extends AppController
 
             case 'report_post':
                 $postId = (int) ($_POST['post_id'] ?? 0);
+                $reason = $this->resolveValidatedReportReason(
+                    'post',
+                    $_POST['report_reason_code'] ?? null,
+                    $_POST['report_reason_text'] ?? null
+                );
 
-                if ($postId > 0) {
+                if (
+                    $postId <= 0
+                    || $reason === null
+                    || !(new ReportsRepository(Database::getConnection()))->createReport(
+                        $userId,
+                        'post',
+                        $postId,
+                        (string) $reason['code'],
+                        (string) $reason['label'],
+                        isset($reason['text']) ? (string) $reason['text'] : null
+                    )
+                ) {
                     if ($this->isAjaxRequest()) {
                         $this->jsonResponse([
-                            'success' => true,
-                            'message' => 'Post został zgłoszony.',
-                        ]);
+                            'success' => false,
+                            'message' => 'Nie udało się zgłosić posta.',
+                        ], 422);
                     }
 
-                    $this->setFlash('success', 'Post został zgłoszony.');
+                    $this->setFlash('error', 'Nie udało się zgłosić posta.');
+                    $this->redirect($redirectTo);
+                    return;
                 }
 
+                if ($this->isAjaxRequest()) {
+                    $this->jsonResponse([
+                        'success' => true,
+                        'message' => 'Post został zgłoszony.',
+                    ]);
+                }
+
+                $this->setFlash('success', 'Post został zgłoszony.');
                 $this->redirect($redirectTo);
                 return;
 
             case 'report_comment':
                 $commentId = (int) ($_POST['comment_id'] ?? 0);
+                $reason = $this->resolveValidatedReportReason(
+                    'comment',
+                    $_POST['report_reason_code'] ?? null,
+                    $_POST['report_reason_text'] ?? null
+                );
 
-                if ($commentId > 0) {
+                if (
+                    $commentId <= 0
+                    || $reason === null
+                    || !(new ReportsRepository(Database::getConnection()))->createReport(
+                        $userId,
+                        'comment',
+                        $commentId,
+                        (string) $reason['code'],
+                        (string) $reason['label'],
+                        isset($reason['text']) ? (string) $reason['text'] : null
+                    )
+                ) {
                     if ($this->isAjaxRequest()) {
                         $this->jsonResponse([
-                            'success' => true,
-                            'message' => 'Komentarz został zgłoszony.',
-                        ]);
+                            'success' => false,
+                            'message' => 'Nie udało się zgłosić komentarza.',
+                        ], 422);
                     }
 
-                    $this->setFlash('success', 'Komentarz został zgłoszony.');
+                    $this->setFlash('error', 'Nie udało się zgłosić komentarza.');
+                    $this->redirect($redirectTo);
+                    return;
                 }
 
+                if ($this->isAjaxRequest()) {
+                    $this->jsonResponse([
+                        'success' => true,
+                        'message' => 'Komentarz został zgłoszony.',
+                    ]);
+                }
+
+                $this->setFlash('success', 'Komentarz został zgłoszony.');
                 $this->redirect($redirectTo);
                 return;
         }

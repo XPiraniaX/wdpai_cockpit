@@ -16,13 +16,23 @@ class MarketplaceController extends AppController
             return;
         }
 
+        $focusListingId = (int) ($_GET['focus_listing_id'] ?? 0);
         $filters = $this->resolveFilters($marketplaceSettings);
-        $feedPage = $repository->getFeedPage(
-            $userId,
-            $filters,
-            MarketplaceRepository::DEFAULT_FEED_PAGE_SIZE,
-            $this->resolveOffset()
-        );
+        if ($focusListingId > 0) {
+            $focusedListing = $repository->getListingByIdForDisplay($userId, $focusListingId);
+            $feedPage = [
+                'listings' => $focusedListing !== null ? [$focusedListing] : [],
+                'has_more' => false,
+                'next_offset' => null,
+            ];
+        } else {
+            $feedPage = $repository->getFeedPage(
+                $userId,
+                $filters,
+                MarketplaceRepository::DEFAULT_FEED_PAGE_SIZE,
+                $this->resolveOffset()
+            );
+        }
 
         $mappedListings = $this->mapListings($feedPage['listings']);
 
@@ -227,7 +237,37 @@ class MarketplaceController extends AppController
 
             case 'report_listing':
                 $listingId = (int) ($_POST['listing_id'] ?? 0);
-                if ($listingId > 0 && $this->isAjaxRequest()) {
+                $reason = $this->resolveValidatedReportReason(
+                    'listing',
+                    $_POST['report_reason_code'] ?? null,
+                    $_POST['report_reason_text'] ?? null
+                );
+
+                if (
+                    $listingId <= 0
+                    || $reason === null
+                    || !(new ReportsRepository(Database::getConnection()))->createReport(
+                        $userId,
+                        'listing',
+                        $listingId,
+                        (string) $reason['code'],
+                        (string) $reason['label'],
+                        isset($reason['text']) ? (string) $reason['text'] : null
+                    )
+                ) {
+                    if ($this->isAjaxRequest()) {
+                        $this->jsonResponse([
+                            'success' => false,
+                            'message' => 'Nie udało się zgłosić ogłoszenia.',
+                        ], 422);
+                    }
+
+                    $this->setFlash('error', 'Nie udało się zgłosić ogłoszenia.');
+                    $this->redirect($redirectTo);
+                    return;
+                }
+
+                if ($this->isAjaxRequest()) {
                     $this->jsonResponse([
                         'success' => true,
                         'listing_id' => $listingId,

@@ -4,15 +4,20 @@ class AdminController extends AppController
 {
     private const CATALOG_USERS_PER_PAGE = 7;
     private const PENDING_VEHICLES_PER_PAGE = 9;
+    private const PENDING_BRANDS_PER_PAGE = 4;
+    private const PENDING_MODELS_PER_PAGE = 4;
+    private const REPORTS_PER_PAGE = 7;
     private const ADMIN_TIMEZONE = 'Europe/Warsaw';
 
     private UserRepository $userRepository;
     private CarsRepository $carsRepository;
+    private ReportsRepository $reportsRepository;
 
     public function __construct()
     {
         $this->userRepository = new UserRepository(Database::getConnection());
         $this->carsRepository = new CarsRepository(Database::getConnection());
+        $this->reportsRepository = new ReportsRepository(Database::getConnection());
     }
 
     public function index(): void
@@ -40,12 +45,32 @@ class AdminController extends AppController
             $this->handlePendingVehicleDetails();
         }
 
+        if ($this->isAjaxRequest() && isset($_GET['pending_brand_page'])) {
+            $this->handlePendingBrandsPage();
+        }
+
+        if ($this->isAjaxRequest() && isset($_GET['pending_model_page'])) {
+            $this->handlePendingModelsPage();
+        }
+
+        if ($this->isAjaxRequest() && isset($_GET['report_page'])) {
+            $this->handleReportsPage();
+        }
+
+        if ($this->isAjaxRequest() && isset($_GET['report_details'])) {
+            $this->handleReportDetails();
+        }
+
         $openUserId = $this->normalizeOptionalPositiveInt($_GET['open_user'] ?? null);
         $initialCatalogPage = $openUserId !== null && $openUserId > 0
             ? $this->userRepository->getAdminCatalogPageForUser($openUserId, self::CATALOG_USERS_PER_PAGE)
             : $this->normalizePositiveInt($_GET['catalog_page'] ?? 1);
         $catalog = $this->buildCatalogUsersPayload($initialCatalogPage);
         $pendingVehicles = $this->buildPendingVehiclesPayload($this->normalizePositiveInt($_GET['pending_vehicle_page'] ?? 1));
+        $pendingBrands = $this->buildPendingBrandsPayload($this->normalizePositiveInt($_GET['pending_brand_page'] ?? 1));
+        $pendingModels = $this->buildPendingModelsPayload($this->normalizePositiveInt($_GET['pending_model_page'] ?? 1));
+        $reports = $this->buildReportsPayload($this->normalizePositiveInt($_GET['report_page'] ?? 1));
+        $reportStats = $this->buildReportStatsPayload();
         $globalStats = $this->userRepository->getAdminGlobalStats();
 
         $this->render('admin_panel', [
@@ -66,6 +91,10 @@ class AdminController extends AppController
             'adminCatalogUsers' => $catalog,
             'adminCatalogOpenUserId' => $openUserId,
             'adminPendingVehicles' => $pendingVehicles,
+            'adminPendingBrands' => $pendingBrands,
+            'adminPendingModels' => $pendingModels,
+            'adminReports' => $reports,
+            'adminReportStats' => $reportStats,
             'adminGlobalStats' => $globalStats,
         ]);
     }
@@ -142,6 +171,60 @@ class AdminController extends AppController
         ]);
     }
 
+    private function handlePendingBrandsPage(): void
+    {
+        $page = $this->normalizePositiveInt($_GET['pending_brand_page'] ?? 1);
+        $this->jsonResponse([
+            'success' => true,
+            'pending_brands' => $this->buildPendingBrandsPayload($page),
+        ]);
+    }
+
+    private function handlePendingModelsPage(): void
+    {
+        $page = $this->normalizePositiveInt($_GET['pending_model_page'] ?? 1);
+        $this->jsonResponse([
+            'success' => true,
+            'pending_models' => $this->buildPendingModelsPayload($page),
+        ]);
+    }
+
+    private function handleReportsPage(): void
+    {
+        $page = $this->normalizePositiveInt($_GET['report_page'] ?? 1);
+        $this->jsonResponse([
+            'success' => true,
+            'reports' => $this->buildReportsPayload($page),
+            'report_stats' => $this->buildReportStatsPayload(),
+        ]);
+    }
+
+    private function handleReportDetails(): void
+    {
+        $reportId = $this->normalizeOptionalPositiveInt($_GET['report_details'] ?? null);
+        if ($reportId === null) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie znaleziono zgłoszenia.',
+            ], 404);
+        }
+
+        $report = $this->reportsRepository->getOpenReportById($reportId);
+        if ($report === null) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie znaleziono zgłoszenia.',
+            ], 404);
+        }
+
+        $reportedUser = $this->userRepository->getAdminCatalogUserById((int) ($report['reported_user_id'] ?? 0));
+
+        $this->jsonResponse([
+            'success' => true,
+            'report' => $this->mapReportDetails($report, $reportedUser),
+        ]);
+    }
+
     private function buildCatalogUsersPayload(int $page): array
     {
         $totalUsers = $this->userRepository->countAdminCatalogUsers();
@@ -177,6 +260,76 @@ class AdminController extends AppController
             'per_page' => self::PENDING_VEHICLES_PER_PAGE,
             'total_items' => $totalVehicles,
             'total_pages' => $totalPages,
+        ];
+    }
+
+    private function buildPendingBrandsPayload(int $page): array
+    {
+        $totalBrands = $this->carsRepository->getAdminPendingBrandCount();
+        $totalPages = max(1, (int) ceil($totalBrands / self::PENDING_BRANDS_PER_PAGE));
+        $page = min(max(1, $page), $totalPages);
+        $rows = array_map(
+            fn (array $brand): array => $this->mapPendingBrandRow($brand),
+            $this->carsRepository->getAdminPendingBrandsPage($page, self::PENDING_BRANDS_PER_PAGE)
+        );
+
+        return [
+            'rows' => $rows,
+            'page' => $page,
+            'per_page' => self::PENDING_BRANDS_PER_PAGE,
+            'total_items' => $totalBrands,
+            'total_pages' => $totalPages,
+        ];
+    }
+
+    private function buildPendingModelsPayload(int $page): array
+    {
+        $totalModels = $this->carsRepository->getAdminPendingModelCount();
+        $totalPages = max(1, (int) ceil($totalModels / self::PENDING_MODELS_PER_PAGE));
+        $page = min(max(1, $page), $totalPages);
+        $rows = array_map(
+            fn (array $model): array => $this->mapPendingModelRow($model),
+            $this->carsRepository->getAdminPendingModelsPage($page, self::PENDING_MODELS_PER_PAGE)
+        );
+
+        return [
+            'rows' => $rows,
+            'page' => $page,
+            'per_page' => self::PENDING_MODELS_PER_PAGE,
+            'total_items' => $totalModels,
+            'total_pages' => $totalPages,
+        ];
+    }
+
+    private function buildReportsPayload(int $page): array
+    {
+        $totalReports = $this->reportsRepository->getOpenReportCount();
+        $totalPages = max(1, (int) ceil($totalReports / self::REPORTS_PER_PAGE));
+        $page = min(max(1, $page), $totalPages);
+        $rows = array_map(
+            fn (array $report): array => $this->mapReportRow($report),
+            $this->reportsRepository->getOpenReportsPage($page, self::REPORTS_PER_PAGE)
+        );
+
+        return [
+            'rows' => $rows,
+            'page' => $page,
+            'per_page' => self::REPORTS_PER_PAGE,
+            'total_items' => $totalReports,
+            'total_pages' => $totalPages,
+        ];
+    }
+
+    private function buildReportStatsPayload(): array
+    {
+        $stats = $this->reportsRepository->getOpenReportStats();
+
+        return [
+            'total' => (int) ($stats['total'] ?? 0),
+            'listings' => (int) ($stats['listings'] ?? 0),
+            'posts' => (int) ($stats['posts'] ?? 0),
+            'comments' => (int) ($stats['comments'] ?? 0),
+            'profiles' => (int) ($stats['profiles'] ?? 0),
         ];
     }
 
@@ -267,6 +420,52 @@ class AdminController extends AppController
         ];
     }
 
+    private function mapPendingBrandRow(array $brand): array
+    {
+        return [
+            'id' => (int) ($brand['id'] ?? 0),
+            'name' => trim((string) ($brand['name'] ?? '')) !== '' ? (string) $brand['name'] : 'Brak marki',
+        ];
+    }
+
+    private function mapPendingModelRow(array $model): array
+    {
+        return [
+            'id' => (int) ($model['id'] ?? 0),
+            'model_name' => trim((string) ($model['model_name'] ?? '')) !== '' ? (string) $model['model_name'] : 'Brak modelu',
+            'brand_name' => trim((string) ($model['brand_name'] ?? '')) !== '' ? (string) $model['brand_name'] : 'Brak marki',
+            'brand_is_approved' => (bool) ($model['brand_is_approved'] ?? false),
+        ];
+    }
+
+    private function mapReportRow(array $report): array
+    {
+        return [
+            'id' => (int) ($report['id'] ?? 0),
+            'content_type' => (string) ($report['content_type'] ?? ''),
+            'content_id' => (int) ($report['content_id'] ?? 0),
+            'reported_subject' => trim((string) ($report['reported_subject'] ?? '')) !== '' ? (string) $report['reported_subject'] : 'Zgłoszona zawartość',
+            'reported_user_id' => (int) ($report['reported_user_id'] ?? 0),
+            'reported_user_name' => trim((string) ($report['reported_user_name'] ?? '')) !== '' ? (string) $report['reported_user_name'] : 'Użytkownik',
+            'reason_code' => (string) ($report['reason_code'] ?? ''),
+            'reason_label' => trim((string) ($report['reason_label'] ?? '')) !== '' ? (string) $report['reason_label'] : 'Brak powodu',
+            'reason_text' => trim((string) ($report['reason_text'] ?? '')),
+            'target_path' => trim((string) ($report['target_path'] ?? '')) !== '' ? (string) $report['target_path'] : '/dashboard',
+            'created_at_label' => $this->formatAdminDateTimeLabel($report['created_at'] ?? null),
+        ];
+    }
+
+    private function mapReportDetails(array $report, ?array $reportedUser): array
+    {
+        $mapped = $this->mapReportRow($report);
+        $mapped['reporter_user_name'] = trim((string) ($report['reporter_user_name'] ?? '')) !== ''
+            ? (string) $report['reporter_user_name']
+            : 'Użytkownik';
+        $mapped['reported_user'] = $reportedUser !== null ? $this->mapCatalogUserRow($reportedUser) : null;
+
+        return $mapped;
+    }
+
     private function normalizePositiveInt(mixed $value, int $default = 1): int
     {
         if (filter_var($value, FILTER_VALIDATE_INT) === false) {
@@ -337,6 +536,46 @@ class AdminController extends AppController
 
         if ($action === 'delete_vehicle') {
             $this->handleDeleteVehicle();
+            return;
+        }
+
+        if ($action === 'approve_brand') {
+            $this->handleApproveBrand();
+            return;
+        }
+
+        if ($action === 'delete_brand') {
+            $this->handleDeleteBrand();
+            return;
+        }
+
+        if ($action === 'approve_model') {
+            $this->handleApproveModel();
+            return;
+        }
+
+        if ($action === 'delete_model') {
+            $this->handleDeleteModel();
+            return;
+        }
+
+        if ($action === 'close_report') {
+            $this->handleCloseReport();
+            return;
+        }
+
+        if ($action === 'remove_reported_listing') {
+            $this->handleRemoveReportedListing();
+            return;
+        }
+
+        if ($action === 'remove_reported_post') {
+            $this->handleRemoveReportedPost();
+            return;
+        }
+
+        if ($action === 'remove_reported_comment') {
+            $this->handleRemoveReportedComment();
             return;
         }
 
@@ -674,11 +913,306 @@ class AdminController extends AppController
             ], 409);
         }
 
+        (new NotificationRepository(Database::getConnection()))->createVehicleRemovedNotification(
+            (int) ($vehicle['user_id'] ?? 0),
+            (string) ($vehicle['display_name'] ?? ''),
+            'Administrator usunął samochód podczas weryfikacji.'
+        );
+
         $this->jsonResponse([
             'success' => true,
             'message' => 'Pojazd został usunięty.',
             'pending_vehicles' => $this->buildPendingVehiclesPayload($this->normalizePositiveInt($_POST['page'] ?? 1)),
         ]);
+    }
+
+    private function handleApproveBrand(): void
+    {
+        $brandId = $this->normalizeOptionalPositiveInt($_POST['brand_id'] ?? null);
+        if ($brandId === null || !$this->carsRepository->approveBrandByAdmin($brandId)) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie udało się zatwierdzić marki.',
+            ], 422);
+        }
+
+        $this->jsonResponse([
+            'success' => true,
+            'message' => 'Marka została zatwierdzona.',
+            'pending_brands' => $this->buildPendingBrandsPayload($this->normalizePositiveInt($_POST['brand_page'] ?? 1)),
+            'pending_models' => $this->buildPendingModelsPayload($this->normalizePositiveInt($_POST['model_page'] ?? 1)),
+        ]);
+    }
+
+    private function handleDeleteBrand(): void
+    {
+        $brandId = $this->normalizeOptionalPositiveInt($_POST['brand_id'] ?? null);
+        $deleteContext = $brandId !== null ? $this->carsRepository->deleteBrandByAdmin($brandId) : null;
+        if ($brandId === null || $deleteContext === null) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie udało się usunąć marki.',
+            ], 422);
+        }
+
+        $notifications = new NotificationRepository(Database::getConnection());
+        foreach ((array) ($deleteContext['vehicles'] ?? []) as $vehicle) {
+            $notifications->createVehicleRemovedNotification(
+                (int) ($vehicle['user_id'] ?? 0),
+                (string) ($vehicle['display_name'] ?? ''),
+                'nieprawidłowej marki pojazdu.'
+            );
+        }
+        foreach ((array) ($deleteContext['listings'] ?? []) as $listing) {
+            $notifications->createAdminListingRemovalNotification(
+                (int) ($listing['user_id'] ?? 0),
+                (string) ($listing['title'] ?? ''),
+                'nieprawidłowej marki pojazdu.'
+            );
+        }
+
+        $this->jsonResponse([
+            'success' => true,
+            'message' => 'Marka oraz powiązane samochody i ogłoszenia zostały usunięte.',
+            'pending_brands' => $this->buildPendingBrandsPayload($this->normalizePositiveInt($_POST['brand_page'] ?? 1)),
+            'pending_models' => $this->buildPendingModelsPayload($this->normalizePositiveInt($_POST['model_page'] ?? 1)),
+        ]);
+    }
+
+    private function handleApproveModel(): void
+    {
+        $modelId = $this->normalizeOptionalPositiveInt($_POST['model_id'] ?? null);
+        if ($modelId === null || !$this->carsRepository->approveModelByAdmin($modelId)) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie udało się zatwierdzić modelu. Najpierw zatwierdź markę.',
+            ], 422);
+        }
+
+        $this->jsonResponse([
+            'success' => true,
+            'message' => 'Model został zatwierdzony.',
+            'pending_brands' => $this->buildPendingBrandsPayload($this->normalizePositiveInt($_POST['brand_page'] ?? 1)),
+            'pending_models' => $this->buildPendingModelsPayload($this->normalizePositiveInt($_POST['model_page'] ?? 1)),
+        ]);
+    }
+
+    private function handleDeleteModel(): void
+    {
+        $modelId = $this->normalizeOptionalPositiveInt($_POST['model_id'] ?? null);
+        $deleteContext = $modelId !== null ? $this->carsRepository->deleteModelByAdmin($modelId) : null;
+        if ($modelId === null || $deleteContext === null) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie udało się usunąć modelu.',
+            ], 422);
+        }
+
+        $notifications = new NotificationRepository(Database::getConnection());
+        foreach ((array) ($deleteContext['vehicles'] ?? []) as $vehicle) {
+            $notifications->createVehicleRemovedNotification(
+                (int) ($vehicle['user_id'] ?? 0),
+                (string) ($vehicle['display_name'] ?? ''),
+                'nieprawidłowego modelu pojazdu.'
+            );
+        }
+        foreach ((array) ($deleteContext['listings'] ?? []) as $listing) {
+            $notifications->createAdminListingRemovalNotification(
+                (int) ($listing['user_id'] ?? 0),
+                (string) ($listing['title'] ?? ''),
+                'nieprawidłowego modelu pojazdu.'
+            );
+        }
+
+        $this->jsonResponse([
+            'success' => true,
+            'message' => 'Model oraz powiązane samochody i ogłoszenia zostały usunięte.',
+            'pending_brands' => $this->buildPendingBrandsPayload($this->normalizePositiveInt($_POST['brand_page'] ?? 1)),
+            'pending_models' => $this->buildPendingModelsPayload($this->normalizePositiveInt($_POST['model_page'] ?? 1)),
+        ]);
+    }
+
+    private function handleCloseReport(): void
+    {
+        $reportId = $this->normalizeOptionalPositiveInt($_POST['report_id'] ?? null);
+        if ($reportId === null || !$this->reportsRepository->closeReport($reportId, $this->getCurrentUserId())) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie udało się zamknąć zgłoszenia.',
+            ], 422);
+        }
+
+        $page = $this->normalizePositiveInt($_POST['page'] ?? 1);
+        $this->jsonResponse([
+            'success' => true,
+            'message' => 'Zgłoszenie zostało zamknięte.',
+            'reports' => $this->buildReportsPayload($page),
+            'report_stats' => $this->buildReportStatsPayload(),
+        ]);
+    }
+
+    private function handleRemoveReportedListing(): void
+    {
+        $reportId = $this->normalizeOptionalPositiveInt($_POST['report_id'] ?? null);
+        $listingId = $this->normalizeOptionalPositiveInt($_POST['listing_id'] ?? null);
+        $reason = $this->normalizeModerationReason($_POST['reason'] ?? '');
+
+        if ($reportId === null || $listingId === null || $reason === '') {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie udało się usunąć zgłoszonego ogłoszenia.',
+            ], 422);
+        }
+
+        $report = $this->reportsRepository->getOpenReportById($reportId);
+        if ($report === null || (string) ($report['content_type'] ?? '') !== 'listing' || (int) ($report['content_id'] ?? 0) !== $listingId) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie znaleziono zgłoszenia dla tego ogłoszenia.',
+            ], 404);
+        }
+
+        $marketplaceRepository = new MarketplaceRepository(Database::getConnection());
+        $imagePaths = $marketplaceRepository->getListingImagePaths($listingId);
+        $adminDeleteResult = $marketplaceRepository->deleteListingByAdmin($listingId);
+        if ($adminDeleteResult === null) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie udało się usunąć zgłoszonego ogłoszenia.',
+            ], 409);
+        }
+
+        $this->deleteMarketplaceUploadedFiles($imagePaths);
+        (new NotificationRepository(Database::getConnection()))
+            ->createAdminListingRemovalNotification(
+                (int) ($adminDeleteResult['user_id'] ?? 0),
+                (string) ($adminDeleteResult['title'] ?? ''),
+                $reason
+            );
+        $this->reportsRepository->closeReport($reportId, $this->getCurrentUserId());
+
+        $page = $this->normalizePositiveInt($_POST['page'] ?? 1);
+        $this->jsonResponse([
+            'success' => true,
+            'message' => 'Ogłoszenie zostało usunięte.',
+            'reports' => $this->buildReportsPayload($page),
+            'report_stats' => $this->buildReportStatsPayload(),
+        ]);
+    }
+
+    private function handleRemoveReportedPost(): void
+    {
+        $reportId = $this->normalizeOptionalPositiveInt($_POST['report_id'] ?? null);
+        $postId = $this->normalizeOptionalPositiveInt($_POST['post_id'] ?? null);
+        $reason = $this->normalizeModerationReason($_POST['reason'] ?? '');
+
+        if ($reportId === null || $postId === null || $reason === '') {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie udało się usunąć zgłoszonego posta.',
+            ], 422);
+        }
+
+        $report = $this->reportsRepository->getOpenReportById($reportId);
+        if ($report === null || (string) ($report['content_type'] ?? '') !== 'post' || (int) ($report['content_id'] ?? 0) !== $postId) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie znaleziono zgłoszenia dla tego posta.',
+            ], 404);
+        }
+
+        $communityRepository = new CommunityRepository(Database::getConnection());
+        $adminDeleteResult = $communityRepository->deletePostByAdmin($postId);
+        if ($adminDeleteResult === null) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie udało się usunąć zgłoszonego posta.',
+            ], 409);
+        }
+
+        $this->deleteCommunityUploadedFiles((array) ($adminDeleteResult['image_paths'] ?? []));
+        (new NotificationRepository(Database::getConnection()))
+            ->createAdminPostRemovalNotification(
+                (int) ($adminDeleteResult['user_id'] ?? 0),
+                (string) ($adminDeleteResult['content'] ?? ''),
+                $reason
+            );
+        $this->reportsRepository->closeReport($reportId, $this->getCurrentUserId());
+
+        $page = $this->normalizePositiveInt($_POST['page'] ?? 1);
+        $this->jsonResponse([
+            'success' => true,
+            'message' => 'Post został usunięty.',
+            'reports' => $this->buildReportsPayload($page),
+            'report_stats' => $this->buildReportStatsPayload(),
+        ]);
+    }
+
+    private function handleRemoveReportedComment(): void
+    {
+        $reportId = $this->normalizeOptionalPositiveInt($_POST['report_id'] ?? null);
+        $commentId = $this->normalizeOptionalPositiveInt($_POST['comment_id'] ?? null);
+        $reason = $this->normalizeModerationReason($_POST['reason'] ?? '');
+
+        if ($reportId === null || $commentId === null || $reason === '') {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie udało się usunąć zgłoszonego komentarza.',
+            ], 422);
+        }
+
+        $report = $this->reportsRepository->getOpenReportById($reportId);
+        if ($report === null || (string) ($report['content_type'] ?? '') !== 'comment' || (int) ($report['content_id'] ?? 0) !== $commentId) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie znaleziono zgłoszenia dla tego komentarza.',
+            ], 404);
+        }
+
+        $communityRepository = new CommunityRepository(Database::getConnection());
+        $adminDeleteResult = $communityRepository->deleteCommentByAdmin($commentId);
+        if ($adminDeleteResult === null) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie udało się usunąć zgłoszonego komentarza.',
+            ], 409);
+        }
+
+        (new NotificationRepository(Database::getConnection()))
+            ->createAdminCommentRemovalNotification(
+                (int) ($adminDeleteResult['user_id'] ?? 0),
+                (string) ($adminDeleteResult['content'] ?? ''),
+                $reason
+            );
+        $this->reportsRepository->closeReport($reportId, $this->getCurrentUserId());
+
+        $page = $this->normalizePositiveInt($_POST['page'] ?? 1);
+        $this->jsonResponse([
+            'success' => true,
+            'message' => 'Komentarz został usunięty.',
+            'reports' => $this->buildReportsPayload($page),
+            'report_stats' => $this->buildReportStatsPayload(),
+        ]);
+    }
+
+    private function deleteMarketplaceUploadedFiles(array $imagePaths): void
+    {
+        foreach ($imagePaths as $imagePath) {
+            $resolvedPath = $this->resolvePublicPathToFilesystem((string) $imagePath);
+            if ($resolvedPath !== null && is_file($resolvedPath)) {
+                @unlink($resolvedPath);
+            }
+        }
+    }
+
+    private function deleteCommunityUploadedFiles(array $imagePaths): void
+    {
+        foreach ($imagePaths as $imagePath) {
+            $resolvedPath = $this->resolvePublicPathToFilesystem((string) $imagePath);
+            if ($resolvedPath !== null && is_file($resolvedPath)) {
+                @unlink($resolvedPath);
+            }
+        }
     }
 
     private function normalizeBanDurationCode(string $durationCode): ?string

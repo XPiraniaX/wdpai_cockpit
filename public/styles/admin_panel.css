@@ -542,7 +542,9 @@
 }
 
 .admin-catalog-page-arrow[data-admin-catalog-prev],
-.admin-catalog-page-arrow[data-admin-pending-vehicle-prev] {
+.admin-catalog-page-arrow[data-admin-pending-vehicle-prev],
+.admin-catalog-page-arrow[data-admin-pending-brand-prev],
+.admin-catalog-page-arrow[data-admin-pending-model-prev] {
     transform: rotate(180deg);
 }
 
@@ -560,7 +562,9 @@
 }
 
 .admin-catalog-page-arrow[data-admin-catalog-prev]:hover,
-.admin-catalog-page-arrow[data-admin-pending-vehicle-prev]:hover {
+.admin-catalog-page-arrow[data-admin-pending-vehicle-prev]:hover,
+.admin-catalog-page-arrow[data-admin-pending-brand-prev]:hover,
+.admin-catalog-page-arrow[data-admin-pending-model-prev]:hover {
     transform: rotate(180deg) translateY(1px);
 }
 
@@ -576,7 +580,9 @@
 }
 
 .admin-catalog-page-arrow[data-admin-catalog-prev]:disabled,
-.admin-catalog-page-arrow[data-admin-pending-vehicle-prev]:disabled {
+.admin-catalog-page-arrow[data-admin-pending-vehicle-prev]:disabled,
+.admin-catalog-page-arrow[data-admin-pending-brand-prev]:disabled,
+.admin-catalog-page-arrow[data-admin-pending-model-prev]:disabled {
     transform: rotate(180deg);
 }
 
@@ -621,12 +627,61 @@
 }
 
 .admin-pending-vehicles-panel,
-.admin-cars-placeholder-panel {
-    min-height: calc(100vh - 260px);
+.admin-cars-side-column {
+    min-height: calc(100vh - 280px);
 }
 
 .admin-pending-vehicles-panel {
     --pending-vehicle-row-height: 66px;
+}
+
+.admin-cars-side-column {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.admin-pending-catalog-panel {
+    --pending-catalog-row-height: 52px;
+    flex: 1 1 0;
+    min-height: calc((100vh - 316px) / 2);
+}
+
+.admin-pending-catalog-panel .admin-catalog-table-shell {
+    flex: 1;
+}
+
+.admin-pending-catalog-panel .admin-catalog-pagination {
+    display: grid;
+    grid-template-columns: 42px auto 42px;
+    align-items: center;
+    column-gap: 10px;
+}
+
+.admin-pending-catalog-panel .admin-catalog-page-list {
+    min-width: auto;
+    gap: 10px;
+}
+
+.admin-pending-catalog-panel .admin-catalog-footer {
+    margin-top: auto;
+}
+
+.admin-pending-brands-panel [data-admin-pending-brand-rows],
+.admin-pending-models-panel [data-admin-pending-model-rows] {
+    overflow: hidden;
+}
+
+.admin-pending-brands-panel [data-admin-pending-brand-rows] {
+    flex: 0 0 calc(var(--pending-catalog-row-height) * 4);
+    height: calc(var(--pending-catalog-row-height) * 4);
+    min-height: calc(var(--pending-catalog-row-height) * 4);
+}
+
+.admin-pending-models-panel [data-admin-pending-model-rows] {
+    flex: 0 0 calc(var(--pending-catalog-row-height) * 4);
+    height: calc(var(--pending-catalog-row-height) * 4);
+    min-height: calc(var(--pending-catalog-row-height) * 4);
 }
 
 .admin-pending-vehicles-panel .admin-catalog-pagination {
@@ -726,6 +781,238 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.admin-pending-brands-table {
+    grid-template-columns: minmax(0, 1fr) minmax(188px, 0.72fr);
+    gap: 10px;
+}
+
+.admin-pending-models-table {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr) minmax(188px, 0.72fr);
+    gap: 10px;
+}
+
+.admin-pending-brands-table.admin-catalog-table-row,
+.admin-pending-models-table.admin-catalog-table-row {
+    height: var(--pending-catalog-row-height);
+    min-height: var(--pending-catalog-row-height);
+    padding: 8px 0;
+    box-sizing: border-box;
+}
+
+.admin-pending-catalog-name,
+.admin-pending-catalog-brand {
+    color: #eef4ff;
+    font-size: 14px;
+    line-height: 1.4;
+    font-weight: 600;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.admin-pending-catalog-brand {
+    color: rgba(203, 213, 225, 0.74);
+    font-weight: 500;
+}
+
+.admin-pending-catalog-actions {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-width: 0;
+}
+
+.admin-inline-action-button {
+    min-width: 82px;
+    min-height: 32px;
+    padding: 0 12px;
+    border: 1px solid rgba(56, 189, 248, 0.16);
+    border-radius: 10px;
+    background: rgba(14, 28, 52, 0.92);
+    color: #d9f4ff;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: var(--font-sans);
+    cursor: pointer;
+    transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.admin-inline-action-button:hover {
+    background: rgba(20, 40, 72, 0.96);
+    border-color: rgba(56, 189, 248, 0.28);
+    color: #eefaff;
+    transform: translateY(-1px);
+}
+
+.admin-inline-action-button:disabled {
+    opacity: 0.6;
+    cursor: default;
+    transform: none;
+}
+
+.admin-inline-action-button.is-danger {
+    border-color: rgba(239, 68, 68, 0.16);
+    background: rgba(69, 10, 10, 0.66);
+    color: rgba(254, 202, 202, 0.92);
+}
+
+.admin-inline-action-button.is-danger:hover {
+    border-color: rgba(248, 113, 113, 0.24);
+    background: rgba(91, 13, 13, 0.82);
+    color: #fee2e2;
+}
+
+.admin-reports-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2.7fr) minmax(320px, 0.7fr);
+    gap: 20px;
+    align-items: stretch;
+    width: 100%;
+}
+
+.admin-reports-panel,
+.admin-report-stats-panel {
+    min-height: calc(100vh - 280px);
+}
+
+.admin-reports-panel .admin-catalog-table-shell,
+.admin-report-stats-panel .admin-stats-grid {
+    flex: 1;
+}
+
+[data-admin-report-rows] {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex: 1 1 auto;
+}
+
+.admin-reports-table {
+    grid-template-columns: minmax(300px, 2fr) minmax(180px, 1fr) minmax(220px, 1fr);
+}
+
+.admin-report-subject,
+.admin-report-user,
+.admin-report-reason {
+    min-width: 0;
+}
+
+.admin-report-subject {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.admin-report-type {
+    color: rgba(148, 163, 184, 0.8);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.admin-report-title,
+.admin-report-user,
+.admin-report-reason {
+    color: #eef4ff;
+    font-size: 13px;
+    line-height: 1.45;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.admin-report-user,
+.admin-report-reason {
+    color: rgba(226, 232, 240, 0.9);
+}
+
+.admin-report-stats-grid .admin-stats-card {
+    padding: 16px 18px;
+}
+
+.admin-report-modal {
+    width: min(100%, 760px);
+}
+
+.admin-report-modal-body {
+    gap: 18px;
+}
+
+.admin-report-modal-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+}
+
+.admin-report-modal-created-at {
+    color: rgba(148, 163, 184, 0.8);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.admin-report-modal-type {
+    align-self: center;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    background: rgba(56, 189, 248, 0.12);
+    color: #bfefff;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.admin-report-modal-reason-card,
+.admin-report-modal-user-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px 18px;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: 22px;
+    background: rgba(8, 15, 30, 0.62);
+}
+
+.admin-report-modal-reason-label,
+.admin-report-modal-user-label {
+    color: rgba(148, 163, 184, 0.84);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.admin-report-modal-reason-card strong,
+.admin-report-modal-user-card strong {
+    color: #eef4ff;
+    font-size: 15px;
+    line-height: 1.4;
+}
+
+.admin-report-modal-reason-card p {
+    margin: 0;
+    color: rgba(203, 213, 225, 0.8);
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.admin-report-modal-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.admin-report-modal-actions .admin-profile-modal-button:last-child {
+    grid-column: 1 / -1;
+    justify-self: center;
+    min-width: 220px;
 }
 
 .admin-modal-panel.admin-pending-vehicle-modal {
@@ -1328,6 +1615,10 @@
         grid-template-columns: 1fr;
     }
 
+    .admin-reports-grid {
+        grid-template-columns: 1fr;
+    }
+
     .admin-catalog-panel {
         padding: 24px 22px;
     }
@@ -1352,6 +1643,10 @@
 
     .admin-catalog-table {
         grid-template-columns: minmax(220px, 2fr) minmax(160px, 1fr) 0.7fr 0.8fr 0.8fr;
+    }
+
+    .admin-reports-table {
+        grid-template-columns: minmax(220px, 1.6fr) minmax(140px, 1fr) minmax(160px, 1fr);
     }
 }
 
@@ -1386,6 +1681,12 @@
     .admin-catalog-table-row {
         grid-template-columns: minmax(220px, 1.9fr) minmax(140px, 1fr) 0.7fr 0.7fr 0.7fr;
         gap: 10px;
+    }
+
+    .admin-reports-table,
+    .admin-reports-table.admin-catalog-table-header,
+    .admin-reports-table.admin-catalog-table-row {
+        grid-template-columns: minmax(180px, 1.4fr) minmax(120px, 1fr) minmax(140px, 1fr);
     }
 
     .admin-catalog-full-name,

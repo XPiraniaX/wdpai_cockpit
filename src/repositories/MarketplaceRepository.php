@@ -683,6 +683,43 @@ class MarketplaceRepository
         return $statement->rowCount() > 0;
     }
 
+    public function getListingByIdForDisplay(int $currentUserId, int $listingId): ?array
+    {
+        $statement = $this->connection->prepare(
+            "SELECT
+                feed.*,
+                " . ($this->hasPrivacyMembershipVisibilityColumn()
+                    ? "COALESCE(us_priv.privacy_membership_visibility, 'public') AS privacy_membership_visibility,"
+                    : "'public' AS privacy_membership_visibility,") . "
+                COALESCE(save_ref.is_saved, FALSE) AS saved_by_current_user
+            FROM vw_marketplace_feed feed
+            " . ($this->hasPrivacyMembershipVisibilityColumn()
+                ? 'LEFT JOIN user_settings us_priv ON us_priv.user_id = feed.user_id'
+                : '') . "
+            LEFT JOIN LATERAL (
+                SELECT TRUE AS is_saved
+                FROM marketplace_listing_saves s
+                WHERE s.listing_id = feed.id
+                    AND s.user_id = :current_user_id
+                LIMIT 1
+            ) AS save_ref ON TRUE
+            WHERE feed.id = :listing_id
+            LIMIT 1"
+        );
+        $statement->execute([
+            'current_user_id' => $currentUserId,
+            'listing_id' => $listingId,
+        ]);
+
+        $row = $statement->fetch(PDO::FETCH_ASSOC) ?: null;
+        if ($row === null) {
+            return null;
+        }
+
+        $mapped = $this->mapListingRows([$row], $currentUserId);
+        return $mapped[0] ?? null;
+    }
+
     public function deleteListingByAdmin(int $listingId): ?array
     {
         $contextStatement = $this->connection->prepare(

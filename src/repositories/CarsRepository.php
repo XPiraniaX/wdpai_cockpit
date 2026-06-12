@@ -959,6 +959,71 @@ class CarsRepository
         return (int) $statement->fetchColumn();
     }
 
+    public function getAdminPendingBrandCount(): int
+    {
+        $statement = $this->connection->query(
+            "SELECT COUNT(*)
+            FROM car_brands
+            WHERE is_approved = FALSE"
+        );
+
+        return (int) $statement->fetchColumn();
+    }
+
+    public function getAdminPendingBrandsPage(int $page, int $perPage): array
+    {
+        $offset = max(0, ($page - 1) * $perPage);
+
+        $statement = $this->connection->prepare(
+            "SELECT
+                b.id,
+                b.name
+            FROM car_brands b
+            WHERE b.is_approved = FALSE
+            ORDER BY b.id ASC
+            LIMIT :limit OFFSET :offset"
+        );
+        $statement->bindValue(':limit', $perPage, PDO::PARAM_INT);
+        $statement->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll();
+    }
+
+    public function getAdminPendingModelCount(): int
+    {
+        $statement = $this->connection->query(
+            "SELECT COUNT(*)
+            FROM car_models m
+            WHERE m.is_approved = FALSE"
+        );
+
+        return (int) $statement->fetchColumn();
+    }
+
+    public function getAdminPendingModelsPage(int $page, int $perPage): array
+    {
+        $offset = max(0, ($page - 1) * $perPage);
+
+        $statement = $this->connection->prepare(
+            "SELECT
+                m.id,
+                m.name AS model_name,
+                b.name AS brand_name,
+                b.is_approved AS brand_is_approved
+            FROM car_models m
+            INNER JOIN car_brands b ON b.id = m.brand_id
+            WHERE m.is_approved = FALSE
+            ORDER BY m.id ASC
+            LIMIT :limit OFFSET :offset"
+        );
+        $statement->bindValue(':limit', $perPage, PDO::PARAM_INT);
+        $statement->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll();
+    }
+
     public function getAdminPendingVehiclesPage(int $page, int $perPage): array
     {
         $offset = max(0, ($page - 1) * $perPage);
@@ -1120,6 +1185,213 @@ class CarsRepository
             ]);
 
             $this->connection->commit();
+        } catch (Throwable $exception) {
+            $this->connection->rollBack();
+            throw $exception;
+        }
+    }
+
+    public function approveBrandByAdmin(int $brandId): bool
+    {
+        $statement = $this->connection->prepare(
+            "UPDATE car_brands
+            SET is_approved = TRUE
+            WHERE id = :brand_id
+                AND is_approved = FALSE"
+        );
+        $statement->execute([
+            'brand_id' => $brandId,
+        ]);
+
+        return $statement->rowCount() > 0;
+    }
+
+    public function deleteBrandByAdmin(int $brandId): ?array
+    {
+        $this->connection->beginTransaction();
+
+        try {
+            $brandStatement = $this->connection->prepare(
+                "SELECT id
+                FROM car_brands
+                WHERE id = :brand_id
+                    AND is_approved = FALSE
+                LIMIT 1"
+            );
+            $brandStatement->execute([
+                'brand_id' => $brandId,
+            ]);
+
+            if (!$brandStatement->fetch()) {
+                $this->connection->rollBack();
+                return null;
+            }
+
+            $vehicleContextsStatement = $this->connection->prepare(
+                "SELECT id, user_id, display_name
+                FROM vehicles
+                WHERE brand_id = :brand_id"
+            );
+            $vehicleContextsStatement->execute([
+                'brand_id' => $brandId,
+            ]);
+            $vehicleContexts = $vehicleContextsStatement->fetchAll();
+
+            $listingContextsStatement = $this->connection->prepare(
+                "SELECT id, user_id, title
+                FROM marketplace_listings
+                WHERE brand_id = :brand_id"
+            );
+            $listingContextsStatement->execute([
+                'brand_id' => $brandId,
+            ]);
+            $listingContexts = $listingContextsStatement->fetchAll();
+
+            $deleteListingsStatement = $this->connection->prepare(
+                "DELETE FROM marketplace_listings
+                WHERE brand_id = :brand_id"
+            );
+            $deleteListingsStatement->execute([
+                'brand_id' => $brandId,
+            ]);
+
+            $deleteVehiclesStatement = $this->connection->prepare(
+                "DELETE FROM vehicles
+                WHERE brand_id = :brand_id"
+            );
+            $deleteVehiclesStatement->execute([
+                'brand_id' => $brandId,
+            ]);
+
+            $deleteModelsStatement = $this->connection->prepare(
+                "DELETE FROM car_models
+                WHERE brand_id = :brand_id"
+            );
+            $deleteModelsStatement->execute([
+                'brand_id' => $brandId,
+            ]);
+
+            $deleteBrandStatement = $this->connection->prepare(
+                "DELETE FROM car_brands
+                WHERE id = :brand_id
+                    AND is_approved = FALSE"
+            );
+            $deleteBrandStatement->execute([
+                'brand_id' => $brandId,
+            ]);
+
+            $deleted = $deleteBrandStatement->rowCount() > 0;
+            if (!$deleted) {
+                $this->connection->rollBack();
+                return null;
+            }
+
+            $this->connection->commit();
+            return [
+                'vehicles' => $vehicleContexts,
+                'listings' => $listingContexts,
+            ];
+        } catch (Throwable $exception) {
+            $this->connection->rollBack();
+            throw $exception;
+        }
+    }
+
+    public function approveModelByAdmin(int $modelId): bool
+    {
+        $statement = $this->connection->prepare(
+            "UPDATE car_models m
+            SET is_approved = TRUE
+            FROM car_brands b
+            WHERE m.id = :model_id
+                AND m.brand_id = b.id
+                AND m.is_approved = FALSE
+                AND b.is_approved = TRUE"
+        );
+        $statement->execute([
+            'model_id' => $modelId,
+        ]);
+
+        return $statement->rowCount() > 0;
+    }
+
+    public function deleteModelByAdmin(int $modelId): ?array
+    {
+        $this->connection->beginTransaction();
+
+        try {
+            $modelStatement = $this->connection->prepare(
+                "SELECT id
+                FROM car_models
+                WHERE id = :model_id
+                    AND is_approved = FALSE
+                LIMIT 1"
+            );
+            $modelStatement->execute([
+                'model_id' => $modelId,
+            ]);
+
+            if (!$modelStatement->fetch()) {
+                $this->connection->rollBack();
+                return null;
+            }
+
+            $vehicleContextsStatement = $this->connection->prepare(
+                "SELECT id, user_id, display_name
+                FROM vehicles
+                WHERE model_id = :model_id"
+            );
+            $vehicleContextsStatement->execute([
+                'model_id' => $modelId,
+            ]);
+            $vehicleContexts = $vehicleContextsStatement->fetchAll();
+
+            $listingContextsStatement = $this->connection->prepare(
+                "SELECT id, user_id, title
+                FROM marketplace_listings
+                WHERE model_id = :model_id"
+            );
+            $listingContextsStatement->execute([
+                'model_id' => $modelId,
+            ]);
+            $listingContexts = $listingContextsStatement->fetchAll();
+
+            $deleteListingsStatement = $this->connection->prepare(
+                "DELETE FROM marketplace_listings
+                WHERE model_id = :model_id"
+            );
+            $deleteListingsStatement->execute([
+                'model_id' => $modelId,
+            ]);
+
+            $deleteVehiclesStatement = $this->connection->prepare(
+                "DELETE FROM vehicles
+                WHERE model_id = :model_id"
+            );
+            $deleteVehiclesStatement->execute([
+                'model_id' => $modelId,
+            ]);
+
+            $deleteModelStatement = $this->connection->prepare(
+                "DELETE FROM car_models
+                WHERE id = :model_id
+                    AND is_approved = FALSE"
+            );
+            $deleteModelStatement->execute([
+                'model_id' => $modelId,
+            ]);
+
+            $deleted = $deleteModelStatement->rowCount() > 0;
+            if (!$deleted) {
+                $this->connection->rollBack();
+                return null;
+            }
+
+            $this->connection->commit();
+            return [
+                'vehicles' => $vehicleContexts,
+                'listings' => $listingContexts,
+            ];
         } catch (Throwable $exception) {
             $this->connection->rollBack();
             throw $exception;

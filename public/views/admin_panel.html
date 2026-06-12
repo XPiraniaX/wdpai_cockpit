@@ -22,7 +22,38 @@ $pendingVehicles = $adminPendingVehicles ?? [
     'total_items' => 0,
     'total_pages' => 1,
 ];
+$pendingBrands = $adminPendingBrands ?? [
+    'rows' => [],
+    'page' => 1,
+    'per_page' => 4,
+    'total_items' => 0,
+    'total_pages' => 1,
+];
+$pendingModels = $adminPendingModels ?? [
+    'rows' => [],
+    'page' => 1,
+    'per_page' => 4,
+    'total_items' => 0,
+    'total_pages' => 1,
+];
+$reports = $adminReports ?? [
+    'rows' => [],
+    'page' => 1,
+    'per_page' => 7,
+    'total_items' => 0,
+    'total_pages' => 1,
+];
+$reportStats = $adminReportStats ?? [
+    'total' => 0,
+    'listings' => 0,
+    'posts' => 0,
+    'comments' => 0,
+    'profiles' => 0,
+];
 $pendingVehicleRows = $pendingVehicles['rows'] ?? [];
+$pendingBrandRows = $pendingBrands['rows'] ?? [];
+$pendingModelRows = $pendingModels['rows'] ?? [];
+$reportRows = $reports['rows'] ?? [];
 ?>
 <main class="admin-panel-page">
     <section class="admin-panel-shell">
@@ -305,20 +336,299 @@ $pendingVehicleRows = $pendingVehicles['rows'] ?? [];
                     </div>
                 </article>
 
-                <article class="admin-stats-panel admin-cars-placeholder-panel">
-                    <div class="admin-stats-head">
-                        <h2 class="admin-catalog-title">Marki i modele</h2>
-                    </div>
-                    <div class="admin-panel-empty-state">Panel zatwierdzania marek i modeli dodamy po doprowadzeniu procesu potwierdzania pojazdów do wersji finalnej.</div>
-                </article>
+                <div class="admin-cars-side-column">
+                    <article
+                        class="admin-catalog-panel admin-pending-catalog-panel admin-pending-brands-panel"
+                        data-admin-pending-brands
+                        data-admin-pending-brands-page="<?= htmlspecialchars((string) ($pendingBrands['page'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>"
+                        data-admin-pending-brands-per-page="<?= htmlspecialchars((string) ($pendingBrands['per_page'] ?? 4), ENT_QUOTES, 'UTF-8'); ?>"
+                        data-admin-pending-brands-total-pages="<?= htmlspecialchars((string) ($pendingBrands['total_pages'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>"
+                        data-admin-pending-brands-total-items="<?= htmlspecialchars((string) ($pendingBrands['total_items'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>"
+                    >
+                        <div class="admin-catalog-head">
+                            <h2 class="admin-catalog-title">Marki do potwierdzenia</h2>
+                        </div>
+
+                        <div class="admin-catalog-table-shell">
+                            <div class="admin-catalog-table admin-catalog-table-header admin-pending-brands-table">
+                                <span>Marka</span>
+                                <span>Akcje</span>
+                            </div>
+
+                            <div data-admin-pending-brand-rows>
+                                <?php if (!empty($pendingBrandRows)): ?>
+                                    <?php foreach ($pendingBrandRows as $row): ?>
+                                        <div class="admin-catalog-table admin-catalog-table-row admin-pending-brands-table">
+                                            <span class="admin-pending-catalog-name"><?= htmlspecialchars((string) ($row['name'] ?? 'Brak marki'), ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <span class="admin-pending-catalog-actions">
+                                                <button type="button" class="admin-inline-action-button" data-admin-pending-brand-approve data-admin-pending-brand-id="<?= (int) ($row['id'] ?? 0); ?>">Potwierdź</button>
+                                                <button type="button" class="admin-inline-action-button is-danger" data-admin-pending-brand-delete data-admin-pending-brand-id="<?= (int) ($row['id'] ?? 0); ?>">Usuń</button>
+                                            </span>
+                                        </div>
+                                    <?php endforeach; ?>
+                                    <?php $pendingBrandsPerPage = (int) ($pendingBrands['per_page'] ?? 4); ?>
+                                    <?php $pendingBrandPlaceholderCount = max(0, $pendingBrandsPerPage - count($pendingBrandRows)); ?>
+                                    <?php for ($placeholderIndex = 0; $placeholderIndex < $pendingBrandPlaceholderCount; $placeholderIndex++): ?>
+                                        <div class="admin-catalog-table admin-catalog-table-row admin-pending-brands-table is-placeholder" aria-hidden="true"></div>
+                                    <?php endfor; ?>
+                                <?php else: ?>
+                                    <div class="admin-catalog-empty">Brak marek oczekujących na potwierdzenie.</div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <div class="admin-catalog-footer">
+                            <div class="admin-catalog-page-status" data-admin-pending-brand-page-status>
+                                Strona <?= htmlspecialchars((string) ($pendingBrands['page'] ?? 1), ENT_QUOTES, 'UTF-8'); ?> z <?= htmlspecialchars((string) ($pendingBrands['total_pages'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>
+                            </div>
+
+                            <div class="admin-catalog-pagination">
+                                <button type="button" class="admin-catalog-page-arrow" data-admin-pending-brand-prev aria-label="Poprzednia strona"></button>
+                                <div class="admin-catalog-page-list" data-admin-pending-brand-page-list></div>
+                                <button type="button" class="admin-catalog-page-arrow" data-admin-pending-brand-next aria-label="Następna strona"></button>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article
+                        class="admin-catalog-panel admin-pending-catalog-panel admin-pending-models-panel"
+                        data-admin-pending-models
+                        data-admin-pending-models-page="<?= htmlspecialchars((string) ($pendingModels['page'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>"
+                        data-admin-pending-models-per-page="<?= htmlspecialchars((string) ($pendingModels['per_page'] ?? 4), ENT_QUOTES, 'UTF-8'); ?>"
+                        data-admin-pending-models-total-pages="<?= htmlspecialchars((string) ($pendingModels['total_pages'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>"
+                        data-admin-pending-models-total-items="<?= htmlspecialchars((string) ($pendingModels['total_items'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>"
+                    >
+                        <div class="admin-catalog-head">
+                            <h2 class="admin-catalog-title">Modele do potwierdzenia</h2>
+                        </div>
+
+                        <div class="admin-catalog-table-shell">
+                            <div class="admin-catalog-table admin-catalog-table-header admin-pending-models-table">
+                                <span>Model</span>
+                                <span>Marka</span>
+                                <span>Akcje</span>
+                            </div>
+
+                            <div data-admin-pending-model-rows>
+                                <?php if (!empty($pendingModelRows)): ?>
+                                    <?php foreach ($pendingModelRows as $row): ?>
+                                        <div class="admin-catalog-table admin-catalog-table-row admin-pending-models-table">
+                                            <span class="admin-pending-catalog-name"><?= htmlspecialchars((string) ($row['model_name'] ?? 'Brak modelu'), ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <span class="admin-pending-catalog-brand"><?= htmlspecialchars((string) ($row['brand_name'] ?? 'Brak marki'), ENT_QUOTES, 'UTF-8'); ?></span>
+                                            <span class="admin-pending-catalog-actions">
+                                                <?php if (!empty($row['brand_is_approved'])): ?>
+                                                    <button type="button" class="admin-inline-action-button" data-admin-pending-model-approve data-admin-pending-model-id="<?= (int) ($row['id'] ?? 0); ?>">Potwierdź</button>
+                                                    <button type="button" class="admin-inline-action-button is-danger" data-admin-pending-model-delete data-admin-pending-model-id="<?= (int) ($row['id'] ?? 0); ?>">Usuń</button>
+                                                <?php endif; ?>
+                                            </span>
+                                        </div>
+                                    <?php endforeach; ?>
+                                    <?php $pendingModelsPerPage = (int) ($pendingModels['per_page'] ?? 4); ?>
+                                    <?php $pendingModelPlaceholderCount = max(0, $pendingModelsPerPage - count($pendingModelRows)); ?>
+                                    <?php for ($placeholderIndex = 0; $placeholderIndex < $pendingModelPlaceholderCount; $placeholderIndex++): ?>
+                                        <div class="admin-catalog-table admin-catalog-table-row admin-pending-models-table is-placeholder" aria-hidden="true"></div>
+                                    <?php endfor; ?>
+                                <?php else: ?>
+                                    <div class="admin-catalog-empty">Brak modeli oczekujących na potwierdzenie.</div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <div class="admin-catalog-footer">
+                            <div class="admin-catalog-page-status" data-admin-pending-model-page-status>
+                                Strona <?= htmlspecialchars((string) ($pendingModels['page'] ?? 1), ENT_QUOTES, 'UTF-8'); ?> z <?= htmlspecialchars((string) ($pendingModels['total_pages'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>
+                            </div>
+
+                            <div class="admin-catalog-pagination">
+                                <button type="button" class="admin-catalog-page-arrow" data-admin-pending-model-prev aria-label="Poprzednia strona"></button>
+                                <div class="admin-catalog-page-list" data-admin-pending-model-page-list></div>
+                                <button type="button" class="admin-catalog-page-arrow" data-admin-pending-model-next aria-label="Następna strona"></button>
+                            </div>
+                        </div>
+                    </article>
+                </div>
             </div>
         </section>
 
         <section class="admin-panel-tab-panel" data-admin-tab-panel="reports" hidden>
-            <div class="admin-panel-empty-state">Moduł zgłoszeń w przygotowaniu</div>
+            <div class="admin-reports-grid">
+                <article
+                    class="admin-catalog-panel admin-reports-panel"
+                    data-admin-reports
+                    data-admin-reports-page="<?= htmlspecialchars((string) ($reports['page'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>"
+                    data-admin-reports-per-page="<?= htmlspecialchars((string) ($reports['per_page'] ?? 7), ENT_QUOTES, 'UTF-8'); ?>"
+                    data-admin-reports-total-pages="<?= htmlspecialchars((string) ($reports['total_pages'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>"
+                    data-admin-reports-total-items="<?= htmlspecialchars((string) ($reports['total_items'] ?? 0), ENT_QUOTES, 'UTF-8'); ?>"
+                >
+                    <div class="admin-catalog-head">
+                        <h2 class="admin-catalog-title">Zgłoszenia</h2>
+                    </div>
+
+                    <div class="admin-catalog-table-shell">
+                        <div class="admin-catalog-table admin-catalog-table-header admin-reports-table">
+                            <span>Zgłoszenie</span>
+                            <span>Zgłoszony użytkownik</span>
+                            <span>Powód</span>
+                        </div>
+
+                        <div data-admin-report-rows>
+                            <?php if (!empty($reportRows)): ?>
+                                <?php foreach ($reportRows as $row): ?>
+                                    <button
+                                        type="button"
+                                        class="admin-catalog-table admin-catalog-table-row admin-reports-table"
+                                        data-admin-report-row
+                                        data-admin-report-id="<?= (int) ($row['id'] ?? 0); ?>"
+                                    >
+                                        <span class="admin-report-subject">
+                                            <span class="admin-report-type">
+                                                <?php
+                                                $reportType = (string) ($row['content_type'] ?? '');
+                                                echo htmlspecialchars(match ($reportType) {
+                                                    'listing' => 'Ogłoszenie',
+                                                    'post' => 'Post',
+                                                    'comment' => 'Komentarz',
+                                                    'profile' => 'Profil',
+                                                    default => 'Zgłoszenie',
+                                                }, ENT_QUOTES, 'UTF-8');
+                                                ?>
+                                            </span>
+                                            <span class="admin-report-title"><?= htmlspecialchars((string) ($row['reported_subject'] ?? 'Zgłoszenie'), ENT_QUOTES, 'UTF-8'); ?></span>
+                                        </span>
+                                        <span class="admin-report-user"><?= htmlspecialchars((string) ($row['reported_user_name'] ?? 'Użytkownik'), ENT_QUOTES, 'UTF-8'); ?></span>
+                                        <span class="admin-report-reason"><?= htmlspecialchars((string) ($row['reason_label'] ?? 'Brak powodu'), ENT_QUOTES, 'UTF-8'); ?></span>
+                                    </button>
+                                <?php endforeach; ?>
+                                <?php $reportsPerPage = (int) ($reports['per_page'] ?? 7); ?>
+                                <?php $reportPlaceholderCount = max(0, $reportsPerPage - count($reportRows)); ?>
+                                <?php for ($placeholderIndex = 0; $placeholderIndex < $reportPlaceholderCount; $placeholderIndex++): ?>
+                                    <div class="admin-catalog-table admin-catalog-table-row admin-reports-table is-placeholder" aria-hidden="true"></div>
+                                <?php endfor; ?>
+                            <?php else: ?>
+                                <div class="admin-catalog-empty">Brak otwartych zgłoszeń.</div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
+                    <div class="admin-catalog-footer">
+                        <div class="admin-catalog-page-status" data-admin-report-page-status>
+                            Strona <?= htmlspecialchars((string) ($reports['page'] ?? 1), ENT_QUOTES, 'UTF-8'); ?> z <?= htmlspecialchars((string) ($reports['total_pages'] ?? 1), ENT_QUOTES, 'UTF-8'); ?>
+                        </div>
+
+                        <div class="admin-catalog-pagination">
+                            <button type="button" class="admin-catalog-page-arrow" data-admin-report-prev aria-label="Poprzednia strona"></button>
+                            <div class="admin-catalog-page-list" data-admin-report-page-list></div>
+                            <button type="button" class="admin-catalog-page-arrow" data-admin-report-next aria-label="Następna strona"></button>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="admin-stats-panel admin-report-stats-panel">
+                    <div class="admin-stats-head">
+                        <h2 class="admin-catalog-title">Statystyki zgłoszeń</h2>
+                    </div>
+                    <div class="admin-stats-grid admin-report-stats-grid" data-admin-report-stats>
+                        <article class="admin-stats-card">
+                            <span class="admin-stats-card-copy">
+                                <span class="admin-stats-card-label">Wszystkie</span>
+                                <span class="admin-stats-card-value" data-admin-report-stat="total"><?= htmlspecialchars((string) ($reportStats['total'] ?? 0), ENT_QUOTES, 'UTF-8'); ?></span>
+                            </span>
+                        </article>
+                        <article class="admin-stats-card">
+                            <span class="admin-stats-card-copy">
+                                <span class="admin-stats-card-label">Ogłoszenia</span>
+                                <span class="admin-stats-card-value" data-admin-report-stat="listings"><?= htmlspecialchars((string) ($reportStats['listings'] ?? 0), ENT_QUOTES, 'UTF-8'); ?></span>
+                            </span>
+                        </article>
+                        <article class="admin-stats-card">
+                            <span class="admin-stats-card-copy">
+                                <span class="admin-stats-card-label">Posty</span>
+                                <span class="admin-stats-card-value" data-admin-report-stat="posts"><?= htmlspecialchars((string) ($reportStats['posts'] ?? 0), ENT_QUOTES, 'UTF-8'); ?></span>
+                            </span>
+                        </article>
+                        <article class="admin-stats-card">
+                            <span class="admin-stats-card-copy">
+                                <span class="admin-stats-card-label">Komentarze</span>
+                                <span class="admin-stats-card-value" data-admin-report-stat="comments"><?= htmlspecialchars((string) ($reportStats['comments'] ?? 0), ENT_QUOTES, 'UTF-8'); ?></span>
+                            </span>
+                        </article>
+                        <article class="admin-stats-card">
+                            <span class="admin-stats-card-copy">
+                                <span class="admin-stats-card-label">Profile</span>
+                                <span class="admin-stats-card-value" data-admin-report-stat="profiles"><?= htmlspecialchars((string) ($reportStats['profiles'] ?? 0), ENT_QUOTES, 'UTF-8'); ?></span>
+                            </span>
+                        </article>
+                    </div>
+                </article>
+            </div>
         </section>
     </section>
 </main>
+
+<div class="admin-modal-backdrop" data-admin-report-modal-root hidden>
+    <div class="admin-modal-scrim" data-admin-report-modal-close></div>
+    <section class="admin-modal-panel admin-report-modal">
+        <header class="admin-modal-header">
+            <span class="admin-modal-header-spacer" aria-hidden="true"></span>
+            <h2 class="admin-modal-header-title">Szczegóły zgłoszenia</h2>
+            <button type="button" class="admin-modal-close" aria-label="Zamknij" data-admin-report-modal-close>
+                <img src="/public/assets/icons/close.svg" alt="">
+            </button>
+        </header>
+        <div class="admin-profile-modal-body admin-report-modal-body">
+            <div class="admin-report-modal-meta">
+                <div class="admin-report-modal-type" data-admin-report-modal-type></div>
+                <h3 class="admin-modal-title" data-admin-report-modal-subject>Zgłoszona zawartość</h3>
+                <div class="admin-report-modal-created-at" data-admin-report-modal-created-at></div>
+            </div>
+
+            <div class="admin-report-modal-reason-card">
+                <span class="admin-report-modal-reason-label">Powód zgłoszenia</span>
+                <strong data-admin-report-modal-reason-label>Brak powodu</strong>
+                <p data-admin-report-modal-reason-text hidden></p>
+            </div>
+
+            <div class="admin-report-modal-user-card">
+                <span class="admin-report-modal-user-label">Zgłoszony użytkownik</span>
+                <strong data-admin-report-modal-reported-user-name>Użytkownik</strong>
+            </div>
+
+            <div class="admin-report-modal-actions">
+                <a href="/dashboard" class="admin-profile-modal-button is-primary" data-admin-report-modal-content-link>Przejdź do zawartości</a>
+                <a href="/admin" class="admin-profile-modal-button" data-admin-report-modal-profile-link>Przejdź do profilu</a>
+                <button type="button" class="admin-profile-modal-button is-danger" data-admin-report-modal-moderate hidden>Usuń zgłoszoną treść</button>
+                <button type="button" class="admin-profile-modal-button is-danger" data-admin-report-modal-ban hidden>Zablokuj profil</button>
+                <button type="button" class="admin-profile-modal-button" data-admin-report-modal-close-report>Zamknij zgłoszenie</button>
+            </div>
+        </div>
+    </section>
+</div>
+
+<div class="admin-action-modal-backdrop" data-admin-report-moderation-modal-root hidden>
+    <div class="admin-action-modal-scrim" data-admin-report-moderation-modal-close></div>
+    <section class="admin-action-modal-panel">
+        <header class="admin-modal-header">
+            <span class="admin-modal-header-spacer" aria-hidden="true"></span>
+            <h2 class="admin-modal-header-title" data-admin-report-moderation-modal-title>Usuń zgłoszoną treść</h2>
+            <button type="button" class="admin-modal-close" aria-label="Zamknij" data-admin-report-moderation-modal-close>
+                <img src="/public/assets/icons/close.svg" alt="">
+            </button>
+        </header>
+
+        <div class="admin-action-modal-body">
+            <p class="admin-action-modal-copy" data-admin-report-moderation-modal-copy></p>
+            <div class="admin-action-modal-options" data-admin-report-moderation-modal-options></div>
+            <label class="admin-action-modal-other" data-admin-report-moderation-modal-other hidden>
+                <span>Inny powód</span>
+                <textarea rows="4" maxlength="1000" data-admin-report-moderation-modal-other-input></textarea>
+            </label>
+        </div>
+
+        <footer class="admin-action-modal-footer admin-action-modal-footer-centered">
+            <button type="button" class="admin-profile-modal-button is-danger" data-admin-report-moderation-modal-confirm>Zatwierdź</button>
+        </footer>
+    </section>
+</div>
 
 <div class="admin-modal-backdrop" data-admin-user-modal-root hidden>
     <div class="admin-modal-scrim" data-admin-user-modal-close></div>

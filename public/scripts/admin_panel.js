@@ -50,6 +50,25 @@
     const pendingVehiclePageList = root.querySelector('[data-admin-pending-vehicle-page-list]');
     const pendingVehiclePrevButton = root.querySelector('[data-admin-pending-vehicle-prev]');
     const pendingVehicleNextButton = root.querySelector('[data-admin-pending-vehicle-next]');
+    const pendingBrandsRoot = root.querySelector('[data-admin-pending-brands]');
+    const pendingBrandRowsRoot = root.querySelector('[data-admin-pending-brand-rows]');
+    const pendingBrandPageStatus = root.querySelector('[data-admin-pending-brand-page-status]');
+    const pendingBrandPageList = root.querySelector('[data-admin-pending-brand-page-list]');
+    const pendingBrandPrevButton = root.querySelector('[data-admin-pending-brand-prev]');
+    const pendingBrandNextButton = root.querySelector('[data-admin-pending-brand-next]');
+    const pendingModelsRoot = root.querySelector('[data-admin-pending-models]');
+    const pendingModelRowsRoot = root.querySelector('[data-admin-pending-model-rows]');
+    const pendingModelPageStatus = root.querySelector('[data-admin-pending-model-page-status]');
+    const pendingModelPageList = root.querySelector('[data-admin-pending-model-page-list]');
+    const pendingModelPrevButton = root.querySelector('[data-admin-pending-model-prev]');
+    const pendingModelNextButton = root.querySelector('[data-admin-pending-model-next]');
+    const reportsRoot = root.querySelector('[data-admin-reports]');
+    const reportRowsRoot = root.querySelector('[data-admin-report-rows]');
+    const reportPageStatus = root.querySelector('[data-admin-report-page-status]');
+    const reportPageList = root.querySelector('[data-admin-report-page-list]');
+    const reportPrevButton = root.querySelector('[data-admin-report-prev]');
+    const reportNextButton = root.querySelector('[data-admin-report-next]');
+    const reportStatsRoot = root.querySelector('[data-admin-report-stats]');
 
     const userModalRoot = document.querySelector('[data-admin-user-modal-root]');
     const userModalAvatar = document.querySelector('[data-admin-user-modal-avatar]');
@@ -106,6 +125,25 @@
     const vehicleDeleteModalRoot = document.querySelector('[data-admin-vehicle-delete-modal-root]');
     const vehicleDeleteModalCopy = document.querySelector('[data-admin-vehicle-delete-modal-copy]');
     const vehicleDeleteConfirmButton = document.querySelector('[data-admin-vehicle-delete-confirm]');
+    const reportModalRoot = document.querySelector('[data-admin-report-modal-root]');
+    const reportModalType = document.querySelector('[data-admin-report-modal-type]');
+    const reportModalSubject = document.querySelector('[data-admin-report-modal-subject]');
+    const reportModalCreatedAt = document.querySelector('[data-admin-report-modal-created-at]');
+    const reportModalReasonLabel = document.querySelector('[data-admin-report-modal-reason-label]');
+    const reportModalReasonText = document.querySelector('[data-admin-report-modal-reason-text]');
+    const reportModalContentLink = document.querySelector('[data-admin-report-modal-content-link]');
+    const reportModalProfileLink = document.querySelector('[data-admin-report-modal-profile-link]');
+    const reportModalReportedUserName = document.querySelector('[data-admin-report-modal-reported-user-name]');
+    const reportModalModerateButton = document.querySelector('[data-admin-report-modal-moderate]');
+    const reportModalBanButton = document.querySelector('[data-admin-report-modal-ban]');
+    const reportModalCloseReportButton = document.querySelector('[data-admin-report-modal-close-report]');
+    const reportModerationModalRoot = document.querySelector('[data-admin-report-moderation-modal-root]');
+    const reportModerationModalTitle = document.querySelector('[data-admin-report-moderation-modal-title]');
+    const reportModerationModalCopy = document.querySelector('[data-admin-report-moderation-modal-copy]');
+    const reportModerationModalOptions = document.querySelector('[data-admin-report-moderation-modal-options]');
+    const reportModerationModalOther = document.querySelector('[data-admin-report-moderation-modal-other]');
+    const reportModerationModalOtherInput = document.querySelector('[data-admin-report-moderation-modal-other-input]');
+    const reportModerationModalConfirm = document.querySelector('[data-admin-report-moderation-modal-confirm]');
 
     const tabLabelMap = {
         dashboard: 'Użytkownicy',
@@ -198,6 +236,41 @@
         rejectSubmitting: false,
         approveSubmitting: false,
         deleteSubmitting: false,
+    };
+
+    const pendingBrandsState = {
+        page: Number(pendingBrandsRoot?.getAttribute('data-admin-pending-brands-page') || 1),
+        perPage: Number(pendingBrandsRoot?.getAttribute('data-admin-pending-brands-per-page') || 4),
+        totalPages: Number(pendingBrandsRoot?.getAttribute('data-admin-pending-brands-total-pages') || 1),
+        totalItems: Number(pendingBrandsRoot?.getAttribute('data-admin-pending-brands-total-items') || 0),
+        isLoading: false,
+        actionSubmittingId: 0,
+    };
+
+    const pendingModelsState = {
+        page: Number(pendingModelsRoot?.getAttribute('data-admin-pending-models-page') || 1),
+        perPage: Number(pendingModelsRoot?.getAttribute('data-admin-pending-models-per-page') || 4),
+        totalPages: Number(pendingModelsRoot?.getAttribute('data-admin-pending-models-total-pages') || 1),
+        totalItems: Number(pendingModelsRoot?.getAttribute('data-admin-pending-models-total-items') || 0),
+        isLoading: false,
+        actionSubmittingId: 0,
+    };
+
+    const reportsState = {
+        page: Number(reportsRoot?.getAttribute('data-admin-reports-page') || 1),
+        perPage: Number(reportsRoot?.getAttribute('data-admin-reports-per-page') || 7),
+        totalPages: Number(reportsRoot?.getAttribute('data-admin-reports-total-pages') || 1),
+        totalItems: Number(reportsRoot?.getAttribute('data-admin-reports-total-items') || 0),
+        isLoading: false,
+        selectedReportId: 0,
+        selectedReport: null,
+        closeSubmitting: false,
+    };
+
+    const reportModerationState = {
+        selectedReason: '',
+        customReason: '',
+        isSubmitting: false,
     };
 
     const showToast = (message, type = 'info') => {
@@ -521,6 +594,37 @@
 
     const buildPendingVehiclePlaceholderMarkup = () => `
         <div class="admin-catalog-table admin-catalog-table-row admin-pending-vehicles-table is-placeholder" aria-hidden="true"></div>
+    `;
+
+    const buildPendingBrandRowMarkup = (row) => `
+        <div class="admin-catalog-table admin-catalog-table-row admin-pending-brands-table">
+            <span class="admin-pending-catalog-name">${escapeHtml(String(row.name || 'Brak marki'))}</span>
+            <span class="admin-pending-catalog-actions">
+                <button type="button" class="admin-inline-action-button" data-admin-pending-brand-approve data-admin-pending-brand-id="${Number(row.id || 0)}">Potwierdź</button>
+                <button type="button" class="admin-inline-action-button is-danger" data-admin-pending-brand-delete data-admin-pending-brand-id="${Number(row.id || 0)}">Usuń</button>
+            </span>
+        </div>
+    `;
+
+    const buildPendingBrandPlaceholderMarkup = () => `
+        <div class="admin-catalog-table admin-catalog-table-row admin-pending-brands-table is-placeholder" aria-hidden="true"></div>
+    `;
+
+    const buildPendingModelRowMarkup = (row) => `
+        <div class="admin-catalog-table admin-catalog-table-row admin-pending-models-table">
+            <span class="admin-pending-catalog-name">${escapeHtml(String(row.model_name || 'Brak modelu'))}</span>
+            <span class="admin-pending-catalog-brand">${escapeHtml(String(row.brand_name || 'Brak marki'))}</span>
+            <span class="admin-pending-catalog-actions">
+                ${row.brand_is_approved ? `
+                    <button type="button" class="admin-inline-action-button" data-admin-pending-model-approve data-admin-pending-model-id="${Number(row.id || 0)}">Potwierdź</button>
+                    <button type="button" class="admin-inline-action-button is-danger" data-admin-pending-model-delete data-admin-pending-model-id="${Number(row.id || 0)}">Usuń</button>
+                ` : ''}
+            </span>
+        </div>
+    `;
+
+    const buildPendingModelPlaceholderMarkup = () => `
+        <div class="admin-catalog-table admin-catalog-table-row admin-pending-models-table is-placeholder" aria-hidden="true"></div>
     `;
 
     const ensureAvatar = (container, avatarPath, pseudonym, imageClass) => {
@@ -1149,6 +1253,180 @@
         renderPendingVehiclesPagination();
     };
 
+    const renderPendingBrandsPagination = () => {
+        if (!(pendingBrandPageList instanceof HTMLElement)) {
+            return;
+        }
+
+        pendingBrandPageList.innerHTML = '';
+        buildPageSequence(pendingBrandsState.totalPages, pendingBrandsState.page).forEach((item) => {
+            if (item === 'ellipsis') {
+                const ellipsis = document.createElement('span');
+                ellipsis.className = 'admin-catalog-page-ellipsis';
+                ellipsis.textContent = '...';
+                pendingBrandPageList.appendChild(ellipsis);
+                return;
+            }
+
+            if (item === 'spacer') {
+                const spacer = document.createElement('span');
+                spacer.className = 'admin-catalog-page-spacer';
+                spacer.setAttribute('aria-hidden', 'true');
+                pendingBrandPageList.appendChild(spacer);
+                return;
+            }
+
+            const pageNumber = Number(item);
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'admin-catalog-page-button';
+            button.textContent = String(pageNumber);
+            button.disabled = pendingBrandsState.isLoading;
+            if (pageNumber === pendingBrandsState.page) {
+                button.classList.add('is-active');
+            }
+
+            button.addEventListener('click', () => {
+                if (pageNumber !== pendingBrandsState.page) {
+                    void loadPendingBrandsPage(pageNumber);
+                }
+            });
+
+            pendingBrandPageList.appendChild(button);
+        });
+
+        if (pendingBrandPrevButton instanceof HTMLButtonElement) {
+            pendingBrandPrevButton.disabled = pendingBrandsState.isLoading || pendingBrandsState.page <= 1;
+        }
+        if (pendingBrandNextButton instanceof HTMLButtonElement) {
+            pendingBrandNextButton.disabled = pendingBrandsState.isLoading || pendingBrandsState.page >= pendingBrandsState.totalPages;
+        }
+        if (pendingBrandPageStatus instanceof HTMLElement) {
+            pendingBrandPageStatus.textContent = `Strona ${pendingBrandsState.page} z ${pendingBrandsState.totalPages}`;
+        }
+    };
+
+    const renderPendingBrandRows = (rows) => {
+        if (!(pendingBrandRowsRoot instanceof HTMLElement)) {
+            return;
+        }
+
+        if (!Array.isArray(rows) || rows.length === 0) {
+            pendingBrandRowsRoot.innerHTML = '<div class="admin-catalog-empty">Brak marek oczekujących na potwierdzenie.</div>';
+            return;
+        }
+
+        const safeRows = Array.isArray(rows) ? rows : [];
+        const placeholderCount = Math.max(0, pendingBrandsState.perPage - safeRows.length);
+        pendingBrandRowsRoot.innerHTML = [
+            ...safeRows.map((row) => buildPendingBrandRowMarkup(row)),
+            ...Array.from({ length: placeholderCount }, () => buildPendingBrandPlaceholderMarkup()),
+        ].join('');
+    };
+
+    const applyPendingBrandsPayload = (payload) => {
+        pendingBrandsState.page = Number(payload.page || 1);
+        pendingBrandsState.totalPages = Math.max(1, Number(payload.total_pages || 1));
+        pendingBrandsState.totalItems = Math.max(0, Number(payload.total_items || 0));
+
+        if (pendingBrandsRoot instanceof HTMLElement) {
+            pendingBrandsRoot.setAttribute('data-admin-pending-brands-page', String(pendingBrandsState.page));
+            pendingBrandsRoot.setAttribute('data-admin-pending-brands-per-page', String(pendingBrandsState.perPage));
+            pendingBrandsRoot.setAttribute('data-admin-pending-brands-total-pages', String(pendingBrandsState.totalPages));
+            pendingBrandsRoot.setAttribute('data-admin-pending-brands-total-items', String(pendingBrandsState.totalItems));
+        }
+
+        renderPendingBrandRows(Array.isArray(payload.rows) ? payload.rows : []);
+        renderPendingBrandsPagination();
+    };
+
+    const renderPendingModelsPagination = () => {
+        if (!(pendingModelPageList instanceof HTMLElement)) {
+            return;
+        }
+
+        pendingModelPageList.innerHTML = '';
+        buildPageSequence(pendingModelsState.totalPages, pendingModelsState.page).forEach((item) => {
+            if (item === 'ellipsis') {
+                const ellipsis = document.createElement('span');
+                ellipsis.className = 'admin-catalog-page-ellipsis';
+                ellipsis.textContent = '...';
+                pendingModelPageList.appendChild(ellipsis);
+                return;
+            }
+
+            if (item === 'spacer') {
+                const spacer = document.createElement('span');
+                spacer.className = 'admin-catalog-page-spacer';
+                spacer.setAttribute('aria-hidden', 'true');
+                pendingModelPageList.appendChild(spacer);
+                return;
+            }
+
+            const pageNumber = Number(item);
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'admin-catalog-page-button';
+            button.textContent = String(pageNumber);
+            button.disabled = pendingModelsState.isLoading;
+            if (pageNumber === pendingModelsState.page) {
+                button.classList.add('is-active');
+            }
+
+            button.addEventListener('click', () => {
+                if (pageNumber !== pendingModelsState.page) {
+                    void loadPendingModelsPage(pageNumber);
+                }
+            });
+
+            pendingModelPageList.appendChild(button);
+        });
+
+        if (pendingModelPrevButton instanceof HTMLButtonElement) {
+            pendingModelPrevButton.disabled = pendingModelsState.isLoading || pendingModelsState.page <= 1;
+        }
+        if (pendingModelNextButton instanceof HTMLButtonElement) {
+            pendingModelNextButton.disabled = pendingModelsState.isLoading || pendingModelsState.page >= pendingModelsState.totalPages;
+        }
+        if (pendingModelPageStatus instanceof HTMLElement) {
+            pendingModelPageStatus.textContent = `Strona ${pendingModelsState.page} z ${pendingModelsState.totalPages}`;
+        }
+    };
+
+    const renderPendingModelRows = (rows) => {
+        if (!(pendingModelRowsRoot instanceof HTMLElement)) {
+            return;
+        }
+
+        if (!Array.isArray(rows) || rows.length === 0) {
+            pendingModelRowsRoot.innerHTML = '<div class="admin-catalog-empty">Brak modeli oczekujących na potwierdzenie.</div>';
+            return;
+        }
+
+        const safeRows = Array.isArray(rows) ? rows : [];
+        const placeholderCount = Math.max(0, pendingModelsState.perPage - safeRows.length);
+        pendingModelRowsRoot.innerHTML = [
+            ...safeRows.map((row) => buildPendingModelRowMarkup(row)),
+            ...Array.from({ length: placeholderCount }, () => buildPendingModelPlaceholderMarkup()),
+        ].join('');
+    };
+
+    const applyPendingModelsPayload = (payload) => {
+        pendingModelsState.page = Number(payload.page || 1);
+        pendingModelsState.totalPages = Math.max(1, Number(payload.total_pages || 1));
+        pendingModelsState.totalItems = Math.max(0, Number(payload.total_items || 0));
+
+        if (pendingModelsRoot instanceof HTMLElement) {
+            pendingModelsRoot.setAttribute('data-admin-pending-models-page', String(pendingModelsState.page));
+            pendingModelsRoot.setAttribute('data-admin-pending-models-per-page', String(pendingModelsState.perPage));
+            pendingModelsRoot.setAttribute('data-admin-pending-models-total-pages', String(pendingModelsState.totalPages));
+            pendingModelsRoot.setAttribute('data-admin-pending-models-total-items', String(pendingModelsState.totalItems));
+        }
+
+        renderPendingModelRows(Array.isArray(payload.rows) ? payload.rows : []);
+        renderPendingModelsPagination();
+    };
+
     const loadPendingVehiclesPage = async (page) => {
         if (!(pendingVehiclesRoot instanceof HTMLElement) || pendingVehiclesState.isLoading) {
             return;
@@ -1179,6 +1457,72 @@
         } finally {
             pendingVehiclesState.isLoading = false;
             renderPendingVehiclesPagination();
+        }
+    };
+
+    const loadPendingBrandsPage = async (page) => {
+        if (!(pendingBrandsRoot instanceof HTMLElement) || pendingBrandsState.isLoading) {
+            return;
+        }
+
+        pendingBrandsState.isLoading = true;
+        renderPendingBrandsPagination();
+
+        try {
+            const url = new URL(window.location.href);
+            url.hash = '#cars';
+            url.searchParams.set('pending_brand_page', String(page));
+            const response = await window.fetch(url.toString(), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                credentials: 'same-origin',
+            });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok || !payload?.success || !payload.pending_brands) {
+                throw new Error('pending_brands_fetch_failed');
+            }
+
+            applyPendingBrandsPayload(payload.pending_brands);
+        } catch {
+            showToast('Nie udało się załadować listy marek.', 'error');
+        } finally {
+            pendingBrandsState.isLoading = false;
+            renderPendingBrandsPagination();
+        }
+    };
+
+    const loadPendingModelsPage = async (page) => {
+        if (!(pendingModelsRoot instanceof HTMLElement) || pendingModelsState.isLoading) {
+            return;
+        }
+
+        pendingModelsState.isLoading = true;
+        renderPendingModelsPagination();
+
+        try {
+            const url = new URL(window.location.href);
+            url.hash = '#cars';
+            url.searchParams.set('pending_model_page', String(page));
+            const response = await window.fetch(url.toString(), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                credentials: 'same-origin',
+            });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok || !payload?.success || !payload.pending_models) {
+                throw new Error('pending_models_fetch_failed');
+            }
+
+            applyPendingModelsPayload(payload.pending_models);
+        } catch {
+            showToast('Nie udało się załadować listy modeli.', 'error');
+        } finally {
+            pendingModelsState.isLoading = false;
+            renderPendingModelsPagination();
         }
     };
 
@@ -1326,8 +1670,399 @@
             || !(warningModalRoot instanceof HTMLElement && warningModalRoot.hidden)
             || !(pendingVehicleModalRoot instanceof HTMLElement && pendingVehicleModalRoot.hidden)
             || !(vehicleRejectModalRoot instanceof HTMLElement && vehicleRejectModalRoot.hidden)
-            || !(vehicleDeleteModalRoot instanceof HTMLElement && vehicleDeleteModalRoot.hidden);
+            || !(vehicleDeleteModalRoot instanceof HTMLElement && vehicleDeleteModalRoot.hidden)
+            || !(reportModalRoot instanceof HTMLElement && reportModalRoot.hidden)
+            || !(reportModerationModalRoot instanceof HTMLElement && reportModerationModalRoot.hidden);
         document.body.classList.toggle('admin-modal-open', anyOpen);
+    };
+
+    const getReportTypeLabel = (contentType) => ({
+        listing: 'Ogłoszenie',
+        post: 'Post',
+        comment: 'Komentarz',
+        profile: 'Profil',
+    }[String(contentType || '').trim()] || 'Zgłoszenie');
+
+    const getReportModerationOptions = (contentType) => {
+        if (contentType === 'listing') {
+            return [
+                'Ogłoszenie narusza regulamin serwisu.',
+                'To spam lub duplikat ogłoszenia.',
+                'Ogłoszenie zawiera wprowadzające w błąd informacje.',
+                'Ogłoszenie zawiera niedozwoloną treść.',
+                'Ogłoszenie narusza prywatność lub dane osobowe.',
+                'Inny powód',
+            ];
+        }
+
+        if (contentType === 'comment') {
+            return [
+                'Komentarz narusza regulamin serwisu.',
+                'Komentarz ma charakter obraźliwy lub nękający.',
+                'To spam lub flood.',
+                'Komentarz narusza prywatność lub dane osobowe.',
+                'Inny powód',
+            ];
+        }
+
+        return [
+            'Treść narusza regulamin serwisu.',
+            'Treść ma charakter obraźliwy lub nękający.',
+            'To spam lub niedozwolona promocja.',
+            'Treść narusza prywatność lub dane osobowe.',
+            'Treść jest niezgodna z tematyką serwisu.',
+            'Inny powód',
+        ];
+    };
+
+    const buildReportRowMarkup = (row) => `
+        <button
+            type="button"
+            class="admin-catalog-table admin-catalog-table-row admin-reports-table"
+            data-admin-report-row
+            data-admin-report-id="${Number(row.id || 0)}"
+        >
+            <span class="admin-report-subject">
+                <span class="admin-report-type">${escapeHtml(getReportTypeLabel(row.content_type))}</span>
+                <span class="admin-report-title">${escapeHtml(String(row.reported_subject || 'Zgłoszenie'))}</span>
+            </span>
+            <span class="admin-report-user">${escapeHtml(String(row.reported_user_name || 'Użytkownik'))}</span>
+            <span class="admin-report-reason">${escapeHtml(String(row.reason_label || 'Brak powodu'))}</span>
+        </button>
+    `;
+
+    const buildReportPlaceholderMarkup = () => '<div class="admin-catalog-table admin-catalog-table-row admin-reports-table is-placeholder" aria-hidden="true"></div>';
+
+    const renderReportRows = (rows) => {
+        if (!(reportRowsRoot instanceof HTMLElement)) {
+            return;
+        }
+
+        const safeRows = Array.isArray(rows) ? rows : [];
+        if (safeRows.length === 0) {
+            reportRowsRoot.innerHTML = '<div class="admin-catalog-empty">Brak otwartych zgłoszeń.</div>';
+            return;
+        }
+
+        const placeholderCount = Math.max(0, reportsState.perPage - safeRows.length);
+        reportRowsRoot.innerHTML = [
+            ...safeRows.map((row) => buildReportRowMarkup(row)),
+            ...Array.from({ length: placeholderCount }, () => buildReportPlaceholderMarkup()),
+        ].join('');
+    };
+
+    const renderReportStats = (stats = {}) => {
+        if (!(reportStatsRoot instanceof HTMLElement)) {
+            return;
+        }
+
+        reportStatsRoot.querySelectorAll('[data-admin-report-stat]').forEach((element) => {
+            if (!(element instanceof HTMLElement)) {
+                return;
+            }
+
+            const key = String(element.getAttribute('data-admin-report-stat') || '');
+            element.textContent = String(Number(stats[key] || 0));
+        });
+    };
+
+    const renderReportsPagination = () => {
+        if (!(reportPageList instanceof HTMLElement)) {
+            return;
+        }
+
+        reportPageList.innerHTML = '';
+        buildPageSequence(reportsState.totalPages, reportsState.page).forEach((item) => {
+            if (item === 'ellipsis') {
+                const ellipsis = document.createElement('span');
+                ellipsis.className = 'admin-catalog-page-ellipsis';
+                ellipsis.textContent = '...';
+                reportPageList.appendChild(ellipsis);
+                return;
+            }
+
+            const pageNumber = Number(item);
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'admin-catalog-page-button';
+            button.textContent = String(pageNumber);
+            button.disabled = reportsState.isLoading;
+            if (pageNumber === reportsState.page) {
+                button.classList.add('is-active');
+            }
+            button.addEventListener('click', () => {
+                if (pageNumber !== reportsState.page) {
+                    void loadReportsPage(pageNumber);
+                }
+            });
+            reportPageList.appendChild(button);
+        });
+
+        if (reportPrevButton instanceof HTMLButtonElement) {
+            reportPrevButton.disabled = reportsState.isLoading || reportsState.page <= 1;
+        }
+        if (reportNextButton instanceof HTMLButtonElement) {
+            reportNextButton.disabled = reportsState.isLoading || reportsState.page >= reportsState.totalPages;
+        }
+        if (reportPageStatus instanceof HTMLElement) {
+            reportPageStatus.textContent = `Strona ${reportsState.page} z ${reportsState.totalPages}`;
+        }
+    };
+
+    const applyReportsPayload = (payload, stats = null) => {
+        reportsState.page = Number(payload.page || 1);
+        reportsState.totalPages = Math.max(1, Number(payload.total_pages || 1));
+        reportsState.totalItems = Math.max(0, Number(payload.total_items || 0));
+        if (reportsRoot instanceof HTMLElement) {
+            reportsRoot.setAttribute('data-admin-reports-page', String(reportsState.page));
+            reportsRoot.setAttribute('data-admin-reports-total-pages', String(reportsState.totalPages));
+            reportsRoot.setAttribute('data-admin-reports-total-items', String(reportsState.totalItems));
+        }
+
+        renderReportRows(Array.isArray(payload.rows) ? payload.rows : []);
+        renderReportsPagination();
+        if (stats) {
+            renderReportStats(stats);
+        }
+    };
+
+    const loadReportsPage = async (page) => {
+        if (!(reportsRoot instanceof HTMLElement) || reportsState.isLoading) {
+            return;
+        }
+
+        reportsState.isLoading = true;
+        renderReportsPagination();
+
+        try {
+            const url = new URL(window.location.href);
+            url.searchParams.set('report_page', String(page));
+            const response = await fetch(url.toString(), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+            const payload = await response.json();
+            if (!response.ok || !payload.success || !payload.reports) {
+                throw new Error(String(payload?.message || 'Nie udało się załadować zgłoszeń.'));
+            }
+
+            applyReportsPayload(payload.reports, payload.report_stats || null);
+        } catch (error) {
+            showToast(error instanceof Error ? error.message : 'Nie udało się załadować zgłoszeń.', 'error');
+        } finally {
+            reportsState.isLoading = false;
+            renderReportsPagination();
+        }
+    };
+
+    const closeReportModal = () => {
+        if (reportModalRoot instanceof HTMLElement) {
+            reportModalRoot.hidden = true;
+        }
+        reportsState.selectedReport = null;
+        reportsState.selectedReportId = 0;
+        ensureBodyLockState();
+    };
+
+    const openReportModal = () => {
+        if (!(reportModalRoot instanceof HTMLElement)) {
+            return;
+        }
+
+        reportModalRoot.hidden = false;
+        ensureBodyLockState();
+    };
+
+    const closeReportModerationModal = () => {
+        if (reportModerationModalRoot instanceof HTMLElement) {
+            reportModerationModalRoot.hidden = true;
+        }
+        reportModerationState.selectedReason = '';
+        reportModerationState.customReason = '';
+        reportModerationState.isSubmitting = false;
+        if (reportModerationModalOtherInput instanceof HTMLTextAreaElement) {
+            reportModerationModalOtherInput.value = '';
+        }
+        ensureBodyLockState();
+    };
+
+    const openReportModerationModal = () => {
+        if (!(reportModerationModalRoot instanceof HTMLElement) || !reportsState.selectedReport) {
+            return;
+        }
+
+        const report = reportsState.selectedReport;
+        const options = getReportModerationOptions(String(report.content_type || ''));
+        if (reportModerationModalTitle instanceof HTMLElement) {
+            reportModerationModalTitle.textContent = String(report.content_type || '') === 'listing'
+                ? 'Usuń zgłoszone ogłoszenie'
+                : String(report.content_type || '') === 'comment'
+                    ? 'Usuń zgłoszony komentarz'
+                    : 'Usuń zgłoszony post';
+        }
+        if (reportModerationModalCopy instanceof HTMLElement) {
+            reportModerationModalCopy.textContent = `Wybierz powód usunięcia: ${String(report.reported_subject || 'zgłoszonej treści')}.`;
+        }
+        if (reportModerationModalOptions instanceof HTMLElement) {
+            reportModerationModalOptions.innerHTML = options.map((option, index) => {
+                const value = option === 'Inny powód' ? 'other' : `preset_${index}`;
+                const checked = reportModerationState.selectedReason === value || (reportModerationState.selectedReason === '' && index === 0)
+                    ? ' checked'
+                    : '';
+                return `
+                    <label class="admin-action-option">
+                        <input type="radio" name="admin_report_reason" value="${value}"${checked}>
+                        <span>${escapeHtml(option)}</span>
+                    </label>
+                `;
+            }).join('');
+            reportModerationState.selectedReason = reportModerationState.selectedReason || 'preset_0';
+        }
+        if (reportModerationModalOther instanceof HTMLElement) {
+            reportModerationModalOther.hidden = reportModerationState.selectedReason !== 'other';
+        }
+        if (reportModerationModalOtherInput instanceof HTMLTextAreaElement) {
+            reportModerationModalOtherInput.value = reportModerationState.customReason;
+        }
+
+        reportModerationModalRoot.hidden = false;
+        ensureBodyLockState();
+    };
+
+    const getResolvedReportModerationReason = () => {
+        if (!reportsState.selectedReport) {
+            return '';
+        }
+
+        if (reportModerationState.selectedReason === 'other') {
+            return reportModerationState.customReason.trim();
+        }
+
+        const options = getReportModerationOptions(String(reportsState.selectedReport.content_type || ''));
+        const index = Number(String(reportModerationState.selectedReason || '').replace('preset_', ''));
+        return Number.isInteger(index) && index >= 0 && options[index] ? options[index] : '';
+    };
+
+    const openReportDetails = async (reportId) => {
+        if (reportsState.isLoading) {
+            return;
+        }
+
+        try {
+            const url = new URL(window.location.href);
+            url.searchParams.set('report_details', String(reportId));
+            const response = await fetch(url.toString(), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+            const payload = await response.json();
+            if (!response.ok || !payload.success || !payload.report) {
+                throw new Error(String(payload?.message || 'Nie udało się pobrać szczegółów zgłoszenia.'));
+            }
+
+            const report = payload.report;
+            reportsState.selectedReportId = Number(report.id || 0);
+            reportsState.selectedReport = report;
+
+            if (reportModalType instanceof HTMLElement) {
+                reportModalType.textContent = getReportTypeLabel(report.content_type);
+            }
+            if (reportModalSubject instanceof HTMLElement) {
+                reportModalSubject.textContent = String(report.reported_subject || 'Zgłoszenie');
+            }
+            if (reportModalCreatedAt instanceof HTMLElement) {
+                reportModalCreatedAt.textContent = String(report.created_at_label || '');
+            }
+            if (reportModalReasonLabel instanceof HTMLElement) {
+                reportModalReasonLabel.textContent = String(report.reason_label || 'Brak powodu');
+            }
+            if (reportModalReasonText instanceof HTMLElement) {
+                const customReason = String(report.reason_text || '').trim();
+                reportModalReasonText.hidden = customReason === '';
+                reportModalReasonText.textContent = customReason;
+            }
+            if (reportModalContentLink instanceof HTMLAnchorElement) {
+                reportModalContentLink.href = String(report.target_path || '/dashboard');
+            }
+            if (reportModalProfileLink instanceof HTMLAnchorElement) {
+                reportModalProfileLink.href = String(report.reported_user?.admin_profile_path || '/admin');
+            }
+            if (reportModalReportedUserName instanceof HTMLElement) {
+                reportModalReportedUserName.textContent = String(report.reported_user?.pseudonym || report.reported_user_name || 'Użytkownik');
+            }
+            if (reportModalModerateButton instanceof HTMLButtonElement) {
+                const canModerateContent = ['listing', 'post', 'comment'].includes(String(report.content_type || ''));
+                reportModalModerateButton.hidden = !canModerateContent;
+                reportModalModerateButton.textContent = String(report.content_type || '') === 'listing'
+                    ? 'Usuń ogłoszenie'
+                    : String(report.content_type || '') === 'comment'
+                        ? 'Usuń komentarz'
+                        : 'Usuń post';
+            }
+            if (reportModalBanButton instanceof HTMLButtonElement) {
+                reportModalBanButton.hidden = String(report.content_type || '') !== 'profile';
+            }
+
+            openReportModal();
+        } catch (error) {
+            showToast(error instanceof Error ? error.message : 'Nie udało się pobrać szczegółów zgłoszenia.', 'error');
+        }
+    };
+
+    const submitReportModeration = async () => {
+        if (!reportsState.selectedReport || reportModerationState.isSubmitting) {
+            return;
+        }
+
+        const reason = getResolvedReportModerationReason();
+        if (reason === '') {
+            showToast('Wybierz powód usunięcia treści.', 'error');
+            return;
+        }
+
+        const report = reportsState.selectedReport;
+        reportModerationState.isSubmitting = true;
+        if (reportModerationModalConfirm instanceof HTMLButtonElement) {
+            reportModerationModalConfirm.disabled = true;
+            reportModerationModalConfirm.textContent = 'Trwa przetwarzanie...';
+        }
+
+        try {
+            const action = String(report.content_type || '') === 'listing'
+                ? 'remove_reported_listing'
+                : String(report.content_type || '') === 'comment'
+                    ? 'remove_reported_comment'
+                    : 'remove_reported_post';
+            const payload = {
+                action,
+                report_id: Number(report.id || 0),
+                reason,
+            };
+
+            if (action === 'remove_reported_listing') {
+                payload.listing_id = Number(report.content_id || 0);
+            } else if (action === 'remove_reported_comment') {
+                payload.comment_id = Number(report.content_id || 0);
+            } else {
+                payload.post_id = Number(report.content_id || 0);
+            }
+
+            const result = await submitAdminAction(payload);
+            closeReportModerationModal();
+            closeReportModal();
+            await loadReportsPage(reportsState.page);
+            showToast(String(result.message || 'Treść została usunięta.'), 'success');
+        } catch (error) {
+            showToast(error instanceof Error ? error.message : 'Nie udało się usunąć zgłoszonej treści.', 'error');
+        } finally {
+            reportModerationState.isSubmitting = false;
+            if (reportModerationModalConfirm instanceof HTMLButtonElement) {
+                reportModerationModalConfirm.disabled = false;
+                reportModerationModalConfirm.textContent = 'Zatwierdź';
+            }
+        }
     };
 
     const renderReasonOptions = () => {
@@ -1714,6 +2449,81 @@
         return result;
     };
 
+    const applyPendingCatalogPayloadsFromResult = (result) => {
+        if (result.pending_brands) {
+            applyPendingBrandsPayload(result.pending_brands);
+        }
+        if (result.pending_models) {
+            applyPendingModelsPayload(result.pending_models);
+        }
+    };
+
+    const submitPendingBrandAction = async (action, brandId, button) => {
+        if (brandId <= 0 || pendingBrandsState.actionSubmittingId > 0) {
+            return;
+        }
+
+        pendingBrandsState.actionSubmittingId = brandId;
+        const originalLabel = button instanceof HTMLButtonElement ? button.textContent : '';
+        if (button instanceof HTMLButtonElement) {
+            button.disabled = true;
+        }
+
+        try {
+            const result = await submitAdminAction({
+                action,
+                brand_id: brandId,
+                brand_page: pendingBrandsState.page,
+                model_page: pendingModelsState.page,
+            });
+            applyPendingCatalogPayloadsFromResult(result);
+            showToast(String(result.message || 'Zapisano zmianę marki.'), 'success');
+        } catch (error) {
+            showToast(error instanceof Error ? error.message : 'Nie udało się zapisać zmiany marki.', 'error');
+        } finally {
+            pendingBrandsState.actionSubmittingId = 0;
+            if (button instanceof HTMLButtonElement) {
+                button.disabled = false;
+                if (originalLabel !== null) {
+                    button.textContent = originalLabel;
+                }
+            }
+        }
+    };
+
+    const submitPendingModelAction = async (action, modelId, button) => {
+        if (modelId <= 0 || pendingModelsState.actionSubmittingId > 0) {
+            return;
+        }
+
+        pendingModelsState.actionSubmittingId = modelId;
+        const originalLabel = button instanceof HTMLButtonElement ? button.textContent : '';
+        if (button instanceof HTMLButtonElement) {
+            button.disabled = true;
+        }
+
+        try {
+            const result = await submitAdminAction({
+                action,
+                model_id: modelId,
+                brand_page: pendingBrandsState.page,
+                model_page: pendingModelsState.page,
+            });
+            applyPendingCatalogPayloadsFromResult(result);
+            showToast(String(result.message || 'Zapisano zmianę modelu.'), 'success');
+        } catch (error) {
+            showToast(error instanceof Error ? error.message : 'Nie udało się zapisać zmiany modelu.', 'error');
+        } finally {
+            pendingModelsState.actionSubmittingId = 0;
+            if (button instanceof HTMLButtonElement) {
+                button.disabled = false;
+                if (originalLabel !== null) {
+                    button.textContent = originalLabel;
+                }
+            }
+        }
+    };
+
     const confirmPendingVehicleApprove = async () => {
         if (!pendingVehiclesState.selectedVehicle || pendingVehiclesState.approveSubmitting) {
             return;
@@ -1972,6 +2782,54 @@
         });
     }
 
+    if (pendingBrandPrevButton instanceof HTMLButtonElement) {
+        pendingBrandPrevButton.addEventListener('click', () => {
+            if (pendingBrandsState.page > 1) {
+                void loadPendingBrandsPage(pendingBrandsState.page - 1);
+            }
+        });
+    }
+
+    if (pendingBrandNextButton instanceof HTMLButtonElement) {
+        pendingBrandNextButton.addEventListener('click', () => {
+            if (pendingBrandsState.page < pendingBrandsState.totalPages) {
+                void loadPendingBrandsPage(pendingBrandsState.page + 1);
+            }
+        });
+    }
+
+    if (pendingModelPrevButton instanceof HTMLButtonElement) {
+        pendingModelPrevButton.addEventListener('click', () => {
+            if (pendingModelsState.page > 1) {
+                void loadPendingModelsPage(pendingModelsState.page - 1);
+            }
+        });
+    }
+
+    if (pendingModelNextButton instanceof HTMLButtonElement) {
+        pendingModelNextButton.addEventListener('click', () => {
+            if (pendingModelsState.page < pendingModelsState.totalPages) {
+                void loadPendingModelsPage(pendingModelsState.page + 1);
+            }
+        });
+    }
+
+    if (reportPrevButton instanceof HTMLButtonElement) {
+        reportPrevButton.addEventListener('click', () => {
+            if (reportsState.page > 1) {
+                void loadReportsPage(reportsState.page - 1);
+            }
+        });
+    }
+
+    if (reportNextButton instanceof HTMLButtonElement) {
+        reportNextButton.addEventListener('click', () => {
+            if (reportsState.page < reportsState.totalPages) {
+                void loadReportsPage(reportsState.page + 1);
+            }
+        });
+    }
+
     if (catalogSearchInput instanceof HTMLInputElement) {
         catalogSearchInput.addEventListener('input', () => {
             const query = catalogSearchInput.value;
@@ -2000,6 +2858,8 @@
             clearCatalogHighlight();
         }
     }, { passive: true });
+
+    renderReportsPagination();
 
     tryOpenRequestedUserModal();
 
@@ -2036,8 +2896,97 @@
         if (pendingVehicleTrigger instanceof HTMLElement) {
             const vehicleId = Number(pendingVehicleTrigger.getAttribute('data-admin-pending-vehicle-id') || 0);
             void loadPendingVehicleDetails(vehicleId);
+            return;
+        }
+
+        const reportTrigger = event.target instanceof HTMLElement
+            ? event.target.closest('[data-admin-report-row]')
+            : null;
+        if (reportTrigger instanceof HTMLElement) {
+            const reportId = Number(reportTrigger.getAttribute('data-admin-report-id') || 0);
+            void openReportDetails(reportId);
+            return;
+        }
+
+        const pendingBrandApproveTrigger = event.target instanceof HTMLElement
+            ? event.target.closest('[data-admin-pending-brand-approve]')
+            : null;
+        if (pendingBrandApproveTrigger instanceof HTMLButtonElement) {
+            const brandId = Number(pendingBrandApproveTrigger.getAttribute('data-admin-pending-brand-id') || 0);
+            void submitPendingBrandAction('approve_brand', brandId, pendingBrandApproveTrigger);
+            return;
+        }
+
+        const pendingBrandDeleteTrigger = event.target instanceof HTMLElement
+            ? event.target.closest('[data-admin-pending-brand-delete]')
+            : null;
+        if (pendingBrandDeleteTrigger instanceof HTMLButtonElement) {
+            const brandId = Number(pendingBrandDeleteTrigger.getAttribute('data-admin-pending-brand-id') || 0);
+            void submitPendingBrandAction('delete_brand', brandId, pendingBrandDeleteTrigger);
+            return;
+        }
+
+        const pendingModelApproveTrigger = event.target instanceof HTMLElement
+            ? event.target.closest('[data-admin-pending-model-approve]')
+            : null;
+        if (pendingModelApproveTrigger instanceof HTMLButtonElement) {
+            const modelId = Number(pendingModelApproveTrigger.getAttribute('data-admin-pending-model-id') || 0);
+            void submitPendingModelAction('approve_model', modelId, pendingModelApproveTrigger);
+            return;
+        }
+
+        const pendingModelDeleteTrigger = event.target instanceof HTMLElement
+            ? event.target.closest('[data-admin-pending-model-delete]')
+            : null;
+        if (pendingModelDeleteTrigger instanceof HTMLButtonElement) {
+            const modelId = Number(pendingModelDeleteTrigger.getAttribute('data-admin-pending-model-id') || 0);
+            void submitPendingModelAction('delete_model', modelId, pendingModelDeleteTrigger);
         }
     });
+
+    if (reportModalModerateButton instanceof HTMLButtonElement) {
+        reportModalModerateButton.addEventListener('click', () => {
+            openReportModerationModal();
+        });
+    }
+
+    if (reportModalBanButton instanceof HTMLButtonElement) {
+        reportModalBanButton.addEventListener('click', () => {
+            const reportedUser = reportsState.selectedReport?.reported_user;
+            if (!reportedUser) {
+                showToast('Nie udało się otworzyć blokady dla zgłoszonego profilu.', 'error');
+                return;
+            }
+
+            closeReportModal();
+            openBanFlow(normalizeApiUser(reportedUser));
+        });
+    }
+
+    if (reportModalCloseReportButton instanceof HTMLButtonElement) {
+        reportModalCloseReportButton.addEventListener('click', async () => {
+            if (!reportsState.selectedReportId) {
+                return;
+            }
+
+            try {
+                const result = await submitAdminAction({
+                    action: 'close_report',
+                    report_id: reportsState.selectedReportId,
+                    page: reportsState.page,
+                });
+                closeReportModal();
+                if (result.reports) {
+                    applyReportsPayload(result.reports, result.report_stats || null);
+                } else {
+                    await loadReportsPage(reportsState.page);
+                }
+                showToast(String(result.message || 'Zgłoszenie zostało zamknięte.'), 'success');
+            } catch (error) {
+                showToast(error instanceof Error ? error.message : 'Nie udało się zamknąć zgłoszenia.', 'error');
+            }
+        });
+    }
 
     document.addEventListener('click', (event) => {
         if (!(catalogSearchRoot instanceof HTMLElement)) {
@@ -2054,7 +3003,7 @@
 
     document.addEventListener('click', (event) => {
         const closeTrigger = event.target instanceof HTMLElement
-            ? event.target.closest('[data-admin-user-modal-close], [data-admin-ban-modal-close], [data-admin-warning-modal-close], [data-admin-pending-vehicle-modal-close], [data-admin-vehicle-reject-modal-close], [data-admin-vehicle-delete-modal-close]')
+            ? event.target.closest('[data-admin-user-modal-close], [data-admin-ban-modal-close], [data-admin-warning-modal-close], [data-admin-pending-vehicle-modal-close], [data-admin-vehicle-reject-modal-close], [data-admin-vehicle-delete-modal-close], [data-admin-report-modal-close], [data-admin-report-moderation-modal-close]')
             : null;
         if (!(closeTrigger instanceof HTMLElement)) {
             return;
@@ -2086,6 +3035,18 @@
 
         if (closeTrigger.hasAttribute('data-admin-vehicle-delete-modal-close')) {
             closeVehicleDeleteModal();
+            ensureBodyLockState();
+            return;
+        }
+
+        if (closeTrigger.hasAttribute('data-admin-report-modal-close')) {
+            closeReportModal();
+            ensureBodyLockState();
+            return;
+        }
+
+        if (closeTrigger.hasAttribute('data-admin-report-moderation-modal-close')) {
+            closeReportModerationModal();
             ensureBodyLockState();
             return;
         }
@@ -2188,6 +3149,32 @@
             if (target.name === 'admin_ban_duration') {
                 moderationState.durationCode = target.value;
             }
+        });
+    }
+
+    if (reportModerationModalOptions instanceof HTMLElement) {
+        reportModerationModalOptions.addEventListener('change', (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLInputElement) || target.name !== 'admin_report_reason') {
+                return;
+            }
+
+            reportModerationState.selectedReason = target.value;
+            if (reportModerationModalOther instanceof HTMLElement) {
+                reportModerationModalOther.hidden = reportModerationState.selectedReason !== 'other';
+            }
+        });
+    }
+
+    if (reportModerationModalOtherInput instanceof HTMLTextAreaElement) {
+        reportModerationModalOtherInput.addEventListener('input', () => {
+            reportModerationState.customReason = reportModerationModalOtherInput.value;
+        });
+    }
+
+    if (reportModerationModalConfirm instanceof HTMLButtonElement) {
+        reportModerationModalConfirm.addEventListener('click', () => {
+            void submitReportModeration();
         });
     }
 
@@ -2335,6 +3322,8 @@
 
     renderCatalogPagination();
     renderPendingVehiclesPagination();
+    renderPendingBrandsPagination();
+    renderPendingModelsPagination();
     syncFromHash();
 })();
 
