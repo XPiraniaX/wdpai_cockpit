@@ -61,6 +61,25 @@ body.vehicle-modal-open {
     z-index: 1;
 }
 
+.vehicle-hero-status {
+    position: absolute;
+    top: clamp(18px, 1.6vw, 24px);
+    left: clamp(18px, 1.6vw, 24px);
+    width: clamp(32px, 2.2vw, 40px);
+    height: clamp(32px, 2.2vw, 40px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 5;
+}
+
+.vehicle-hero-status-icon {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: contain;
+}
+
 .vehicle-hero-carousel-viewport {
     width: 100%;
     height: 100%;
@@ -252,6 +271,100 @@ body.vehicle-modal-open {
     letter-spacing: 0.12em;
     text-transform: uppercase;
     font-family: var(--font-sans);
+}
+
+.vehicle-rejection-lock {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 24px;
+    border: 1px solid rgba(248, 113, 113, 0.24);
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(47, 14, 14, 0.98), rgba(20, 9, 9, 0.98));
+    box-shadow:
+        0 28px 60px rgba(2, 6, 23, 0.34),
+        inset 0 1px 0 rgba(254, 202, 202, 0.08);
+}
+
+.vehicle-rejection-lock-copy {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.vehicle-rejection-lock-kicker {
+    color: rgba(254, 202, 202, 0.76);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-family: var(--font-sans);
+}
+
+.vehicle-rejection-lock-title {
+    margin: 0;
+    color: #fff1f2;
+    font-size: 24px;
+    font-weight: 700;
+    line-height: 1.08;
+    font-family: var(--font-serif);
+}
+
+.vehicle-rejection-lock-copy-text {
+    margin: 0;
+    color: #ffe4e6;
+    font-size: 15px;
+    line-height: 1.6;
+    font-family: var(--font-sans);
+}
+
+.vehicle-rejection-lock-message {
+    color: #ffe4e6;
+    font-size: 15px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: var(--font-sans);
+}
+
+.vehicle-rejection-lock-meta {
+    color: rgba(254, 226, 226, 0.82);
+    font-size: 15px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-family: var(--font-sans);
+}
+
+.vehicle-rejection-lock-message::before,
+.vehicle-rejection-lock-meta::before {
+    display: block;
+    margin-bottom: 8px;
+    color: rgba(254, 202, 202, 0.76);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-family: var(--font-sans);
+}
+
+.vehicle-rejection-lock-message::before {
+    content: "Powód";
+}
+
+.vehicle-rejection-lock-meta::before {
+    content: "Popraw dane do";
+}
+
+.vehicle-rejection-lock-actions {
+    display: flex;
+    justify-content: center;
+}
+
+.vehicle-rejection-lock-action {
+    flex: 0 0 auto;
+    min-width: 180px;
 }
 
 .vehicle-hero-title {
@@ -785,6 +898,15 @@ body.vehicle-modal-open {
     margin: 0 auto;
 }
 
+.vehicle-modal-panel-lock {
+    max-width: 760px;
+    background:
+        radial-gradient(circle at top left, rgba(248, 113, 113, 0.18), transparent 52%),
+        linear-gradient(180deg, rgba(69, 10, 10, 0.98), rgba(36, 9, 12, 0.99));
+    border: 1px solid rgba(248, 113, 113, 0.24);
+    box-shadow: 0 30px 80px rgba(35, 7, 10, 0.52);
+}
+
 .vehicle-modal-head {
     display: flex;
     align-items: flex-start;
@@ -837,6 +959,18 @@ body.vehicle-modal-open {
     transform: translateY(-1px);
     filter: brightness(1.08) drop-shadow(0 10px 18px rgba(2, 6, 23, 0.28));
     opacity: 0.96;
+}
+
+.vehicle-modal-panel-lock .vehicle-modal-kicker {
+    color: rgba(254, 202, 202, 0.76);
+}
+
+.vehicle-modal-panel-lock .vehicle-modal-title {
+    color: #fff1f2;
+}
+
+.vehicle-modal-panel-lock .vehicle-modal-close {
+    filter: brightness(1.08) saturate(0.92);
 }
 
 .vehicle-modal-close-icon {
@@ -1240,6 +1374,207 @@ body.vehicle-modal-open {
     background: #67d2ff;
     transform: translateY(-2px);
     box-shadow: 0 12px 24px rgba(56, 189, 248, 0.22);
+}
+
+.vehicle-modal-actions-centered {
+    display: flex;
+    justify-content: center;
+}
+
+.vehicle-modal-body-lock {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 8px 18px 24px;
+}
+
+.vehicle-modal-lock-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.vehicle-modal-lock-intro {
+    color: #ffe4e6;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.vehicle-modal-lock-block {
+    padding: 16px 18px;
+    border-radius: 22px;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(251, 191, 191, 0.14);
+    color: #ffe4e6;
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+.vehicle-modal-lock-block-danger {
+    background: rgba(127, 29, 29, 0.22);
+    border-color: rgba(248, 113, 113, 0.24);
+}
+
+.vehicle-modal-lock-label {
+    margin-bottom: 8px;
+    color: rgba(254, 202, 202, 0.76);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.vehicle-modal-lock-action {
+    min-width: 220px;
+    background: #fff1f2;
+    color: #7f1d1d;
+    box-shadow: 0 12px 28px rgba(127, 29, 29, 0.22);
+}
+
+.vehicle-modal-lock-action:hover {
+    background: #ffe4e6;
+}
+
+.vehicle-modal-panel-correction {
+    max-width: 980px;
+}
+
+.vehicle-modal-panel-correction .vehicle-modal-actions-centered {
+    margin-top: 32px;
+}
+
+.vehicle-correction-images {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.vehicle-correction-note {
+    margin-bottom: 10px;
+    color: rgba(148, 163, 184, 0.76);
+    font-size: 11px;
+    line-height: 1.45;
+    font-family: var(--font-sans);
+    text-align: center;
+}
+
+.vehicle-correction-image-card,
+.vehicle-correction-image-upload {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1.46 / 1;
+    border-radius: 28px;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 50% 18%, rgba(196, 214, 225, 0.18), transparent 38%),
+        linear-gradient(180deg, #111611 0%, #0b0e16 68%, #0d1424 100%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+    transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.vehicle-correction-image-card.is-flagged,
+.vehicle-correction-image-upload.is-flagged,
+.vehicle-modal-field.is-flagged input,
+.vehicle-modal-field.is-flagged select,
+.vehicle-modal-field.is-flagged textarea {
+    border-color: rgba(248, 113, 113, 0.42);
+    box-shadow: 0 0 0 1px rgba(248, 113, 113, 0.18);
+}
+
+.vehicle-correction-image-card:hover,
+.vehicle-correction-image-upload:hover {
+    transform: translateY(-1px);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.02),
+        0 18px 32px rgba(2, 6, 23, 0.24);
+}
+
+.vehicle-correction-image-photo {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.vehicle-correction-image-remove {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 3;
+    width: 42px;
+    height: 42px;
+    border: 0;
+    padding: 0;
+    background: url('/public/assets/icons/close.svg') center/contain no-repeat;
+    cursor: pointer;
+    transition: transform 0.2s ease, filter 0.2s ease, opacity 0.2s ease;
+}
+
+.vehicle-correction-image-remove:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.08) drop-shadow(0 10px 18px rgba(2, 6, 23, 0.28));
+    opacity: 0.96;
+}
+
+.vehicle-correction-image-upload {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    cursor: pointer;
+}
+
+.vehicle-correction-image-upload[hidden] {
+    display: none !important;
+}
+
+.vehicle-correction-image-upload > span:not(.vehicle-correction-image-placeholder) {
+    display: none;
+}
+
+.vehicle-correction-image-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.vehicle-correction-image-placeholder-content {
+    position: relative;
+    width: calc(100% - 36px);
+    height: calc(100% - 36px);
+    border-radius: 22px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    background: rgba(19, 31, 59, 0.34);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.vehicle-correction-image-placeholder-plus {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: rgba(148, 163, 184, 0.72);
+    font-size: 68px;
+    line-height: 1;
+    padding-bottom: 40px;
+    font-weight: 300;
+    font-family: var(--font-sans);
+    text-indent: 2px;
+}
+
+.vehicle-correction-hint {
+    margin-top: 10px;
+    color: #fecaca;
+    font-size: 12px;
+    line-height: 1.5;
 }
 
 .vehicle-modal-table {

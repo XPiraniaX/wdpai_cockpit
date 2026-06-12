@@ -771,16 +771,6 @@ class MarketplaceController extends AppController
         }
     }
 
-    private function resolvePublicPathToFilesystem(string $publicPath): ?string
-    {
-        $normalized = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, ltrim($publicPath, '/\\'));
-        if ($normalized === '') {
-            return null;
-        }
-
-        return getcwd() . DIRECTORY_SEPARATOR . $normalized;
-    }
-
     private function mapImportVehicles(array $vehicles): array
     {
         return array_map(function (array $vehicle): array {

@@ -554,8 +554,26 @@ class AppController
         try {
             $repository = new UserRepository(Database::getConnection());
             $repository->releaseExpiredBans();
+            $carsRepository = new CarsRepository(Database::getConnection());
+            $expiredVehicleImagePaths = $carsRepository->releaseExpiredRejectedVehicles();
+            foreach ($expiredVehicleImagePaths as $imagePath) {
+                $localPath = $this->resolvePublicPathToFilesystem((string) $imagePath);
+                if ($localPath !== null && is_file($localPath)) {
+                    @unlink($localPath);
+                }
+            }
         } catch (Throwable) {
         }
+    }
+
+    protected function resolvePublicPathToFilesystem(string $publicPath): ?string
+    {
+        $normalized = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, ltrim($publicPath, '/\\'));
+        if ($normalized === '') {
+            return null;
+        }
+
+        return getcwd() . DIRECTORY_SEPARATOR . $normalized;
     }
 
     private function formatBanUntilLabel(mixed $blockedUntil, bool $isPermanent): string

@@ -3,13 +3,16 @@
 class AdminController extends AppController
 {
     private const CATALOG_USERS_PER_PAGE = 7;
+    private const PENDING_VEHICLES_PER_PAGE = 9;
     private const ADMIN_TIMEZONE = 'Europe/Warsaw';
 
     private UserRepository $userRepository;
+    private CarsRepository $carsRepository;
 
     public function __construct()
     {
         $this->userRepository = new UserRepository(Database::getConnection());
+        $this->carsRepository = new CarsRepository(Database::getConnection());
     }
 
     public function index(): void
@@ -29,11 +32,20 @@ class AdminController extends AppController
             $this->handleCatalogUserSearch();
         }
 
+        if ($this->isAjaxRequest() && isset($_GET['pending_vehicle_page'])) {
+            $this->handlePendingVehiclesPage();
+        }
+
+        if ($this->isAjaxRequest() && isset($_GET['pending_vehicle_details'])) {
+            $this->handlePendingVehicleDetails();
+        }
+
         $openUserId = $this->normalizeOptionalPositiveInt($_GET['open_user'] ?? null);
         $initialCatalogPage = $openUserId !== null && $openUserId > 0
             ? $this->userRepository->getAdminCatalogPageForUser($openUserId, self::CATALOG_USERS_PER_PAGE)
             : $this->normalizePositiveInt($_GET['catalog_page'] ?? 1);
         $catalog = $this->buildCatalogUsersPayload($initialCatalogPage);
+        $pendingVehicles = $this->buildPendingVehiclesPayload($this->normalizePositiveInt($_GET['pending_vehicle_page'] ?? 1));
         $globalStats = $this->userRepository->getAdminGlobalStats();
 
         $this->render('admin_panel', [
@@ -53,6 +65,7 @@ class AdminController extends AppController
             'scriptFiles' => ['admin_panel.js'],
             'adminCatalogUsers' => $catalog,
             'adminCatalogOpenUserId' => $openUserId,
+            'adminPendingVehicles' => $pendingVehicles,
             'adminGlobalStats' => $globalStats,
         ]);
     }
@@ -96,6 +109,39 @@ class AdminController extends AppController
         ]);
     }
 
+    private function handlePendingVehiclesPage(): void
+    {
+        $page = $this->normalizePositiveInt($_GET['pending_vehicle_page'] ?? 1);
+        $this->jsonResponse([
+            'success' => true,
+            'pending_vehicles' => $this->buildPendingVehiclesPayload($page),
+        ]);
+    }
+
+    private function handlePendingVehicleDetails(): void
+    {
+        $vehicleId = $this->normalizeOptionalPositiveInt($_GET['pending_vehicle_details'] ?? null);
+        if ($vehicleId === null) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie znaleziono pojazdu do potwierdzenia.',
+            ], 404);
+        }
+
+        $vehicle = $this->carsRepository->getAdminPendingVehicleById($vehicleId);
+        if ($vehicle === null) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie znaleziono pojazdu do potwierdzenia.',
+            ], 404);
+        }
+
+        $this->jsonResponse([
+            'success' => true,
+            'vehicle' => $this->mapPendingVehicleDetails($vehicle),
+        ]);
+    }
+
     private function buildCatalogUsersPayload(int $page): array
     {
         $totalUsers = $this->userRepository->countAdminCatalogUsers();
@@ -111,6 +157,25 @@ class AdminController extends AppController
             'page' => $page,
             'per_page' => self::CATALOG_USERS_PER_PAGE,
             'total_users' => $totalUsers,
+            'total_pages' => $totalPages,
+        ];
+    }
+
+    private function buildPendingVehiclesPayload(int $page): array
+    {
+        $totalVehicles = $this->carsRepository->getAdminPendingVehicleCount();
+        $totalPages = max(1, (int) ceil($totalVehicles / self::PENDING_VEHICLES_PER_PAGE));
+        $page = min(max(1, $page), $totalPages);
+        $rows = array_map(
+            fn (array $vehicle): array => $this->mapPendingVehicleRow($vehicle),
+            $this->carsRepository->getAdminPendingVehiclesPage($page, self::PENDING_VEHICLES_PER_PAGE)
+        );
+
+        return [
+            'rows' => $rows,
+            'page' => $page,
+            'per_page' => self::PENDING_VEHICLES_PER_PAGE,
+            'total_items' => $totalVehicles,
             'total_pages' => $totalPages,
         ];
     }
@@ -155,6 +220,50 @@ class AdminController extends AppController
             'presence_label' => $this->formatPresenceStatusLabel($user),
             'profile_path' => $profilePath,
             'admin_profile_path' => $adminProfilePath,
+        ];
+    }
+
+    private function mapPendingVehicleRow(array $vehicle): array
+    {
+        return [
+            'id' => (int) ($vehicle['id'] ?? 0),
+            'title' => trim((string) ($vehicle['display_name'] ?? '')) !== '' ? (string) $vehicle['display_name'] : 'Pojazd',
+            'trim_name' => (string) ($vehicle['trim_name'] ?? ''),
+            'brand_name' => (string) ($vehicle['brand_name'] ?? ''),
+            'model_name' => (string) ($vehicle['model_name'] ?? ''),
+            'production_year' => (string) ($vehicle['production_year'] ?? ''),
+            'current_mileage_km' => number_format((int) ($vehicle['current_mileage_km'] ?? 0), 0, ',', ' ') . ' km',
+            'license_plate' => (string) ($vehicle['license_plate'] ?? ''),
+            'vin' => (string) ($vehicle['vin'] ?? ''),
+            'exterior_color' => (string) ($vehicle['exterior_color'] ?? ''),
+            'image_path' => trim((string) ($vehicle['image_path'] ?? '')),
+            'submitted_at_label' => $this->formatAdminDateTimeLabel($vehicle['approval_submitted_at'] ?? null),
+        ];
+    }
+
+    private function mapPendingVehicleDetails(array $vehicle): array
+    {
+        $images = array_map(
+            static fn (array $image): array => [
+                'id' => (int) ($image['id'] ?? 0),
+                'path' => (string) ($image['image_path'] ?? ''),
+            ],
+            (array) ($vehicle['images'] ?? [])
+        );
+
+        return [
+            'id' => (int) ($vehicle['id'] ?? 0),
+            'brand_name' => (string) ($vehicle['brand_name'] ?? ''),
+            'model_name' => (string) ($vehicle['model_name'] ?? ''),
+            'trim_name' => (string) ($vehicle['trim_name'] ?? ''),
+            'production_year' => (string) ($vehicle['production_year'] ?? ''),
+            'current_mileage_km' => number_format((int) ($vehicle['current_mileage_km'] ?? 0), 0, ',', ' ') . ' km',
+            'license_plate' => (string) ($vehicle['license_plate'] ?? ''),
+            'vin' => (string) ($vehicle['vin'] ?? ''),
+            'exterior_color' => (string) ($vehicle['exterior_color'] ?? ''),
+            'approval_rejection_count' => (int) ($vehicle['approval_rejection_count'] ?? 0),
+            'submitted_at_label' => $this->formatAdminDateTimeLabel($vehicle['approval_submitted_at'] ?? null),
+            'images' => $images,
         ];
     }
 
@@ -213,6 +322,21 @@ class AdminController extends AppController
 
         if ($action === 'send_user_warning') {
             $this->handleSendUserWarning();
+            return;
+        }
+
+        if ($action === 'approve_vehicle') {
+            $this->handleApproveVehicle();
+            return;
+        }
+
+        if ($action === 'reject_vehicle') {
+            $this->handleRejectVehicle();
+            return;
+        }
+
+        if ($action === 'delete_vehicle') {
+            $this->handleDeleteVehicle();
             return;
         }
 
@@ -443,6 +567,120 @@ class AdminController extends AppController
         ]);
     }
 
+    private function handleApproveVehicle(): void
+    {
+        $vehicleId = $this->normalizeOptionalPositiveInt($_POST['vehicle_id'] ?? null);
+        if ($vehicleId === null) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie znaleziono pojazdu do potwierdzenia.',
+            ], 422);
+        }
+
+        $vehicle = $this->carsRepository->getAdminPendingVehicleById($vehicleId);
+        if ($vehicle === null) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Pojazd nie jest już dostępny w kolejce.',
+            ], 404);
+        }
+
+        $this->carsRepository->approveVehicleByAdmin($vehicleId);
+        (new NotificationRepository(Database::getConnection()))->createVehicleApprovedNotification(
+            (int) ($vehicle['user_id'] ?? 0),
+            $vehicleId,
+            (string) ($vehicle['display_name'] ?? '')
+        );
+
+        $this->jsonResponse([
+            'success' => true,
+            'message' => 'Pojazd został zatwierdzony.',
+            'pending_vehicles' => $this->buildPendingVehiclesPayload($this->normalizePositiveInt($_POST['page'] ?? 1)),
+        ]);
+    }
+
+    private function handleRejectVehicle(): void
+    {
+        $vehicleId = $this->normalizeOptionalPositiveInt($_POST['vehicle_id'] ?? null);
+        $reason = $this->normalizeModerationReason($_POST['reason'] ?? '');
+        $fields = array_values(array_filter(array_map(
+            static fn (mixed $field): string => trim((string) $field),
+            (array) ($_POST['fields'] ?? [])
+        )));
+
+        if ($vehicleId === null) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie znaleziono pojazdu do odrzucenia.',
+            ], 422);
+        }
+
+        if ($reason === '' && $fields === []) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Wskaż błędne pola albo wpisz powód odrzucenia.',
+            ], 422);
+        }
+
+        if ($reason === '') {
+            $reason = 'Administrator wymaga poprawy oznaczonych danych pojazdu.';
+        }
+
+        $vehicle = $this->carsRepository->getAdminPendingVehicleById($vehicleId);
+        if ($vehicle === null) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Pojazd nie jest już dostępny w kolejce.',
+            ], 404);
+        }
+
+        $this->carsRepository->rejectVehicleByAdmin($vehicleId, $reason, $fields);
+        (new NotificationRepository(Database::getConnection()))->createVehicleRejectedNotification(
+            (int) ($vehicle['user_id'] ?? 0),
+            $vehicleId,
+            (string) ($vehicle['display_name'] ?? ''),
+            $reason
+        );
+
+        $this->jsonResponse([
+            'success' => true,
+            'message' => 'Pojazd został odrzucony i oczekuje na poprawę danych.',
+            'pending_vehicles' => $this->buildPendingVehiclesPayload($this->normalizePositiveInt($_POST['page'] ?? 1)),
+        ]);
+    }
+
+    private function handleDeleteVehicle(): void
+    {
+        $vehicleId = $this->normalizeOptionalPositiveInt($_POST['vehicle_id'] ?? null);
+        if ($vehicleId === null) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie znaleziono pojazdu do usunięcia.',
+            ], 422);
+        }
+
+        $vehicle = $this->carsRepository->getAdminPendingVehicleById($vehicleId);
+        if ($vehicle === null) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Pojazd nie jest już dostępny w kolejce.',
+            ], 404);
+        }
+
+        if (!$this->carsRepository->deleteVehicleByAdmin($vehicleId)) {
+            $this->jsonResponse([
+                'success' => false,
+                'message' => 'Nie udało się usunąć pojazdu.',
+            ], 409);
+        }
+
+        $this->jsonResponse([
+            'success' => true,
+            'message' => 'Pojazd został usunięty.',
+            'pending_vehicles' => $this->buildPendingVehiclesPayload($this->normalizePositiveInt($_POST['page'] ?? 1)),
+        ]);
+    }
+
     private function normalizeBanDurationCode(string $durationCode): ?string
     {
         $durationCode = trim($durationCode);
@@ -630,6 +868,16 @@ class AdminController extends AppController
         } catch (Throwable) {
             return null;
         }
+    }
+
+    private function formatAdminDateTimeLabel(?string $value): string
+    {
+        $dateTime = $this->createAdminDateTime((string) $value);
+        if ($dateTime === null) {
+            return '';
+        }
+
+        return $dateTime->format('d.m.Y • H:i');
     }
 
     private function requireAdminCatalogUser(int $userId, string $errorMessage): array

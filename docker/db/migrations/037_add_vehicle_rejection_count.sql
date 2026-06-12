@@ -1,0 +1,2 @@
+ALTER TABLE vehicles
+    ADD COLUMN IF NOT EXISTS approval_rejection_count INTEGER NOT NULL DEFAULT 0;

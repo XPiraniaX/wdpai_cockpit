@@ -86,6 +86,10 @@ class CarsRepository
                 v.production_year,
                 v.current_mileage_km,
                 v.is_primary,
+                v.approval_status,
+                v.approval_rejection_reason,
+                v.approval_rejection_fields_json,
+                v.approval_correction_due_at,
                 vi.image_path,
                 next_inspection.valid_until AS next_inspection_date,
                 next_insurance.valid_until AS next_insurance_date
@@ -815,6 +819,8 @@ class CarsRepository
                     current_mileage_km,
                     exterior_color,
                     status,
+                    approval_status,
+                    approval_submitted_at,
                     display_order,
                     is_primary,
                     notes
@@ -850,6 +856,8 @@ class CarsRepository
                     :current_mileage_km,
                     :exterior_color,
                     \'active\',
+                    \'pending\',
+                    CURRENT_TIMESTAMP,
                     :display_order,
                     :is_primary,
                     NULL
@@ -939,6 +947,413 @@ class CarsRepository
         }
     }
 
+    public function getAdminPendingVehicleCount(): int
+    {
+        $statement = $this->connection->query(
+            "SELECT COUNT(*)
+            FROM vehicles
+            WHERE status = 'active'
+                AND approval_status = 'pending'"
+        );
+
+        return (int) $statement->fetchColumn();
+    }
+
+    public function getAdminPendingVehiclesPage(int $page, int $perPage): array
+    {
+        $offset = max(0, ($page - 1) * $perPage);
+
+        $statement = $this->connection->prepare(
+            "SELECT
+                v.id,
+                v.user_id,
+                v.display_name,
+                v.trim_name,
+                v.production_year,
+                v.current_mileage_km,
+                v.vin,
+                v.license_plate,
+                v.exterior_color,
+                v.approval_rejection_count,
+                v.approval_submitted_at,
+                cb.name AS brand_name,
+                cm.name AS model_name,
+                cb.is_approved AS brand_is_approved,
+                cm.is_approved AS model_is_approved,
+                primary_image.image_path AS image_path
+            FROM vehicles v
+            INNER JOIN car_brands cb ON cb.id = v.brand_id
+            INNER JOIN car_models cm ON cm.id = v.model_id
+            LEFT JOIN LATERAL (
+                SELECT vi.image_path
+                FROM vehicle_images vi
+                WHERE vi.vehicle_id = v.id
+                    AND vi.is_primary = TRUE
+                ORDER BY vi.display_order ASC, vi.id ASC
+                LIMIT 1
+            ) AS primary_image ON TRUE
+            WHERE v.status = 'active'
+                AND v.approval_status = 'pending'
+            ORDER BY v.approval_submitted_at ASC, v.id ASC
+            LIMIT :limit OFFSET :offset"
+        );
+        $statement->bindValue(':limit', $perPage, PDO::PARAM_INT);
+        $statement->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $statement->execute();
+
+        return $statement->fetchAll();
+    }
+
+    public function getAdminPendingVehicleById(int $vehicleId): ?array
+    {
+        $statement = $this->connection->prepare(
+            "SELECT
+                v.id,
+                v.user_id,
+                v.display_name,
+                v.trim_name,
+                v.production_year,
+                v.current_mileage_km,
+                v.vin,
+                v.license_plate,
+                v.exterior_color,
+                v.approval_rejection_count,
+                v.approval_submitted_at,
+                cb.name AS brand_name,
+                cm.name AS model_name,
+                cb.is_approved AS brand_is_approved,
+                cm.is_approved AS model_is_approved
+            FROM vehicles v
+            INNER JOIN car_brands cb ON cb.id = v.brand_id
+            INNER JOIN car_models cm ON cm.id = v.model_id
+            WHERE v.id = :vehicle_id
+                AND v.status = 'active'
+                AND v.approval_status = 'pending'
+            LIMIT 1"
+        );
+        $statement->execute([
+            'vehicle_id' => $vehicleId,
+        ]);
+        $vehicle = $statement->fetch();
+        if (!$vehicle) {
+            return null;
+        }
+
+        $vehicle['images'] = $this->getAdminVehicleImages($vehicleId);
+
+        return $vehicle;
+    }
+
+    public function getAdminVehicleImages(int $vehicleId): array
+    {
+        $statement = $this->connection->prepare(
+            'SELECT
+                id,
+                image_path,
+                display_order,
+                is_primary
+            FROM vehicle_images
+            WHERE vehicle_id = :vehicle_id
+            ORDER BY display_order ASC, id ASC'
+        );
+        $statement->execute([
+            'vehicle_id' => $vehicleId,
+        ]);
+
+        return $statement->fetchAll();
+    }
+
+    public function approveVehicleByAdmin(int $vehicleId): void
+    {
+        $this->connection->beginTransaction();
+
+        try {
+            $statement = $this->connection->prepare(
+                'SELECT brand_id, model_id
+                FROM vehicles
+                WHERE id = :vehicle_id
+                    AND status = :status
+                    AND approval_status = :approval_status
+                LIMIT 1'
+            );
+            $statement->execute([
+                'vehicle_id' => $vehicleId,
+                'status' => 'active',
+                'approval_status' => 'pending',
+            ]);
+            $vehicle = $statement->fetch();
+            if (!$vehicle) {
+                $this->connection->rollBack();
+                return;
+            }
+
+            $approveVehicleStatement = $this->connection->prepare(
+                "UPDATE vehicles
+                SET approval_status = 'approved',
+                    approval_reviewed_at = CURRENT_TIMESTAMP,
+                    approval_rejected_at = NULL,
+                    approval_rejection_reason = NULL,
+                    approval_rejection_fields_json = NULL,
+                    approval_correction_due_at = NULL
+                WHERE id = :vehicle_id"
+            );
+            $approveVehicleStatement->execute([
+                'vehicle_id' => $vehicleId,
+            ]);
+
+            $approveBrandStatement = $this->connection->prepare(
+                'UPDATE car_brands
+                SET is_approved = TRUE
+                WHERE id = :brand_id'
+            );
+            $approveBrandStatement->execute([
+                'brand_id' => (int) ($vehicle['brand_id'] ?? 0),
+            ]);
+
+            $approveModelStatement = $this->connection->prepare(
+                'UPDATE car_models
+                SET is_approved = TRUE
+                WHERE id = :model_id'
+            );
+            $approveModelStatement->execute([
+                'model_id' => (int) ($vehicle['model_id'] ?? 0),
+            ]);
+
+            $this->connection->commit();
+        } catch (Throwable $exception) {
+            $this->connection->rollBack();
+            throw $exception;
+        }
+    }
+
+    public function rejectVehicleByAdmin(int $vehicleId, string $reason, array $fields): void
+    {
+        $normalizedFields = array_values(array_unique(array_filter(array_map(
+            static fn (mixed $field): string => trim((string) $field),
+            $fields
+        ))));
+
+        $statement = $this->connection->prepare(
+                "UPDATE vehicles
+                SET approval_status = 'rejected',
+                    approval_reviewed_at = CURRENT_TIMESTAMP,
+                    approval_rejected_at = CURRENT_TIMESTAMP,
+                    approval_rejection_reason = :reason,
+                    approval_rejection_fields_json = CAST(:fields_json AS JSONB),
+                    approval_correction_due_at = CURRENT_TIMESTAMP + INTERVAL '7 days',
+                    approval_rejection_count = approval_rejection_count + 1
+            WHERE id = :vehicle_id
+                AND status = 'active'
+                AND approval_status = 'pending'"
+        );
+        $statement->execute([
+            'vehicle_id' => $vehicleId,
+            'reason' => $reason,
+            'fields_json' => json_encode($normalizedFields, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        ]);
+    }
+
+    public function resubmitRejectedVehicleByOwner(
+        int $userId,
+        int $vehicleId,
+        array $data,
+        array $keptImageIdsInOrder,
+        array $newImagePaths
+    ): void {
+        $this->beginTransaction('REPEATABLE READ');
+
+        try {
+            $brandId = $this->resolveBrandId($data['brand_name'], (bool) ($data['brand_requires_approval'] ?? false));
+            $modelId = $this->resolveModelId($brandId, $data['model_name'], (bool) ($data['model_requires_approval'] ?? false));
+
+            $statement = $this->connection->prepare(
+                "UPDATE vehicles
+                SET brand_id = :brand_id,
+                    model_id = :model_id,
+                    display_name = :display_name,
+                    trim_name = :trim_name,
+                    production_year = :production_year,
+                    current_mileage_km = :current_mileage_km,
+                    license_plate = :license_plate,
+                    vin = :vin,
+                    exterior_color = :exterior_color,
+                    approval_status = 'pending',
+                    approval_submitted_at = CURRENT_TIMESTAMP,
+                    approval_rejected_at = NULL,
+                    approval_rejection_reason = NULL,
+                    approval_rejection_fields_json = NULL,
+                    approval_correction_due_at = NULL
+                WHERE id = :vehicle_id
+                    AND user_id = :user_id
+                    AND status = 'active'
+                    AND approval_status = 'rejected'"
+            );
+            $statement->execute([
+                'brand_id' => $brandId,
+                'model_id' => $modelId,
+                'display_name' => $data['display_name'],
+                'trim_name' => $data['trim_name'],
+                'production_year' => $data['production_year'],
+                'current_mileage_km' => $data['current_mileage_km'],
+                'license_plate' => $data['license_plate'],
+                'vin' => $data['vin'],
+                'exterior_color' => $data['exterior_color'],
+                'vehicle_id' => $vehicleId,
+                'user_id' => $userId,
+            ]);
+
+            $currentImagesStatement = $this->connection->prepare(
+                'SELECT vi.id
+                FROM vehicle_images vi
+                INNER JOIN vehicles v ON v.id = vi.vehicle_id
+                WHERE vi.vehicle_id = :vehicle_id
+                    AND v.user_id = :user_id
+                ORDER BY vi.display_order ASC, vi.id ASC'
+            );
+            $currentImagesStatement->execute([
+                'vehicle_id' => $vehicleId,
+                'user_id' => $userId,
+            ]);
+            $currentImageIds = array_map(
+                static fn (array $row): int => (int) $row['id'],
+                $currentImagesStatement->fetchAll()
+            );
+            $currentImageIdSet = array_fill_keys($currentImageIds, true);
+            $keptIds = [];
+            foreach ($keptImageIdsInOrder as $imageId) {
+                $normalizedId = (int) $imageId;
+                if ($normalizedId > 0 && isset($currentImageIdSet[$normalizedId]) && !in_array($normalizedId, $keptIds, true)) {
+                    $keptIds[] = $normalizedId;
+                }
+            }
+
+            $idsToDelete = array_values(array_diff($currentImageIds, $keptIds));
+            if ($idsToDelete !== []) {
+                $placeholders = implode(', ', array_fill(0, count($idsToDelete), '?'));
+                $deleteStatement = $this->connection->prepare(
+                    "DELETE FROM vehicle_images
+                    WHERE vehicle_id = ?
+                        AND id IN ({$placeholders})"
+                );
+                $deleteStatement->execute(array_merge([$vehicleId], $idsToDelete));
+            }
+
+            $nextOrder = 1;
+            if ($keptIds !== []) {
+                $orderStatement = $this->connection->prepare(
+                    'UPDATE vehicle_images
+                    SET display_order = :display_order,
+                        is_primary = :is_primary
+                    WHERE id = :image_id
+                        AND vehicle_id = :vehicle_id'
+                );
+
+                foreach ($keptIds as $index => $imageId) {
+                    $orderStatement->execute([
+                        'display_order' => $nextOrder++,
+                        'is_primary' => $this->toPgBoolean($index === 0),
+                        'image_id' => $imageId,
+                        'vehicle_id' => $vehicleId,
+                    ]);
+                }
+            }
+
+            if ($newImagePaths !== []) {
+                $insertStatement = $this->connection->prepare(
+                    'INSERT INTO vehicle_images (vehicle_id, image_path, display_order, is_primary)
+                    VALUES (:vehicle_id, :image_path, :display_order, :is_primary)'
+                );
+
+                foreach ($newImagePaths as $imagePath) {
+                    $insertStatement->execute([
+                        'vehicle_id' => $vehicleId,
+                        'image_path' => $imagePath,
+                        'display_order' => $nextOrder,
+                        'is_primary' => $this->toPgBoolean($nextOrder === 1),
+                    ]);
+                    $nextOrder++;
+                }
+            }
+
+            $reorderStatement = $this->connection->prepare(
+                "WITH ordered AS (
+                    SELECT id, ROW_NUMBER() OVER (ORDER BY display_order ASC, id ASC) AS rn
+                    FROM vehicle_images
+                    WHERE vehicle_id = :vehicle_id
+                )
+                UPDATE vehicle_images vi
+                SET display_order = ordered.rn,
+                    is_primary = CASE WHEN ordered.rn = 1 THEN TRUE ELSE FALSE END
+                FROM ordered
+                WHERE vi.id = ordered.id"
+            );
+            $reorderStatement->execute([
+                'vehicle_id' => $vehicleId,
+            ]);
+
+            $this->connection->commit();
+        } catch (Throwable $exception) {
+            $this->connection->rollBack();
+            throw $exception;
+        }
+    }
+
+    public function deleteVehicleByAdmin(int $vehicleId): bool
+    {
+        $statement = $this->connection->prepare(
+            "DELETE FROM vehicles
+            WHERE id = :vehicle_id
+                AND status = 'active'
+                AND approval_status = 'pending'"
+        );
+        $statement->execute([
+            'vehicle_id' => $vehicleId,
+        ]);
+
+        return $statement->rowCount() > 0;
+    }
+
+    public function releaseExpiredRejectedVehicles(): array
+    {
+        $statement = $this->connection->prepare(
+            "SELECT id
+            FROM vehicles
+            WHERE status = 'active'
+                AND approval_status = 'rejected'
+                AND approval_correction_due_at IS NOT NULL
+                AND approval_correction_due_at <= CURRENT_TIMESTAMP"
+        );
+        $statement->execute();
+        $vehicleIds = array_map('intval', $statement->fetchAll(PDO::FETCH_COLUMN));
+
+        if ($vehicleIds === []) {
+            return [];
+        }
+
+        [$inSql, $params] = $this->buildIdPlaceholders($vehicleIds);
+
+        $imageStatement = $this->connection->prepare(
+            "SELECT image_path
+            FROM vehicle_images
+            WHERE vehicle_id IN ({$inSql})"
+        );
+        $this->bindIntegerPlaceholderParams($imageStatement, $params);
+        $imageStatement->execute();
+
+        $imagePaths = array_values(array_filter(array_map(
+            static fn (mixed $path): string => trim((string) $path),
+            $imageStatement->fetchAll(PDO::FETCH_COLUMN)
+        )));
+
+        $deleteStatement = $this->connection->prepare(
+            "DELETE FROM vehicles WHERE id IN ({$inSql})"
+        );
+        $this->bindIntegerPlaceholderParams($deleteStatement, $params);
+        $deleteStatement->execute();
+
+        return $imagePaths;
+    }
+
     private function buildVehicleBaseQuery(): string
     {
         return 'SELECT
@@ -987,7 +1402,14 @@ class CarsRepository
                 v.user_id,
                 v.status,
                 v.is_primary,
-                v.display_order
+                v.display_order,
+                v.approval_status,
+                v.approval_submitted_at,
+                v.approval_rejected_at,
+                v.approval_rejection_reason,
+                v.approval_rejection_fields_json,
+                v.approval_correction_due_at,
+                v.approval_reviewed_at
             FROM vw_vehicle_overview v
             WHERE 1 = 1';
     }
@@ -1072,6 +1494,27 @@ class CarsRepository
         $statement->execute(['user_id' => $userId]);
 
         return (bool) $statement->fetchColumn();
+    }
+
+    private function buildIdPlaceholders(array $ids): array
+    {
+        $placeholders = [];
+        $params = [];
+
+        foreach (array_values($ids) as $index => $id) {
+            $placeholder = ':id_' . $index;
+            $placeholders[] = $placeholder;
+            $params[$placeholder] = (int) $id;
+        }
+
+        return [implode(', ', $placeholders), $params];
+    }
+
+    private function bindIntegerPlaceholderParams(PDOStatement $statement, array $params): void
+    {
+        foreach ($params as $placeholder => $value) {
+            $statement->bindValue($placeholder, (int) $value, PDO::PARAM_INT);
+        }
     }
 
     private function toPgBoolean(?bool $value): ?string

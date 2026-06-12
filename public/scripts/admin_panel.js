@@ -44,6 +44,12 @@
     const catalogSearchRoot = root.querySelector('[data-admin-catalog-search]');
     const catalogSearchInput = root.querySelector('[data-admin-catalog-search-input]');
     const catalogSearchResults = root.querySelector('[data-admin-catalog-search-results]');
+    const pendingVehiclesRoot = root.querySelector('[data-admin-pending-vehicles]');
+    const pendingVehicleRowsRoot = root.querySelector('[data-admin-pending-vehicle-rows]');
+    const pendingVehiclePageStatus = root.querySelector('[data-admin-pending-vehicle-page-status]');
+    const pendingVehiclePageList = root.querySelector('[data-admin-pending-vehicle-page-list]');
+    const pendingVehiclePrevButton = root.querySelector('[data-admin-pending-vehicle-prev]');
+    const pendingVehicleNextButton = root.querySelector('[data-admin-pending-vehicle-next]');
 
     const userModalRoot = document.querySelector('[data-admin-user-modal-root]');
     const userModalAvatar = document.querySelector('[data-admin-user-modal-avatar]');
@@ -77,6 +83,29 @@
     const warningModalCopy = document.querySelector('[data-admin-warning-modal-copy]');
     const warningModalInput = document.querySelector('[data-admin-warning-modal-input]');
     const warningModalConfirm = document.querySelector('[data-admin-warning-modal-confirm]');
+    const pendingVehicleModalRoot = document.querySelector('[data-admin-pending-vehicle-modal-root]');
+    const pendingVehicleTrack = document.querySelector('[data-admin-pending-vehicle-track]');
+    const pendingVehiclePrevImageButton = document.querySelector('[data-admin-pending-vehicle-prev-image]');
+    const pendingVehicleNextImageButton = document.querySelector('[data-admin-pending-vehicle-next-image]');
+    const pendingVehicleBrand = document.querySelector('[data-admin-pending-vehicle-brand]');
+    const pendingVehicleModel = document.querySelector('[data-admin-pending-vehicle-model]');
+    const pendingVehicleTrim = document.querySelector('[data-admin-pending-vehicle-trim]');
+    const pendingVehicleYear = document.querySelector('[data-admin-pending-vehicle-year]');
+    const pendingVehicleMileage = document.querySelector('[data-admin-pending-vehicle-mileage]');
+    const pendingVehicleLicensePlate = document.querySelector('[data-admin-pending-vehicle-license-plate]');
+    const pendingVehicleVin = document.querySelector('[data-admin-pending-vehicle-vin]');
+    const pendingVehicleColor = document.querySelector('[data-admin-pending-vehicle-color]');
+    const pendingVehicleRejectionCount = document.querySelector('[data-admin-pending-vehicle-rejection-count]');
+    const pendingVehicleApproveButton = document.querySelector('[data-admin-pending-vehicle-approve]');
+    const pendingVehicleRejectButton = document.querySelector('[data-admin-pending-vehicle-reject]');
+    const pendingVehicleDeleteButton = document.querySelector('[data-admin-pending-vehicle-delete]');
+    const vehicleRejectModalRoot = document.querySelector('[data-admin-vehicle-reject-modal-root]');
+    const vehicleRejectFieldsRoot = document.querySelector('[data-admin-vehicle-reject-fields]');
+    const vehicleRejectReasonInput = document.querySelector('[data-admin-vehicle-reject-reason]');
+    const vehicleRejectConfirmButton = document.querySelector('[data-admin-vehicle-reject-confirm]');
+    const vehicleDeleteModalRoot = document.querySelector('[data-admin-vehicle-delete-modal-root]');
+    const vehicleDeleteModalCopy = document.querySelector('[data-admin-vehicle-delete-modal-copy]');
+    const vehicleDeleteConfirmButton = document.querySelector('[data-admin-vehicle-delete-confirm]');
 
     const tabLabelMap = {
         dashboard: 'Użytkownicy',
@@ -155,6 +184,20 @@
         user: null,
         message: '',
         isSubmitting: false,
+    };
+
+    const pendingVehiclesState = {
+        page: Number(pendingVehiclesRoot?.getAttribute('data-admin-pending-vehicles-page') || 1),
+        perPage: Number(pendingVehiclesRoot?.getAttribute('data-admin-pending-vehicles-per-page') || 9),
+        totalPages: Number(pendingVehiclesRoot?.getAttribute('data-admin-pending-vehicles-total-pages') || 1),
+        totalItems: Number(pendingVehiclesRoot?.getAttribute('data-admin-pending-vehicles-total-items') || 0),
+        isLoading: false,
+        selectedVehicleId: 0,
+        selectedVehicle: null,
+        imageIndex: 0,
+        rejectSubmitting: false,
+        approveSubmitting: false,
+        deleteSubmitting: false,
     };
 
     const showToast = (message, type = 'info') => {
@@ -444,6 +487,42 @@
         `;
     };
 
+    const buildPendingVehicleRowMarkup = (row) => {
+        const imagePath = String(row.image_path || '');
+        const hasImage = imagePath.trim() !== '';
+        const title = String(row.brand_name || '').trim() !== '' || String(row.model_name || '').trim() !== ''
+            ? `${String(row.brand_name || '').trim()} ${String(row.model_name || '').trim()}`.trim()
+            : String(row.title || 'Pojazd');
+
+        return `
+            <button
+                type="button"
+                class="admin-catalog-table admin-catalog-table-row admin-pending-vehicles-table"
+                data-admin-pending-vehicle-row
+                data-admin-pending-vehicle-id="${Number(row.id || 0)}"
+            >
+                <span class="admin-pending-vehicle-identity">
+                    <span class="admin-pending-vehicle-thumb${hasImage ? ' has-image' : ''}">
+                        ${hasImage ? `<img src="${escapeAttribute(imagePath)}" alt="${escapeAttribute(title)}" class="admin-pending-vehicle-thumb-image">` : ''}
+                    </span>
+                    <span class="admin-pending-vehicle-copy">
+                        <span class="admin-pending-vehicle-title">${escapeHtml(title)}</span>
+                        <span class="admin-pending-vehicle-subtitle">${escapeHtml(String(row.trim_name || 'Brak wersji'))}</span>
+                    </span>
+                </span>
+                <span class="admin-pending-vehicle-year">${escapeHtml(String(row.production_year || '—'))}</span>
+                <span class="admin-pending-vehicle-mileage">${escapeHtml(String(row.current_mileage_km || '—'))}</span>
+                <span class="admin-pending-vehicle-meta">${escapeHtml(String(row.license_plate || '—'))}</span>
+                <span class="admin-pending-vehicle-meta">${escapeHtml(String(row.vin || '—'))}</span>
+                <span class="admin-pending-vehicle-meta">${escapeHtml(String(row.exterior_color || '—'))}</span>
+            </button>
+        `;
+    };
+
+    const buildPendingVehiclePlaceholderMarkup = () => `
+        <div class="admin-catalog-table admin-catalog-table-row admin-pending-vehicles-table is-placeholder" aria-hidden="true"></div>
+    `;
+
     const ensureAvatar = (container, avatarPath, pseudonym, imageClass) => {
         if (!(container instanceof HTMLElement)) {
             return;
@@ -706,12 +785,20 @@
         document.body.classList.remove('admin-modal-open');
     };
 
-    const buildPageSequence = (totalPages) => {
+    const buildPageSequence = (totalPages, currentPage) => {
         if (totalPages <= 4) {
             return Array.from({ length: totalPages }, (_, index) => index + 1);
         }
 
-        return [1, 2, 'ellipsis', totalPages];
+        if (currentPage <= 2) {
+            return [1, 'spacer', 2, 'ellipsis', totalPages];
+        }
+
+        if (currentPage >= totalPages - 1) {
+            return [1, 'ellipsis', totalPages - 1, 'spacer', totalPages];
+        }
+
+        return [1, 'ellipsis', currentPage, 'ellipsis', totalPages];
     };
 
     const renderCatalogPagination = () => {
@@ -721,12 +808,20 @@
 
         catalogPageList.innerHTML = '';
 
-        buildPageSequence(catalogState.totalPages).forEach((item) => {
+        buildPageSequence(catalogState.totalPages, catalogState.page).forEach((item) => {
             if (item === 'ellipsis') {
                 const ellipsis = document.createElement('span');
                 ellipsis.className = 'admin-catalog-page-ellipsis';
                 ellipsis.textContent = '...';
                 catalogPageList.appendChild(ellipsis);
+                return;
+            }
+
+            if (item === 'spacer') {
+                const spacer = document.createElement('span');
+                spacer.className = 'admin-catalog-page-spacer';
+                spacer.setAttribute('aria-hidden', 'true');
+                catalogPageList.appendChild(spacer);
                 return;
             }
 
@@ -792,7 +887,17 @@
         }
 
         const averageRowHeight = totalVisibleHeight / elementRows.length;
-        catalogRowsRoot.style.minHeight = `${Math.ceil(averageRowHeight * Math.max(1, catalogState.perPage))}px`;
+        const targetHeight = Math.max(0, Math.ceil(averageRowHeight * Math.max(1, catalogState.perPage)));
+        catalogRowsRoot.style.minHeight = `${targetHeight}px`;
+    };
+
+    const syncPendingVehicleRowsHeight = () => {
+        if (!(pendingVehicleRowsRoot instanceof HTMLElement)) {
+            return;
+        }
+
+        pendingVehicleRowsRoot.style.height = '';
+        pendingVehicleRowsRoot.style.minHeight = '';
     };
 
     const applyCatalogPayload = (catalog) => {
@@ -812,6 +917,297 @@
         renderCatalogPagination();
         highlightCatalogRow(catalogState.highlightUserId, true);
         tryOpenRequestedUserModal();
+    };
+
+    const closePendingVehicleModal = () => {
+        if (!(pendingVehicleModalRoot instanceof HTMLElement)) {
+            return;
+        }
+
+        pendingVehicleModalRoot.hidden = true;
+        pendingVehiclesState.selectedVehicle = null;
+        pendingVehiclesState.selectedVehicleId = 0;
+        pendingVehiclesState.imageIndex = 0;
+    };
+
+    const closeVehicleDeleteModal = () => {
+        if (!(vehicleDeleteModalRoot instanceof HTMLElement)) {
+            return;
+        }
+
+        vehicleDeleteModalRoot.hidden = true;
+        pendingVehiclesState.deleteSubmitting = false;
+        if (vehicleDeleteConfirmButton instanceof HTMLButtonElement) {
+            vehicleDeleteConfirmButton.disabled = false;
+            vehicleDeleteConfirmButton.textContent = 'Usuń pojazd';
+        }
+    };
+
+    const closeVehicleRejectModal = () => {
+        if (!(vehicleRejectModalRoot instanceof HTMLElement)) {
+            return;
+        }
+
+        vehicleRejectModalRoot.hidden = true;
+        pendingVehiclesState.rejectSubmitting = false;
+        if (vehicleRejectReasonInput instanceof HTMLTextAreaElement) {
+            vehicleRejectReasonInput.value = '';
+        }
+        if (vehicleRejectFieldsRoot instanceof HTMLElement) {
+            vehicleRejectFieldsRoot.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
+                if (checkbox instanceof HTMLInputElement) {
+                    checkbox.checked = false;
+                }
+            });
+        }
+        if (vehicleRejectConfirmButton instanceof HTMLButtonElement) {
+            vehicleRejectConfirmButton.disabled = false;
+            vehicleRejectConfirmButton.textContent = 'Zatwierdź';
+        }
+    };
+
+    const renderPendingVehicleCarousel = () => {
+        if (!(pendingVehicleTrack instanceof HTMLElement)) {
+            return;
+        }
+
+        const vehicle = pendingVehiclesState.selectedVehicle;
+        const images = Array.isArray(vehicle?.images) ? vehicle.images : [];
+        if (images.length === 0) {
+            pendingVehicleTrack.innerHTML = '<div class="admin-pending-vehicle-empty-media">Brak zdjęć pojazdu.</div>';
+            if (pendingVehiclePrevImageButton instanceof HTMLButtonElement) {
+                pendingVehiclePrevImageButton.hidden = true;
+            }
+            if (pendingVehicleNextImageButton instanceof HTMLButtonElement) {
+                pendingVehicleNextImageButton.hidden = true;
+            }
+            pendingVehicleTrack.style.transform = 'translateX(0)';
+            return;
+        }
+
+        pendingVehiclesState.imageIndex = Math.max(0, Math.min(pendingVehiclesState.imageIndex, images.length - 1));
+        pendingVehicleTrack.innerHTML = images.map((image) => `
+            <div class="vehicle-hero-carousel-slide admin-pending-vehicle-slide">
+                <img src="${escapeAttribute(String(image.path || ''))}" alt="" class="vehicle-hero-photo">
+            </div>
+        `).join('');
+        pendingVehicleTrack.style.transform = `translateX(-${pendingVehiclesState.imageIndex * 100}%)`;
+
+        if (pendingVehiclePrevImageButton instanceof HTMLButtonElement) {
+            pendingVehiclePrevImageButton.hidden = images.length <= 1;
+        }
+        if (pendingVehicleNextImageButton instanceof HTMLButtonElement) {
+            pendingVehicleNextImageButton.hidden = images.length <= 1;
+        }
+    };
+
+    const applyPendingVehicleDetails = (vehicle) => {
+        pendingVehiclesState.selectedVehicle = vehicle;
+        pendingVehiclesState.selectedVehicleId = Number(vehicle.id || 0);
+        pendingVehiclesState.imageIndex = 0;
+
+        if (pendingVehicleBrand instanceof HTMLElement) {
+            pendingVehicleBrand.textContent = String(vehicle.brand_name || '—');
+        }
+        if (pendingVehicleModel instanceof HTMLElement) {
+            pendingVehicleModel.textContent = String(vehicle.model_name || '—');
+        }
+        if (pendingVehicleTrim instanceof HTMLElement) {
+            pendingVehicleTrim.textContent = String(vehicle.trim_name || '—');
+        }
+        if (pendingVehicleYear instanceof HTMLElement) {
+            pendingVehicleYear.textContent = String(vehicle.production_year || '—');
+        }
+        if (pendingVehicleMileage instanceof HTMLElement) {
+            pendingVehicleMileage.textContent = String(vehicle.current_mileage_km || '—');
+        }
+        if (pendingVehicleLicensePlate instanceof HTMLElement) {
+            pendingVehicleLicensePlate.textContent = String(vehicle.license_plate || '—');
+        }
+        if (pendingVehicleVin instanceof HTMLElement) {
+            pendingVehicleVin.textContent = String(vehicle.vin || '—');
+        }
+        if (pendingVehicleColor instanceof HTMLElement) {
+            pendingVehicleColor.textContent = String(vehicle.exterior_color || '—');
+        }
+        if (pendingVehicleRejectionCount instanceof HTMLElement) {
+            pendingVehicleRejectionCount.textContent = String(Number(vehicle.approval_rejection_count || 0));
+        }
+
+        renderPendingVehicleCarousel();
+    };
+
+    const openPendingVehicleModal = () => {
+        if (!(pendingVehicleModalRoot instanceof HTMLElement)) {
+            return;
+        }
+
+        pendingVehicleModalRoot.hidden = false;
+        document.body.classList.add('admin-modal-open');
+    };
+
+    const openVehicleDeleteModal = () => {
+        if (!(vehicleDeleteModalRoot instanceof HTMLElement) || !pendingVehiclesState.selectedVehicle) {
+            return;
+        }
+
+        if (vehicleDeleteModalCopy instanceof HTMLElement) {
+            const brand = String(pendingVehiclesState.selectedVehicle.brand_name || '').trim();
+            const model = String(pendingVehiclesState.selectedVehicle.model_name || '').trim();
+            const fallbackTitle = String(pendingVehiclesState.selectedVehicle.title || 'ten pojazd').trim();
+            const vehicleTitle = `${brand} ${model}`.trim() || fallbackTitle;
+            vehicleDeleteModalCopy.textContent = `Czy na pewno chcesz trwale usunąć pojazd ${vehicleTitle}?`;
+        }
+
+        vehicleDeleteModalRoot.hidden = false;
+        document.body.classList.add('admin-modal-open');
+    };
+
+    const renderPendingVehiclesPagination = () => {
+        if (!(pendingVehiclePageList instanceof HTMLElement)) {
+            return;
+        }
+
+        pendingVehiclePageList.innerHTML = '';
+        buildPageSequence(pendingVehiclesState.totalPages, pendingVehiclesState.page).forEach((item) => {
+            if (item === 'ellipsis') {
+                const ellipsis = document.createElement('span');
+                ellipsis.className = 'admin-catalog-page-ellipsis';
+                ellipsis.textContent = '...';
+                pendingVehiclePageList.appendChild(ellipsis);
+                return;
+            }
+
+            if (item === 'spacer') {
+                const spacer = document.createElement('span');
+                spacer.className = 'admin-catalog-page-spacer';
+                spacer.setAttribute('aria-hidden', 'true');
+                pendingVehiclePageList.appendChild(spacer);
+                return;
+            }
+
+            const pageNumber = Number(item);
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'admin-catalog-page-button';
+            button.textContent = String(pageNumber);
+            button.disabled = pendingVehiclesState.isLoading;
+            if (pageNumber === pendingVehiclesState.page) {
+                button.classList.add('is-active');
+            }
+            button.addEventListener('click', () => {
+                if (pageNumber !== pendingVehiclesState.page) {
+                    void loadPendingVehiclesPage(pageNumber);
+                }
+            });
+            pendingVehiclePageList.appendChild(button);
+        });
+
+        if (pendingVehiclePrevButton instanceof HTMLButtonElement) {
+            pendingVehiclePrevButton.disabled = pendingVehiclesState.isLoading || pendingVehiclesState.page <= 1;
+        }
+        if (pendingVehicleNextButton instanceof HTMLButtonElement) {
+            pendingVehicleNextButton.disabled = pendingVehiclesState.isLoading || pendingVehiclesState.page >= pendingVehiclesState.totalPages;
+        }
+        if (pendingVehiclePageStatus instanceof HTMLElement) {
+            pendingVehiclePageStatus.textContent = `Strona ${pendingVehiclesState.page} z ${pendingVehiclesState.totalPages}`;
+        }
+    };
+
+    const renderPendingVehicleRows = (rows) => {
+        if (!(pendingVehicleRowsRoot instanceof HTMLElement)) {
+            return;
+        }
+
+        if (!Array.isArray(rows) || rows.length === 0) {
+            pendingVehicleRowsRoot.innerHTML = '<div class="admin-catalog-empty">Brak pojazdów oczekujących na potwierdzenie.</div>';
+            return;
+        }
+
+        const safeRows = Array.isArray(rows) ? rows : [];
+        const placeholderCount = Math.max(0, pendingVehiclesState.perPage - safeRows.length);
+        pendingVehicleRowsRoot.innerHTML = [
+            ...safeRows.map((row) => buildPendingVehicleRowMarkup(row)),
+            ...Array.from({ length: placeholderCount }, () => buildPendingVehiclePlaceholderMarkup()),
+        ].join('');
+    };
+
+    const applyPendingVehiclesPayload = (payload) => {
+        pendingVehiclesState.page = Number(payload.page || 1);
+        pendingVehiclesState.totalPages = Math.max(1, Number(payload.total_pages || 1));
+        pendingVehiclesState.totalItems = Math.max(0, Number(payload.total_items || 0));
+
+        if (pendingVehiclesRoot instanceof HTMLElement) {
+            pendingVehiclesRoot.setAttribute('data-admin-pending-vehicles-page', String(pendingVehiclesState.page));
+            pendingVehiclesRoot.setAttribute('data-admin-pending-vehicles-per-page', String(pendingVehiclesState.perPage));
+            pendingVehiclesRoot.setAttribute('data-admin-pending-vehicles-total-pages', String(pendingVehiclesState.totalPages));
+            pendingVehiclesRoot.setAttribute('data-admin-pending-vehicles-total-items', String(pendingVehiclesState.totalItems));
+        }
+
+        renderPendingVehicleRows(Array.isArray(payload.rows) ? payload.rows : []);
+        syncPendingVehicleRowsHeight();
+        renderPendingVehiclesPagination();
+    };
+
+    const loadPendingVehiclesPage = async (page) => {
+        if (!(pendingVehiclesRoot instanceof HTMLElement) || pendingVehiclesState.isLoading) {
+            return;
+        }
+
+        pendingVehiclesState.isLoading = true;
+        renderPendingVehiclesPagination();
+
+        try {
+            const url = new URL(window.location.href);
+            url.hash = '#cars';
+            url.searchParams.set('pending_vehicle_page', String(page));
+            const response = await window.fetch(url.toString(), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                credentials: 'same-origin',
+            });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok || !payload?.success || !payload.pending_vehicles) {
+                throw new Error('pending_vehicles_fetch_failed');
+            }
+
+            applyPendingVehiclesPayload(payload.pending_vehicles);
+        } catch {
+            showToast('Nie udało się załadować kolejki pojazdów.', 'error');
+        } finally {
+            pendingVehiclesState.isLoading = false;
+            renderPendingVehiclesPagination();
+        }
+    };
+
+    const loadPendingVehicleDetails = async (vehicleId) => {
+        if (vehicleId <= 0) {
+            return;
+        }
+
+        try {
+            const url = new URL(window.location.href);
+            url.hash = '#cars';
+            url.searchParams.set('pending_vehicle_details', String(vehicleId));
+            const response = await window.fetch(url.toString(), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                credentials: 'same-origin',
+            });
+            const payload = await response.json().catch(() => null);
+            if (!response.ok || !payload?.success || !payload.vehicle) {
+                throw new Error(String(payload?.message || 'pending_vehicle_details_failed'));
+            }
+
+            applyPendingVehicleDetails(payload.vehicle);
+            openPendingVehicleModal();
+        } catch (error) {
+            showToast(error instanceof Error ? error.message : 'Nie udało się pobrać danych pojazdu.', 'error');
+        }
     };
 
     const loadCatalogPage = async (page) => {
@@ -927,7 +1323,10 @@
     const ensureBodyLockState = () => {
         const anyOpen = !(userModalRoot instanceof HTMLElement && userModalRoot.hidden)
             || !(moderationModalRoot instanceof HTMLElement && moderationModalRoot.hidden)
-            || !(warningModalRoot instanceof HTMLElement && warningModalRoot.hidden);
+            || !(warningModalRoot instanceof HTMLElement && warningModalRoot.hidden)
+            || !(pendingVehicleModalRoot instanceof HTMLElement && pendingVehicleModalRoot.hidden)
+            || !(vehicleRejectModalRoot instanceof HTMLElement && vehicleRejectModalRoot.hidden)
+            || !(vehicleDeleteModalRoot instanceof HTMLElement && vehicleDeleteModalRoot.hidden);
         document.body.classList.toggle('admin-modal-open', anyOpen);
     };
 
@@ -1286,6 +1685,11 @@
     const submitAdminAction = async (payload) => {
         const body = new URLSearchParams();
         Object.entries(payload).forEach(([key, value]) => {
+            if (Array.isArray(value)) {
+                value.forEach((item) => body.append(`${key}[]`, String(item)));
+                return;
+            }
+
             body.set(key, String(value));
         });
         body.set('_csrf', String(window.APP_CSRF_TOKEN || ''));
@@ -1308,6 +1712,133 @@
         }
 
         return result;
+    };
+
+    const confirmPendingVehicleApprove = async () => {
+        if (!pendingVehiclesState.selectedVehicle || pendingVehiclesState.approveSubmitting) {
+            return;
+        }
+
+        pendingVehiclesState.approveSubmitting = true;
+        if (pendingVehicleApproveButton instanceof HTMLButtonElement) {
+            pendingVehicleApproveButton.disabled = true;
+            pendingVehicleApproveButton.textContent = 'Trwa zatwierdzanie...';
+        }
+
+        try {
+            const result = await submitAdminAction({
+                action: 'approve_vehicle',
+                vehicle_id: pendingVehiclesState.selectedVehicle.id,
+                page: pendingVehiclesState.page,
+            });
+            closePendingVehicleModal();
+            if (result.pending_vehicles) {
+                applyPendingVehiclesPayload(result.pending_vehicles);
+            }
+            showToast(String(result.message || 'Pojazd został zatwierdzony.'), 'success');
+        } catch (error) {
+            showToast(error instanceof Error ? error.message : 'Nie udało się zatwierdzić pojazdu.', 'error');
+        } finally {
+            pendingVehiclesState.approveSubmitting = false;
+            if (pendingVehicleApproveButton instanceof HTMLButtonElement) {
+                pendingVehicleApproveButton.disabled = false;
+                pendingVehicleApproveButton.textContent = 'Potwierdź';
+            }
+            ensureBodyLockState();
+        }
+    };
+
+    const openVehicleRejectModal = () => {
+        if (!(vehicleRejectModalRoot instanceof HTMLElement)) {
+            return;
+        }
+
+        vehicleRejectModalRoot.hidden = false;
+        document.body.classList.add('admin-modal-open');
+    };
+
+    const confirmPendingVehicleReject = async () => {
+        if (!pendingVehiclesState.selectedVehicle || pendingVehiclesState.rejectSubmitting) {
+            return;
+        }
+
+        const selectedFields = vehicleRejectFieldsRoot instanceof HTMLElement
+            ? Array.from(vehicleRejectFieldsRoot.querySelectorAll('input[type="checkbox"]:checked'))
+                .map((input) => input instanceof HTMLInputElement ? input.value : '')
+                .filter((value) => value !== '')
+            : [];
+        const reason = String(vehicleRejectReasonInput?.value || '').trim();
+
+        if (selectedFields.length === 0 && reason === '') {
+            showToast('Wskaż błędne pola albo wpisz powód odrzucenia.', 'error');
+            return;
+        }
+
+        pendingVehiclesState.rejectSubmitting = true;
+        if (vehicleRejectConfirmButton instanceof HTMLButtonElement) {
+            vehicleRejectConfirmButton.disabled = true;
+            vehicleRejectConfirmButton.textContent = 'Trwa odrzucanie...';
+        }
+
+        try {
+            const result = await submitAdminAction({
+                action: 'reject_vehicle',
+                vehicle_id: pendingVehiclesState.selectedVehicle.id,
+                page: pendingVehiclesState.page,
+                reason,
+                fields: selectedFields,
+            });
+            closeVehicleRejectModal();
+            closePendingVehicleModal();
+            if (result.pending_vehicles) {
+                applyPendingVehiclesPayload(result.pending_vehicles);
+            }
+            showToast(String(result.message || 'Pojazd został odrzucony.'), 'success');
+        } catch (error) {
+            showToast(error instanceof Error ? error.message : 'Nie udało się odrzucić pojazdu.', 'error');
+        } finally {
+            pendingVehiclesState.rejectSubmitting = false;
+            if (vehicleRejectConfirmButton instanceof HTMLButtonElement) {
+                vehicleRejectConfirmButton.disabled = false;
+                vehicleRejectConfirmButton.textContent = 'Zatwierdź';
+            }
+            ensureBodyLockState();
+        }
+    };
+
+    const confirmPendingVehicleDelete = async () => {
+        if (!pendingVehiclesState.selectedVehicle || pendingVehiclesState.deleteSubmitting) {
+            return;
+        }
+
+        pendingVehiclesState.deleteSubmitting = true;
+        if (vehicleDeleteConfirmButton instanceof HTMLButtonElement) {
+            vehicleDeleteConfirmButton.disabled = true;
+            vehicleDeleteConfirmButton.textContent = 'Trwa usuwanie...';
+        }
+
+        try {
+            const result = await submitAdminAction({
+                action: 'delete_vehicle',
+                vehicle_id: pendingVehiclesState.selectedVehicle.id,
+                page: pendingVehiclesState.page,
+            });
+            closeVehicleDeleteModal();
+            closePendingVehicleModal();
+            if (result.pending_vehicles) {
+                applyPendingVehiclesPayload(result.pending_vehicles);
+            }
+            showToast(String(result.message || 'Pojazd został usunięty.'), 'success');
+        } catch (error) {
+            showToast(error instanceof Error ? error.message : 'Nie udało się usunąć pojazdu.', 'error');
+        } finally {
+            pendingVehiclesState.deleteSubmitting = false;
+            if (vehicleDeleteConfirmButton instanceof HTMLButtonElement) {
+                vehicleDeleteConfirmButton.disabled = false;
+                vehicleDeleteConfirmButton.textContent = 'Usuń pojazd';
+            }
+            ensureBodyLockState();
+        }
     };
 
     const confirmModerationFlow = async () => {
@@ -1425,6 +1956,22 @@
         });
     }
 
+    if (pendingVehiclePrevButton instanceof HTMLButtonElement) {
+        pendingVehiclePrevButton.addEventListener('click', () => {
+            if (pendingVehiclesState.page > 1) {
+                void loadPendingVehiclesPage(pendingVehiclesState.page - 1);
+            }
+        });
+    }
+
+    if (pendingVehicleNextButton instanceof HTMLButtonElement) {
+        pendingVehicleNextButton.addEventListener('click', () => {
+            if (pendingVehiclesState.page < pendingVehiclesState.totalPages) {
+                void loadPendingVehiclesPage(pendingVehiclesState.page + 1);
+            }
+        });
+    }
+
     if (catalogSearchInput instanceof HTMLInputElement) {
         catalogSearchInput.addEventListener('input', () => {
             const query = catalogSearchInput.value;
@@ -1475,14 +2022,21 @@
         const trigger = event.target instanceof HTMLElement
             ? event.target.closest('[data-admin-user-row]')
             : null;
-        if (!(trigger instanceof HTMLElement)) {
+        if (trigger instanceof HTMLElement) {
+            const selectedUserId = Number(trigger.getAttribute('data-admin-user-id') || 0);
+            catalogState.highlightUserId = selectedUserId;
+            highlightCatalogRow(selectedUserId);
+            openUserModal(parseUserFromRow(trigger));
             return;
         }
 
-        const selectedUserId = Number(trigger.getAttribute('data-admin-user-id') || 0);
-        catalogState.highlightUserId = selectedUserId;
-        highlightCatalogRow(selectedUserId);
-        openUserModal(parseUserFromRow(trigger));
+        const pendingVehicleTrigger = event.target instanceof HTMLElement
+            ? event.target.closest('[data-admin-pending-vehicle-row]')
+            : null;
+        if (pendingVehicleTrigger instanceof HTMLElement) {
+            const vehicleId = Number(pendingVehicleTrigger.getAttribute('data-admin-pending-vehicle-id') || 0);
+            void loadPendingVehicleDetails(vehicleId);
+        }
     });
 
     document.addEventListener('click', (event) => {
@@ -1500,7 +2054,7 @@
 
     document.addEventListener('click', (event) => {
         const closeTrigger = event.target instanceof HTMLElement
-            ? event.target.closest('[data-admin-user-modal-close], [data-admin-ban-modal-close], [data-admin-warning-modal-close]')
+            ? event.target.closest('[data-admin-user-modal-close], [data-admin-ban-modal-close], [data-admin-warning-modal-close], [data-admin-pending-vehicle-modal-close], [data-admin-vehicle-reject-modal-close], [data-admin-vehicle-delete-modal-close]')
             : null;
         if (!(closeTrigger instanceof HTMLElement)) {
             return;
@@ -1514,6 +2068,24 @@
 
         if (closeTrigger.hasAttribute('data-admin-warning-modal-close')) {
             closeWarningModal();
+            ensureBodyLockState();
+            return;
+        }
+
+        if (closeTrigger.hasAttribute('data-admin-pending-vehicle-modal-close')) {
+            closePendingVehicleModal();
+            ensureBodyLockState();
+            return;
+        }
+
+        if (closeTrigger.hasAttribute('data-admin-vehicle-reject-modal-close')) {
+            closeVehicleRejectModal();
+            ensureBodyLockState();
+            return;
+        }
+
+        if (closeTrigger.hasAttribute('data-admin-vehicle-delete-modal-close')) {
+            closeVehicleDeleteModal();
             ensureBodyLockState();
             return;
         }
@@ -1655,6 +2227,64 @@
         });
     }
 
+    if (pendingVehicleApproveButton instanceof HTMLButtonElement) {
+        pendingVehicleApproveButton.addEventListener('click', () => {
+            void confirmPendingVehicleApprove();
+        });
+    }
+
+    if (pendingVehicleRejectButton instanceof HTMLButtonElement) {
+        pendingVehicleRejectButton.addEventListener('click', () => {
+            openVehicleRejectModal();
+        });
+    }
+
+    if (pendingVehicleDeleteButton instanceof HTMLButtonElement) {
+        pendingVehicleDeleteButton.addEventListener('click', () => {
+            openVehicleDeleteModal();
+        });
+    }
+
+    if (vehicleRejectConfirmButton instanceof HTMLButtonElement) {
+        vehicleRejectConfirmButton.addEventListener('click', () => {
+            void confirmPendingVehicleReject();
+        });
+    }
+
+    if (vehicleDeleteConfirmButton instanceof HTMLButtonElement) {
+        vehicleDeleteConfirmButton.addEventListener('click', () => {
+            void confirmPendingVehicleDelete();
+        });
+    }
+
+    if (pendingVehiclePrevImageButton instanceof HTMLButtonElement) {
+        pendingVehiclePrevImageButton.addEventListener('click', () => {
+            const images = Array.isArray(pendingVehiclesState.selectedVehicle?.images) ? pendingVehiclesState.selectedVehicle.images : [];
+            if (images.length <= 1) {
+                return;
+            }
+
+            pendingVehiclesState.imageIndex = pendingVehiclesState.imageIndex <= 0
+                ? images.length - 1
+                : pendingVehiclesState.imageIndex - 1;
+            renderPendingVehicleCarousel();
+        });
+    }
+
+    if (pendingVehicleNextImageButton instanceof HTMLButtonElement) {
+        pendingVehicleNextImageButton.addEventListener('click', () => {
+            const images = Array.isArray(pendingVehiclesState.selectedVehicle?.images) ? pendingVehiclesState.selectedVehicle.images : [];
+            if (images.length <= 1) {
+                return;
+            }
+
+            pendingVehiclesState.imageIndex = pendingVehiclesState.imageIndex >= images.length - 1
+                ? 0
+                : pendingVehiclesState.imageIndex + 1;
+            renderPendingVehicleCarousel();
+        });
+    }
+
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && catalogSearchResults instanceof HTMLElement && !catalogSearchResults.hidden) {
             closeCatalogSearchSuggestions();
@@ -1677,6 +2307,24 @@
             return;
         }
 
+        if (vehicleRejectModalRoot instanceof HTMLElement && !vehicleRejectModalRoot.hidden) {
+            closeVehicleRejectModal();
+            ensureBodyLockState();
+            return;
+        }
+
+        if (vehicleDeleteModalRoot instanceof HTMLElement && !vehicleDeleteModalRoot.hidden) {
+            closeVehicleDeleteModal();
+            ensureBodyLockState();
+            return;
+        }
+
+        if (pendingVehicleModalRoot instanceof HTMLElement && !pendingVehicleModalRoot.hidden) {
+            closePendingVehicleModal();
+            ensureBodyLockState();
+            return;
+        }
+
         if (userModalRoot instanceof HTMLElement && !userModalRoot.hidden) {
             closeUserModal();
             ensureBodyLockState();
@@ -1686,6 +2334,7 @@
     window.addEventListener('hashchange', syncFromHash);
 
     renderCatalogPagination();
+    renderPendingVehiclesPagination();
     syncFromHash();
 })();
 

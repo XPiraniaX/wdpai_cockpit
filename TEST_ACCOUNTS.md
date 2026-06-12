@@ -6,6 +6,12 @@ Haslo testowe dla wszystkich seedowanych kont:
 
 ## Konta
 
+### `admin`
+- Hasło: `admin`
+- Imie i nazwisko: Panel Administratora
+- Typ konta: `Free`
+- Zawartosc: `1` samochodow
+
 ### `alexrivera`
 - Imie i nazwisko: Alex Rivera
 - Typ konta: `pro`
@@ -25,10 +31,10 @@ Haslo testowe dla wszystkich seedowanych kont:
 
 
 ### `lenatwo2`
-- Hasło: Password.1
+- Hasło: `Password.1`
 - Imie i nazwisko: Lena Krawczyk
 - Typ konta: `business`
-- Zawartosc: `2` samochody
+- Zawartosc: `5` samochody
 
 
 ### `oskarfour`

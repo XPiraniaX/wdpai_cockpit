@@ -67,6 +67,8 @@ window.initVehicleDetailsPage = () => {
     const heroMenuDropdown = document.querySelector('[data-hero-menu-dropdown]');
     const imagesEditGallery = modalRoot.querySelector('[data-vehicle-images-gallery]');
     const imagesEditInput = modalRoot.querySelector('[data-vehicle-images-input]');
+    const correctionGallery = modalRoot.querySelector('[data-vehicle-correction-gallery]');
+    const correctionInput = modalRoot.querySelector('[data-vehicle-correction-input]');
     const heroCarousel = document.querySelector('[data-hero-carousel]');
     const heroCarouselTrack = document.querySelector('[data-hero-carousel-track]');
     const heroCarouselPrev = document.querySelector('[data-hero-carousel-prev]');
@@ -76,6 +78,8 @@ window.initVehicleDetailsPage = () => {
     let initialEditableExistingImages = [];
     let editableExistingImages = [];
     let editableNewFiles = [];
+    let correctionNewFiles = [];
+    const maxVehicleImages = 10;
 
     const syncImagesEditInput = () => {
         if (!imagesEditInput) {
@@ -250,6 +254,75 @@ window.initVehicleDetailsPage = () => {
         editableNewFiles = [];
         syncImagesEditInput();
         renderImagesEditGallery();
+    };
+
+    const syncCorrectionInput = () => {
+        if (!correctionInput) {
+            return;
+        }
+
+        const transfer = new DataTransfer();
+        correctionNewFiles.forEach((file) => transfer.items.add(file));
+        correctionInput.files = transfer.files;
+    };
+
+    const countCorrectionExistingImages = () => correctionGallery
+        ? correctionGallery.querySelectorAll('[data-vehicle-correction-existing]').length
+        : 0;
+
+    const countCorrectionImages = () => countCorrectionExistingImages() + correctionNewFiles.length;
+
+    const openCorrectionPicker = () => {
+        if (correctionInput && countCorrectionImages() < maxVehicleImages) {
+            correctionInput.click();
+        }
+    };
+
+    const renderCorrectionGallery = () => {
+        if (!correctionGallery || !correctionInput) {
+            return;
+        }
+
+        const uploadCard = correctionGallery.querySelector('.vehicle-correction-image-upload');
+        const existingCards = Array.from(correctionGallery.querySelectorAll('[data-vehicle-correction-existing]'));
+        correctionGallery.querySelectorAll('[data-vehicle-correction-preview]').forEach((node) => node.remove());
+
+        existingCards.forEach((card) => correctionGallery.appendChild(card));
+
+        correctionNewFiles.forEach((file, index) => {
+            const card = document.createElement('div');
+            card.className = 'vehicle-correction-image-card';
+            card.setAttribute('data-vehicle-correction-preview', '');
+
+            const photo = document.createElement('img');
+            photo.className = 'vehicle-correction-image-photo';
+            photo.alt = `Nowe zdjęcie pojazdu ${index + 1}`;
+
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'vehicle-correction-image-remove';
+            removeButton.setAttribute('aria-label', `Usuń nowe zdjęcie ${index + 1}`);
+            removeButton.addEventListener('click', () => {
+                correctionNewFiles = correctionNewFiles.filter((_, fileIndex) => fileIndex !== index);
+                syncCorrectionInput();
+                renderCorrectionGallery();
+            }, { signal });
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                photo.src = String(reader.result ?? '');
+            };
+            reader.readAsDataURL(file);
+
+            card.appendChild(photo);
+            card.appendChild(removeButton);
+            correctionGallery.appendChild(card);
+        });
+
+        if (uploadCard instanceof HTMLElement) {
+            correctionGallery.appendChild(uploadCard);
+            uploadCard.hidden = countCorrectionImages() >= maxVehicleImages;
+        }
     };
 
     const captureInitialImagesEditState = () => {
@@ -776,14 +849,59 @@ window.initVehicleDetailsPage = () => {
         }
     };
 
+    const openVehicleCorrectionLockOnEntry = () => {
+        const marker = document.querySelector('[data-vehicle-rejection-lock-autostart="1"]');
+        if (!(marker instanceof HTMLElement)) {
+            return;
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('open_modal')) {
+            return;
+        }
+
+        const hasLockPanel = panels.some((panel) => panel.dataset.modalPanel === 'modal-vehicle-correction-lock');
+        if (hasLockPanel) {
+            openModal('modal-vehicle-correction-lock');
+        }
+    };
+
     initializeVehicleGroupedNumberInputs();
     initializeVehicleGroupedDecimalInputs();
     enhanceNumberInputs();
     captureInitialImagesEditState();
     initializeImagesEditState();
+    correctionGallery?.querySelectorAll('[data-vehicle-correction-remove]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const card = button.closest('[data-vehicle-correction-existing]');
+            card?.remove();
+            renderCorrectionGallery();
+        }, { signal });
+    });
+    correctionInput?.addEventListener('change', () => {
+        const nextFiles = Array.from(correctionInput.files || []);
+        if (nextFiles.length === 0) {
+            return;
+        }
+
+        const remainingSlots = Math.max(0, maxVehicleImages - countCorrectionImages());
+        correctionNewFiles = [...correctionNewFiles, ...nextFiles.slice(0, remainingSlots)];
+        syncCorrectionInput();
+        renderCorrectionGallery();
+    }, { signal });
+    correctionGallery?.querySelector('.vehicle-correction-image-upload')?.addEventListener('click', (event) => {
+        if (event.target instanceof HTMLInputElement) {
+            return;
+        }
+
+        event.preventDefault();
+        openCorrectionPicker();
+    }, { signal });
+    renderCorrectionGallery();
     initializeHeroCarousel();
     bindVehicleAjaxForms();
     openModalFromQuery();
+    openVehicleCorrectionLockOnEntry();
 };
 
 document.addEventListener('DOMContentLoaded', () => {

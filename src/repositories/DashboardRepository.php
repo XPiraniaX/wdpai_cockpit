@@ -109,6 +109,10 @@ class DashboardRepository
                 v.production_year,
                 v.current_mileage_km,
                 v.is_primary,
+                v.approval_status,
+                v.approval_rejection_reason,
+                v.approval_rejection_fields_json,
+                v.approval_correction_due_at,
                 vi.image_path,
                 next_inspection.valid_until AS next_inspection_date,
                 next_insurance.valid_until AS next_insurance_date

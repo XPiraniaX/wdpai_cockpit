@@ -23,9 +23,9 @@ class CarsController extends AppController
             'id' => (int) $primaryVehicle['id'],
             'title' => $primaryVehicle['display_name'],
             'subtitle' => $primaryVehicle['trim_name'] ?: 'Brak wersji',
-            'year' => (string) $primaryVehicle['production_year'],
             'imagePath' => $primaryVehicle['image_path'] ?? null,
             'bodyType' => $this->formatBodyType($primaryVehicle['body_type'] ?? null),
+            'approvalStatus' => $this->buildVehicleApprovalStatusMeta($primaryVehicle),
             'detailsPath' => $this->buildVehicleDetailsPath((int) $primaryVehicle['id'], (string) $primaryVehicle['display_name']) ?? '/my-cars',
         ] : null;
 
@@ -60,6 +60,7 @@ class CarsController extends AppController
                 'title' => $car['display_name'],
                 'subtitle' => $car['trim_name'] ?: 'Brak wersji',
                 'imagePath' => $car['image_path'] ?? null,
+                'approvalStatus' => $this->buildVehicleApprovalStatusMeta($car),
                 'isPrimary' => (bool) $car['is_primary'],
                 'primaryLabel' => (bool) $car['is_primary'] ? 'Pojazd główny' : 'Ustaw jako główny',
                 'mileage' => $this->formatMileage($car['current_mileage_km'] ?? null),
@@ -144,6 +145,8 @@ class CarsController extends AppController
         $vehicleImages = $repository->getVehicleImages($userId, $vehicleId);
         $applicationSettings = (new UserRepository(Database::getConnection()))->getApplicationSettings($userId);
         $consumptionFormat = $applicationSettings['app_consumption_format'] ?? 'l_100km';
+        $vehicleApprovalStatus = $this->buildVehicleApprovalStatusMeta($vehicle);
+        $vehicleRejectionLock = $this->buildVehicleRejectionLock($vehicle);
 
         $averageConsumption = $this->formatRecentConsumption($recentFuelLogs, $consumptionFormat);
 
@@ -177,8 +180,10 @@ class CarsController extends AppController
                 'drivetrain' => $vehicle['drivetrain'] ? strtoupper((string) $vehicle['drivetrain']) : 'Brak danych',
                 'fuelType' => $this->formatVehicleFuelType($vehicle['fuel_type'] ?? null),
                 'technicalSpec' => $this->buildTechnicalSpec($vehicle),
+                'approvalStatus' => $vehicleApprovalStatus,
             ],
             'vehicleRecord' => $vehicle,
+            'vehicleRejectionLock' => $vehicleRejectionLock,
             'vehicleDetailsPath' => $canonicalPath,
             'vehicleImages' => array_map(
                 static fn (array $image): array => [
@@ -199,6 +204,7 @@ class CarsController extends AppController
             'drivetrainOptions' => $this->getDrivetrainOptions(),
             'fuelFormOptions' => $this->buildFuelFormOptions($vehicle['fuel_type'] ?? null),
             'inspectionHistory' => $this->mapInspectionHistory($inspectionHistory),
+            'brandCatalog' => $repository->getBrandCatalog(),
             'scriptFiles' => ['vehicle_details.js'],
         ]);
     }
@@ -206,8 +212,48 @@ class CarsController extends AppController
     private function handleVehicleDetailsAction(CarsRepository $repository, int $userId, int $vehicleId, array $vehicle): void
     {
         $action = $_POST['modal_action'] ?? '';
+        $isRejectedForCorrection = $this->isVehicleRejectedForCorrection($vehicle);
+
+        if ($isRejectedForCorrection && !in_array($action, ['vehicle_rejection_resubmit'], true)) {
+            $message = $this->buildVehicleCorrectionRestrictionMessage($vehicle);
+            if ($this->isAjaxRequest()) {
+                $this->jsonResponse([
+                    'success' => false,
+                    'message' => $message,
+                    'open_modal' => 'modal-vehicle-correction-lock',
+                ], 423);
+            }
+
+            $this->setFlash('error', $message);
+            $this->redirect($this->buildVehicleDetailsPath($vehicleId, (string) ($vehicle['display_name'] ?? '')) ?? '/my-cars');
+        }
 
         switch ($action) {
+            case 'vehicle_rejection_resubmit':
+                $payload = $this->buildVehicleCorrectionPayload($vehicle);
+                if ($message = $this->validateVehicleSpecificationUniqueness($repository, $vehicleId, $payload)) {
+                    $this->respondVehicleDetailsError($vehicleId, $message, 'modal-vehicle-correction', (string) ($vehicle['display_name'] ?? ''));
+                }
+
+                $newImagePaths = $this->handleVehicleImageUploads(
+                    $userId,
+                    (string) $payload['brand_name'],
+                    (string) $payload['model_name'],
+                    'vehicle_correction_images'
+                );
+                $keptImageIds = array_map('intval', (array) ($_POST['existing_image_ids'] ?? []));
+                if ($keptImageIds === [] && $newImagePaths === []) {
+                    $this->respondVehicleDetailsError(
+                        $vehicleId,
+                        'Dodaj co najmniej jedno zdjęcie pojazdu.',
+                        'modal-vehicle-correction',
+                        (string) ($vehicle['display_name'] ?? '')
+                    );
+                }
+
+                $repository->resubmitRejectedVehicleByOwner($userId, $vehicleId, $payload, $keptImageIds, $newImagePaths);
+                $this->respondVehicleDetailsSuccess($vehicleId, 'Pojazd został ponownie wysłany do potwierdzenia.', (string) ($vehicle['display_name'] ?? ''));
+                break;
             case 'spec_update':
                 $payload = $this->buildSpecificationPayload($vehicle);
                 if ($message = $this->validateVehicleSpecificationUniqueness($repository, $vehicleId, $payload)) {
@@ -308,6 +354,105 @@ class CarsController extends AppController
         }
 
         return $carCount % 3 === 0 ? 0 : 1;
+    }
+
+    private function buildVehicleApprovalStatusMeta(array $vehicle): array
+    {
+        $status = (string) ($vehicle['approval_status'] ?? 'pending');
+
+        return match ($status) {
+            'approved' => [
+                'value' => 'approved',
+                'label' => 'Zatwierdzony',
+                'icon' => '/public/assets/icons/status_confirm.svg',
+                'class' => 'is-approved',
+            ],
+            'rejected' => [
+                'value' => 'rejected',
+                'label' => 'Odrzucony',
+                'icon' => '/public/assets/icons/close.svg',
+                'class' => 'is-rejected',
+            ],
+            default => [
+                'value' => 'pending',
+                'label' => 'Niepotwierdzony',
+                'icon' => '/public/assets/icons/status_processing.svg',
+                'class' => 'is-pending',
+            ],
+        };
+    }
+
+    private function isVehicleRejectedForCorrection(array $vehicle): bool
+    {
+        return (string) ($vehicle['approval_status'] ?? '') === 'rejected';
+    }
+
+    private function buildVehicleRejectionLock(array $vehicle): ?array
+    {
+        if (!$this->isVehicleRejectedForCorrection($vehicle)) {
+            return null;
+        }
+
+        $reason = trim((string) ($vehicle['approval_rejection_reason'] ?? ''));
+        $dueAt = trim((string) ($vehicle['approval_correction_due_at'] ?? ''));
+        $fields = $this->extractVehicleRejectionFields($vehicle);
+
+        return [
+            'reason' => $reason !== '' ? $reason : 'Administrator odrzucił pojazd i wymaga korekty danych.',
+            'dueLabel' => $this->formatDateTimeLabel($dueAt),
+            'fields' => $fields,
+            'hasPhotosIssue' => in_array('photos', $fields, true),
+        ];
+    }
+
+    private function extractVehicleRejectionFields(array $vehicle): array
+    {
+        $raw = $vehicle['approval_rejection_fields_json'] ?? null;
+        if (is_array($raw)) {
+            return array_values(array_filter(array_map(
+                static fn (mixed $field): string => trim((string) $field),
+                $raw
+            )));
+        }
+
+        $decoded = json_decode((string) $raw, true);
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        return array_values(array_filter(array_map(
+            static fn (mixed $field): string => trim((string) $field),
+            $decoded
+        )));
+    }
+
+    private function buildVehicleCorrectionRestrictionMessage(array $vehicle): string
+    {
+        $lock = $this->buildVehicleRejectionLock($vehicle);
+        if ($lock === null) {
+            return 'Dane pojazdu wymagają korekty.';
+        }
+
+        $dueLabel = trim((string) ($lock['dueLabel'] ?? ''));
+        if ($dueLabel === '') {
+            return 'Dane pojazdu zostały odrzucone przez administratora. Popraw dane i wyślij pojazd ponownie do potwierdzenia.';
+        }
+
+        return 'Dane pojazdu zostały odrzucone przez administratora. Popraw dane i wyślij pojazd ponownie do ' . $dueLabel . '.';
+    }
+
+    private function formatDateTimeLabel(?string $value): string
+    {
+        $normalizedValue = trim((string) $value);
+        if ($normalizedValue === '') {
+            return '';
+        }
+
+        try {
+            return (new DateTimeImmutable($normalizedValue))->setTimezone(new DateTimeZone('Europe/Warsaw'))->format('d.m.Y • H:i');
+        } catch (Throwable) {
+            return '';
+        }
     }
 
     private function formatDate(?string $date): string
@@ -643,6 +788,28 @@ class CarsController extends AppController
             'front_brake_type' => $this->sanitizeNullableDisplayText($_POST['front_brake_type'] ?? $vehicle['front_brake_type']),
             'rear_brake_type' => $this->sanitizeNullableDisplayText($_POST['rear_brake_type'] ?? $vehicle['rear_brake_type']),
             'notes' => $this->sanitizeNullableText($_POST['notes'] ?? $vehicle['notes']),
+        ];
+    }
+
+    private function buildVehicleCorrectionPayload(array $vehicle): array
+    {
+        $brandName = $this->sanitizeText($_POST['brand_name'] ?? null) ?? (string) ($vehicle['brand_name'] ?? 'Brak danych');
+        $modelName = $this->sanitizeText($_POST['model_name'] ?? null) ?? (string) ($vehicle['model_name'] ?? 'Brak danych');
+        $catalog = (new CarsRepository(Database::getConnection()))->getBrandCatalog();
+        $knownBrandModels = $catalog[$brandName] ?? [];
+
+        return [
+            'brand_name' => $brandName,
+            'model_name' => $modelName,
+            'brand_requires_approval' => !array_key_exists($brandName, $catalog),
+            'model_requires_approval' => !in_array($modelName, $knownBrandModels, true),
+            'trim_name' => $this->sanitizeText($_POST['trim_name'] ?? null) ?? ((string) ($vehicle['trim_name'] ?? 'Brak danych') ?: 'Brak danych'),
+            'display_name' => $this->sanitizeText($_POST['display_name'] ?? null) ?? ((string) ($vehicle['display_name'] ?? 'Brak danych') ?: 'Brak danych'),
+            'production_year' => $this->sanitizeSmallInt($_POST['production_year'] ?? null) ?? (int) ($vehicle['production_year'] ?? date('Y')),
+            'current_mileage_km' => $this->sanitizeNullablePositiveInt($_POST['current_mileage_km'] ?? null) ?? (int) ($vehicle['current_mileage_km'] ?? 0),
+            'license_plate' => $this->sanitizeText($_POST['license_plate'] ?? null) ?? ((string) ($vehicle['license_plate'] ?? 'Brak danych') ?: 'Brak danych'),
+            'vin' => $this->sanitizeText($_POST['vin'] ?? null) ?? ((string) ($vehicle['vin'] ?? 'Brak danych') ?: 'Brak danych'),
+            'exterior_color' => $this->sanitizeText($_POST['exterior_color'] ?? null) ?? ((string) ($vehicle['exterior_color'] ?? 'Brak danych') ?: 'Brak danych'),
         ];
     }
 
@@ -1162,16 +1329,6 @@ class CarsController extends AppController
                 @unlink($localPath);
             }
         }
-    }
-
-    private function resolvePublicPathToFilesystem(string $publicPath): ?string
-    {
-        $normalized = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, ltrim($publicPath, '/\\'));
-        if ($normalized === '') {
-            return null;
-        }
-
-        return getcwd() . DIRECTORY_SEPARATOR . $normalized;
     }
 
     private function rememberAddVehicleFormDraft(): void

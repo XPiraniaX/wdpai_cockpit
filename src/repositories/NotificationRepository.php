@@ -217,6 +217,45 @@ class NotificationRepository
         );
     }
 
+    public function createVehicleApprovedNotification(int $userId, int $vehicleId, string $displayName): void
+    {
+        if ($userId <= 0 || $vehicleId <= 0) {
+            return;
+        }
+
+        $vehicleName = $this->normalizeVehicleDisplayName($displayName);
+
+        $this->insertNotification(
+            $userId,
+            'vehicle_approved',
+            'Samochód zaakceptowany',
+            'Twój samochód: ' . $vehicleName . ', został zaakceptowany.',
+            $this->buildVehicleDetailsPath($vehicleId, $vehicleName)
+        );
+    }
+
+    public function createVehicleRejectedNotification(int $userId, int $vehicleId, string $displayName, string $reason): void
+    {
+        $reason = trim($reason);
+        if ($userId <= 0 || $vehicleId <= 0 || $reason === '') {
+            return;
+        }
+
+        $vehicleName = $this->normalizeVehicleDisplayName($displayName);
+
+        $this->insertNotification(
+            $userId,
+            'vehicle_rejected',
+            'Samochód odrzucony',
+            'Twój samochód: ' . $vehicleName . ', został odrzucony z powodu: ' . $reason,
+            $this->buildVehicleDetailsPath($vehicleId, $vehicleName),
+            null,
+            [
+                'accent' => 'danger',
+            ]
+        );
+    }
+
     private function cleanupExpiredNotifications(): void
     {
         $statement = $this->connection->prepare(
@@ -445,6 +484,12 @@ class NotificationRepository
         }
 
         return '/my-cars/' . $vehicleId . rawurlencode($slug);
+    }
+
+    private function normalizeVehicleDisplayName(string $displayName): string
+    {
+        $normalized = trim($displayName);
+        return $normalized !== '' ? $normalized : 'Pojazd';
     }
 
     private function slugify(string $value): string

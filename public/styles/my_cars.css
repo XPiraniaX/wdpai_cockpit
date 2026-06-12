@@ -17,6 +17,14 @@
     position: relative;
 }
 
+.cars-hero-badge {
+    top: clamp(12px, 1vw, 16px);
+    right: clamp(12px, 1vw, 16px);
+    left: auto;
+    width: clamp(32px, 2.2vw, 40px);
+    height: clamp(32px, 2.2vw, 40px);
+}
+
 .cars-page .car-card-favorite,
 .cars-page .cars-hero-arrow {
     position: relative;

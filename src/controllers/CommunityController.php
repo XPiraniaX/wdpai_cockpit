@@ -806,16 +806,6 @@ class CommunityController extends AppController
         }
     }
 
-    private function resolvePublicPathToFilesystem(string $publicPath): ?string
-    {
-        $normalized = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, ltrim($publicPath, '/\\'));
-        if ($normalized === '') {
-            return null;
-        }
-
-        return getcwd() . DIRECTORY_SEPARATOR . $normalized;
-    }
-
     private function resolveCommunityRenderUser(int $userId): array
     {
         $fallbackUser = [

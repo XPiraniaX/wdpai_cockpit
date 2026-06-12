@@ -42,6 +42,7 @@ class DashboardController extends AppController
                 'title' => $car['display_name'],
                 'subtitle' => $car['trim_name'] ?: 'Brak wersji',
                 'imagePath' => $car['image_path'] ?? null,
+                'approvalStatus' => $this->buildVehicleApprovalStatusMeta($car),
                 'isPrimary' => (bool) $car['is_primary'],
                 'primaryLabel' => (bool) $car['is_primary'] ? 'Pojazd główny' : 'Ustaw jako główny',
                 'mileage' => $this->formatMileage($car['current_mileage_km'] ?? null),
@@ -183,6 +184,32 @@ class DashboardController extends AppController
         }
 
         return $carCount % 3 === 0 ? 0 : 1;
+    }
+
+    private function buildVehicleApprovalStatusMeta(array $vehicle): array
+    {
+        $status = (string) ($vehicle['approval_status'] ?? 'pending');
+
+        return match ($status) {
+            'approved' => [
+                'value' => 'approved',
+                'label' => 'Zatwierdzony',
+                'icon' => '/public/assets/icons/status_confirm.svg',
+                'class' => 'is-approved',
+            ],
+            'rejected' => [
+                'value' => 'rejected',
+                'label' => 'Odrzucony',
+                'icon' => '/public/assets/icons/close.svg',
+                'class' => 'is-rejected',
+            ],
+            default => [
+                'value' => 'pending',
+                'label' => 'Niepotwierdzony',
+                'icon' => '/public/assets/icons/status_processing.svg',
+                'class' => 'is-pending',
+            ],
+        };
     }
 
     private function sanitizeRedirectPath(string $redirectTo): string
