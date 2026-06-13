@@ -347,14 +347,9 @@ class ProfileController extends CommunityController
             $this->redirect($profilePath);
         }
 
-        $mimeType = mime_content_type((string) ($file['tmp_name'] ?? '')) ?: '';
-        $allowedMimeTypes = [
-            'image/jpeg' => 'jpg',
-            'image/png' => 'png',
-            'image/webp' => 'webp',
-        ];
+        $validatedImage = $this->validateUploadedImage($file);
 
-        if (!isset($allowedMimeTypes[$mimeType])) {
+        if ($validatedImage === null) {
             if ($this->isAjaxRequest()) {
                 $this->jsonResponse([
                     'success' => false,
@@ -366,8 +361,9 @@ class ProfileController extends CommunityController
             $this->redirect($profilePath);
         }
 
-        $uploadDirectory = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'profiles';
-        if (!is_dir($uploadDirectory) && !mkdir($uploadDirectory, 0775, true) && !is_dir($uploadDirectory)) {
+        try {
+            $uploadDirectory = $this->ensureUploadDirectory('public/uploads/profiles');
+        } catch (RuntimeException) {
             if ($this->isAjaxRequest()) {
                 $this->jsonResponse([
                     'success' => false,
@@ -388,10 +384,10 @@ class ProfileController extends CommunityController
             . '-'
             . bin2hex(random_bytes(3))
             . '.'
-            . $allowedMimeTypes[$mimeType];
+            . $validatedImage['extension'];
         $targetPath = $uploadDirectory . DIRECTORY_SEPARATOR . $filename;
 
-        if (!move_uploaded_file((string) ($file['tmp_name'] ?? ''), $targetPath)) {
+        if (!move_uploaded_file($validatedImage['tmp_name'], $targetPath)) {
             if ($this->isAjaxRequest()) {
                 $this->jsonResponse([
                     'success' => false,

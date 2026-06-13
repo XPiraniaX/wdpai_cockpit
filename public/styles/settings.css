@@ -537,6 +537,21 @@
     line-height: 1.65;
 }
 
+.settings-confirm-password-field {
+    margin-top: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.settings-confirm-password-label {
+    color: rgba(203, 213, 225, 0.82);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
 .settings-confirm-actions {
     margin-top: 24px;
     display: flex;

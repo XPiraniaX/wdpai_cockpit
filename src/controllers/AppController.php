@@ -3,6 +3,7 @@
 class AppController
 {
     private bool $banStateSynchronized = false;
+    protected const MAX_IMAGE_UPLOAD_BYTES = 10 * 1024 * 1024;
 
     public function enforceCsrfProtection(): void
     {
@@ -286,7 +287,27 @@ class AppController
 
     protected function logoutUser(): void
     {
-        unset($_SESSION['auth_user_id']);
+        if (session_status() !== PHP_SESSION_ACTIVE) {
+            return;
+        }
+
+        $cookieParams = session_get_cookie_params();
+        $_SESSION = [];
+
+        if (ini_get('session.use_cookies')) {
+            setcookie(
+                session_name(),
+                '',
+                time() - 42000,
+                $cookieParams['path'] ?? '/',
+                $cookieParams['domain'] ?? '',
+                (bool) ($cookieParams['secure'] ?? false),
+                (bool) ($cookieParams['httponly'] ?? true)
+            );
+        }
+
+        session_destroy();
+        session_start();
         session_regenerate_id(true);
     }
 
@@ -507,6 +528,50 @@ class AppController
         return $token;
     }
 
+    protected function ensureUploadDirectory(string $relativeDirectory): string
+    {
+        $path = getcwd() . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, trim($relativeDirectory, '/\\'));
+        if (!is_dir($path) && !mkdir($path, 0775, true) && !is_dir($path)) {
+            throw new RuntimeException('Nie udało się przygotować katalogu uploadów.');
+        }
+
+        return $path;
+    }
+
+    protected function validateUploadedImage(array $file): ?array
+    {
+        if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            return null;
+        }
+
+        $tmpName = (string) ($file['tmp_name'] ?? '');
+        if ($tmpName === '' || !is_uploaded_file($tmpName)) {
+            return null;
+        }
+
+        $size = (int) ($file['size'] ?? 0);
+        if ($size <= 0 || $size > self::MAX_IMAGE_UPLOAD_BYTES) {
+            return null;
+        }
+
+        $finfo = new finfo(FILEINFO_MIME_TYPE);
+        $mimeType = (string) ($finfo->file($tmpName) ?: '');
+        $allowedMimeTypes = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+        ];
+
+        if (!isset($allowedMimeTypes[$mimeType])) {
+            return null;
+        }
+
+        return [
+            'tmp_name' => $tmpName,
+            'extension' => $allowedMimeTypes[$mimeType],
+        ];
+    }
+
     private function sanitizeBackRedirect(string $url): string
     {
         $path = (string) parse_url($url, PHP_URL_PATH);
@@ -638,7 +703,24 @@ class AppController
             return null;
         }
 
-        return getcwd() . DIRECTORY_SEPARATOR . $normalized;
+        $publicRoot = realpath(getcwd() . DIRECTORY_SEPARATOR . 'public');
+        if ($publicRoot === false) {
+            return null;
+        }
+
+        $candidate = getcwd() . DIRECTORY_SEPARATOR . $normalized;
+        $candidateDirectory = realpath(dirname($candidate));
+        if ($candidateDirectory === false) {
+            return null;
+        }
+
+        $publicRootPrefix = rtrim($publicRoot, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        $candidatePrefix = rtrim($candidateDirectory, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR;
+        if (!str_starts_with($candidatePrefix, $publicRootPrefix)) {
+            return null;
+        }
+
+        return $candidate;
     }
 
     private function formatBanUntilLabel(mixed $blockedUntil, bool $isPermanent): string

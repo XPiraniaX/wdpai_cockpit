@@ -18,6 +18,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+header('X-Frame-Options: SAMEORIGIN');
+header('X-Content-Type-Options: nosniff');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+
 spl_autoload_register(function ($class) {
     $directories = [
         'src/config',
@@ -39,5 +44,9 @@ require_once 'Routing.php';
 
 $path = trim($_SERVER['REQUEST_URI'], '/');
 $path = parse_url($path, PHP_URL_PATH);
+if (!is_string($path)) {
+    Routing::renderErrorPage(400, '400', '400 - Nieprawidłowe żądanie');
+    return;
+}
 
 Routing::run($path);

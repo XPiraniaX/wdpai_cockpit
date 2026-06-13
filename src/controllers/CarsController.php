@@ -1250,11 +1250,7 @@ class CarsController extends AppController
         $userRepository = new UserRepository(Database::getConnection());
         $user = $userRepository->getById($userId);
         $username = $user['username'] ?? ('user-' . $userId);
-        $uploadDirectory = getcwd() . DIRECTORY_SEPARATOR . 'public' . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'vehicles';
-
-        if (!is_dir($uploadDirectory)) {
-            mkdir($uploadDirectory, 0775, true);
-        }
+        $uploadDirectory = $this->ensureUploadDirectory('public/uploads/vehicles');
 
         $files = $this->normalizeVehicleImageUploads($_FILES[$fieldName]);
         if (count($files) === 0) {
@@ -1267,16 +1263,15 @@ class CarsController extends AppController
         $requestToken = bin2hex(random_bytes(3));
 
         foreach (array_slice($files, 0, 10) as $index => $file) {
-            if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            $validatedImage = $this->validateUploadedImage($file);
+            if ($validatedImage === null) {
                 continue;
             }
 
-            $extension = strtolower(pathinfo((string) ($file['name'] ?? ''), PATHINFO_EXTENSION));
-            $safeExtension = in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true) ? $extension : 'jpg';
-            $filename = $slugBase . '-' . $timestamp . '-' . $requestToken . '-' . ($index + 1) . '.' . $safeExtension;
+            $filename = $slugBase . '-' . $timestamp . '-' . $requestToken . '-' . ($index + 1) . '.' . $validatedImage['extension'];
             $targetPath = $uploadDirectory . DIRECTORY_SEPARATOR . $filename;
 
-            if (!move_uploaded_file((string) ($file['tmp_name'] ?? ''), $targetPath)) {
+            if (!move_uploaded_file($validatedImage['tmp_name'], $targetPath)) {
                 continue;
             }
 
@@ -1291,8 +1286,9 @@ class CarsController extends AppController
         $names = $upload['name'] ?? [];
         $tmpNames = $upload['tmp_name'] ?? [];
         $errors = $upload['error'] ?? [];
+        $sizes = $upload['size'] ?? [];
 
-        if (!is_array($names) || !is_array($tmpNames) || !is_array($errors)) {
+        if (!is_array($names) || !is_array($tmpNames) || !is_array($errors) || !is_array($sizes)) {
             return [];
         }
 
@@ -1302,6 +1298,7 @@ class CarsController extends AppController
                 'name' => $name,
                 'tmp_name' => $tmpNames[$index] ?? null,
                 'error' => $errors[$index] ?? UPLOAD_ERR_NO_FILE,
+                'size' => $sizes[$index] ?? 0,
             ];
         }
 

@@ -2,6 +2,8 @@ const settingsRoot = document.querySelector('[data-settings-root]');
 
 let activeSettingsConfirmResolver = null;
 let activeSettingsConfirmKeyHandler = null;
+let activeSettingsPasswordResolver = null;
+let activeSettingsPasswordKeyHandler = null;
 
 const showAppToast = (message, type = 'info') => {
     const existingToast = document.querySelector('[data-app-toast]');
@@ -138,6 +140,141 @@ const openSettingsConfirmModal = ({
 
     return new Promise((resolve) => {
         activeSettingsConfirmResolver = resolve;
+    });
+};
+
+const ensureSettingsPasswordModal = () => {
+    let modal = document.querySelector('[data-settings-password-modal]');
+    if (modal instanceof HTMLElement) {
+        return modal;
+    }
+
+    modal = document.createElement('div');
+    modal.className = 'settings-confirm-backdrop';
+    modal.setAttribute('data-settings-password-modal', '');
+    modal.hidden = true;
+    modal.innerHTML = `
+        <div class="settings-confirm-scrim" data-settings-password-cancel></div>
+        <div class="settings-confirm-shell">
+            <section class="settings-confirm-panel">
+                <div class="settings-confirm-head">
+                    <div class="settings-confirm-title-wrap">
+                        <div class="settings-confirm-kicker">Ostateczne potwierdzenie</div>
+                        <h3 class="settings-confirm-title">Podaj hasło</h3>
+                    </div>
+                    <button type="button" class="community-modal-close" aria-label="Zamknij" data-settings-password-cancel>
+                        <img src="/public/assets/icons/close.svg" alt="">
+                    </button>
+                </div>
+                <div class="settings-confirm-copy">
+                    <p class="settings-confirm-message">Wpisz aktualne hasło, aby potwierdzić usunięcie konta.</p>
+                </div>
+                <label class="settings-confirm-password-field">
+                    <span class="settings-confirm-password-label">Aktualne hasło</span>
+                    <input type="password" class="settings-input" autocomplete="current-password" data-settings-password-input>
+                    <span class="settings-field-error" hidden data-settings-password-error></span>
+                </label>
+                <div class="settings-confirm-actions">
+                    <button type="button" class="settings-button settings-button-muted" data-settings-password-cancel>Anuluj</button>
+                    <button type="button" class="settings-button settings-button-danger" data-settings-password-submit>Usuń konto</button>
+                </div>
+            </section>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    return modal;
+};
+
+const closeSettingsPasswordModal = (result = null) => {
+    const modal = document.querySelector('[data-settings-password-modal]');
+    if (!(modal instanceof HTMLElement)) {
+        return;
+    }
+
+    modal.hidden = true;
+    document.body.classList.remove('vehicle-modal-open');
+
+    if (activeSettingsPasswordKeyHandler) {
+        document.removeEventListener('keydown', activeSettingsPasswordKeyHandler);
+        activeSettingsPasswordKeyHandler = null;
+    }
+
+    const passwordInput = modal.querySelector('[data-settings-password-input]');
+    const errorElement = modal.querySelector('[data-settings-password-error]');
+    if (passwordInput instanceof HTMLInputElement) {
+        passwordInput.value = '';
+        passwordInput.classList.remove('is-invalid');
+    }
+    if (errorElement instanceof HTMLElement) {
+        errorElement.textContent = '';
+        errorElement.hidden = true;
+    }
+
+    if (activeSettingsPasswordResolver) {
+        const resolver = activeSettingsPasswordResolver;
+        activeSettingsPasswordResolver = null;
+        resolver(result);
+    }
+};
+
+const openSettingsPasswordModal = () => {
+    const modal = ensureSettingsPasswordModal();
+    const passwordInput = modal.querySelector('[data-settings-password-input]');
+    const errorElement = modal.querySelector('[data-settings-password-error]');
+    const submitButton = modal.querySelector('[data-settings-password-submit]');
+
+    if (!(passwordInput instanceof HTMLInputElement)
+        || !(errorElement instanceof HTMLElement)
+        || !(submitButton instanceof HTMLButtonElement)) {
+        return Promise.resolve(window.prompt('Podaj aktualne hasło, aby usunąć konto:') || null);
+    }
+
+    modal.querySelectorAll('[data-settings-password-cancel]').forEach((button) => {
+        if (button instanceof HTMLElement && button.dataset.boundSettingsPasswordCancel !== 'true') {
+            button.addEventListener('click', () => closeSettingsPasswordModal(null));
+            button.dataset.boundSettingsPasswordCancel = 'true';
+        }
+    });
+
+    if (submitButton.dataset.boundSettingsPasswordSubmit !== 'true') {
+        submitButton.addEventListener('click', () => {
+            const password = passwordInput.value.trim();
+            if (password === '') {
+                errorElement.textContent = 'Podaj aktualne hasło.';
+                errorElement.hidden = false;
+                passwordInput.classList.add('is-invalid');
+                passwordInput.focus();
+                return;
+            }
+
+            closeSettingsPasswordModal(password);
+        });
+        submitButton.dataset.boundSettingsPasswordSubmit = 'true';
+    }
+
+    if (passwordInput.dataset.boundSettingsPasswordInput !== 'true') {
+        passwordInput.addEventListener('input', () => {
+            passwordInput.classList.remove('is-invalid');
+            errorElement.textContent = '';
+            errorElement.hidden = true;
+        });
+        passwordInput.dataset.boundSettingsPasswordInput = 'true';
+    }
+
+    modal.hidden = false;
+    document.body.classList.add('vehicle-modal-open');
+    window.setTimeout(() => passwordInput.focus(), 0);
+
+    activeSettingsPasswordKeyHandler = (event) => {
+        if (event.key === 'Escape') {
+            closeSettingsPasswordModal(null);
+        }
+    };
+    document.addEventListener('keydown', activeSettingsPasswordKeyHandler);
+
+    return new Promise((resolve) => {
+        activeSettingsPasswordResolver = resolve;
     });
 };
 
@@ -323,6 +460,7 @@ if (settingsRoot) {
     const logoutForm = settingsRoot.querySelector('[data-settings-logout-form]');
     const deleteAccountForm = settingsRoot.querySelector('[data-settings-delete-account-form]');
     const deleteAccountButton = settingsRoot.querySelector('.settings-panel-danger .settings-button-ghost-danger');
+    const deleteAccountPasswordInput = deleteAccountForm?.querySelector('[data-settings-delete-account-password]') || null;
 
     const syncPasswordConfirmationWarning = () => {
         if (!(securityForm instanceof HTMLFormElement)) {
@@ -778,8 +916,11 @@ if (settingsRoot) {
         });
     }
 
-    const submitDeleteAccount = () => {
+    const submitDeleteAccount = (currentPassword) => {
         if (deleteAccountForm instanceof HTMLFormElement) {
+            if (deleteAccountPasswordInput instanceof HTMLInputElement) {
+                deleteAccountPasswordInput.value = String(currentPassword || '');
+            }
             HTMLFormElement.prototype.submit.call(deleteAccountForm);
             return;
         }
@@ -794,6 +935,12 @@ if (settingsRoot) {
         actionInput.name = 'action';
         actionInput.value = 'delete_account';
         fallbackForm.appendChild(actionInput);
+
+        const passwordInput = document.createElement('input');
+        passwordInput.type = 'hidden';
+        passwordInput.name = 'current_password';
+        passwordInput.value = String(currentPassword || '');
+        fallbackForm.appendChild(passwordInput);
 
         document.body.appendChild(fallbackForm);
         HTMLFormElement.prototype.submit.call(fallbackForm);
@@ -824,7 +971,12 @@ if (settingsRoot) {
             return;
         }
 
-        submitDeleteAccount();
+        const currentPassword = await openSettingsPasswordModal();
+        if (!currentPassword) {
+            return;
+        }
+
+        submitDeleteAccount(currentPassword);
     };
 
     if (deleteAccountForm instanceof HTMLFormElement) {
@@ -832,7 +984,9 @@ if (settingsRoot) {
             event.preventDefault();
             await handleDeleteAccountRequest();
         });
-    } else if (deleteAccountButton instanceof HTMLButtonElement) {
+    }
+
+    if (deleteAccountButton instanceof HTMLButtonElement) {
         deleteAccountButton.addEventListener('click', async () => {
             await handleDeleteAccountRequest();
         });

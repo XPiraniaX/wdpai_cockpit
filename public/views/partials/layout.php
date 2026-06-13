@@ -133,8 +133,30 @@
             });
         };
 
+        const bindLogoutLinks = (root = document) => {
+            root.querySelectorAll('a[href="/logout"]').forEach((link) => {
+                if (link.dataset.logoutBound === '1') {
+                    return;
+                }
+
+                link.dataset.logoutBound = '1';
+                link.addEventListener('click', (event) => {
+                    event.preventDefault();
+
+                    const form = document.createElement('form');
+                    form.method = 'post';
+                    form.action = '/logout';
+                    form.hidden = true;
+                    document.body.appendChild(form);
+                    applyCsrfToken(form);
+                    form.submit();
+                });
+            });
+        };
+
         const boot = () => {
             applyCsrfToken();
+            bindLogoutLinks();
             const observer = new MutationObserver((mutations) => {
                 mutations.forEach((mutation) => {
                     mutation.addedNodes.forEach((node) => {
@@ -144,10 +166,12 @@
 
                         if (node.matches('form')) {
                             applyCsrfToken(node.parentElement ?? node);
+                            bindLogoutLinks(node.parentElement ?? node);
                             return;
                         }
 
                         applyCsrfToken(node);
+                        bindLogoutLinks(node);
                     });
                 });
             });

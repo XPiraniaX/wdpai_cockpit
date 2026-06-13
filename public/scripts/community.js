@@ -148,16 +148,16 @@ const normalizeCommunityReportText = (value) => {
     let text = String(value ?? '');
 
     const mojibakeMap = new Map([
-        ['ZgĹ‚oszenie komentarza', 'Zgloszenie komentarza'],
-        ['Wybierz powĂłd zgĹ‚oszenia komentarza', 'Wybierz powod zgloszenia komentarza'],
-        ['Komentarz ma charakter obraĹşliwy lub nÄ™kajÄ…cy', 'Komentarz ma charakter obrazliwy lub nekajacy'],
-        ['Komentarz narusza prywatnoĹ›Ä‡ lub dane osobowe', 'Komentarz narusza prywatnosc lub dane osobowe'],
-        ['ZgĹ‚oszenie postu', 'Zgloszenie postu'],
-        ['Wybierz powĂłd zgĹ‚oszenia postu', 'Wybierz powod zgloszenia postu'],
-        ['TreĹ›Ä‡ ma charakter obraĹşliwy lub nÄ™kajÄ…cy', 'Tresc ma charakter obrazliwy lub nekajacy'],
-        ['TreĹ›Ä‡ narusza prywatnoĹ›Ä‡ lub dane osobowe', 'Tresc narusza prywatnosc lub dane osobowe'],
-        ['TreĹ›Ä‡ jest niezgodna z tematykÄ… serwisu', 'Tresc jest niezgodna z tematyka serwisu'],
-        ['TreĹ›Ä‡ narusza regulamin serwisu', 'Tresc narusza regulamin serwisu'],
+        ['Zgłoszenie komentarza', 'Zgłoszenie komentarza'],
+        ['Wybierz powód zgłoszenia komentarza', 'Wybierz powód zgłoszenia komentarza'],
+        ['Komentarz ma charakter obraźliwy lub nękający', 'Komentarz ma charakter obraźliwy lub nękający'],
+        ['Komentarz narusza prywatność lub dane osobowe', 'Komentarz narusza prywatność lub dane osobowe'],
+        ['Zgłoszenie postu', 'Zgłoszenie postu'],
+        ['Wybierz powód zgłoszenia postu', 'Wybierz powód zgłoszenia postu'],
+        ['Treść ma charakter obraźliwy lub nękający', 'Treść ma charakter obraźliwy lub nękający'],
+        ['Treść narusza prywatność lub dane osobowe', 'Treść narusza prywatność lub dane osobowe'],
+        ['Treść jest niezgodna z tematyką serwisu', 'Treść jest niezgodna z tematyką serwisu'],
+        ['Treść narusza regulamin serwisu', 'Treść narusza regulamin serwisu'],
     ]);
 
     mojibakeMap.forEach((replacement, broken) => {
@@ -238,12 +238,12 @@ const closeCommunityConfirmModal = (accepted = false) => {
 };
 
 const openCommunityConfirmModal = ({
-    kicker = 'Potwierdzenie',
-    title = 'PotwierdĹş akcjÄ™',
-    message = '',
-    confirmLabel = 'PotwierdĹş',
-    tone = 'danger',
-} = {}) => {
+                                       kicker = 'Potwierdzenie',
+                                       title = 'Potwierdź akcję',
+                                       message = '',
+                                       confirmLabel = 'Potwierdź',
+                                       tone = 'danger',
+                                   } = {}) => {
     const modal = ensureCommunityConfirmModal();
     const kickerElement = modal.querySelector('[data-community-confirm-kicker]');
     const titleElement = modal.querySelector('[data-community-confirm-title]');
@@ -350,10 +350,10 @@ const closeCommunityContentReportModal = (result = null) => {
 };
 
 const openCommunityContentReportModal = ({
-    kicker = COMMUNITY_REPORT_TEXT.report,
-    title = COMMUNITY_REPORT_TEXT.modalSubtitle,
-    reasons = [],
-} = {}) => {
+                                             kicker = COMMUNITY_REPORT_TEXT.report,
+                                             title = COMMUNITY_REPORT_TEXT.modalSubtitle,
+                                             reasons = [],
+                                         } = {}) => {
     const modal = ensureCommunityContentReportModal();
     const kickerElement = modal.querySelector('[data-community-content-report-kicker]');
     const titleElement = modal.querySelector('[data-community-content-report-title]');
@@ -481,7 +481,7 @@ const buildPostImagePlaceholder = () => {
     const placeholderButton = document.createElement('button');
     placeholderButton.type = 'button';
     placeholderButton.className = 'community-post-images-edit-card community-post-images-edit-card-placeholder';
-    placeholderButton.setAttribute('aria-label', 'Dodaj zdjecie do posta');
+    placeholderButton.setAttribute('aria-label', 'Dodaj zdjęcie do posta');
     placeholderButton.addEventListener('click', openPostImagePicker);
 
     const placeholder = document.createElement('div');
@@ -514,13 +514,13 @@ const renderPostImagesGallery = () => {
 
         const photo = document.createElement('img');
         photo.className = 'community-post-images-edit-photo';
-        photo.alt = `Istniejace zdjecie posta ${index + 1}`;
+        photo.alt = `Istniejące zdjęcie posta ${index + 1}`;
         photo.src = String(image.path ?? '');
 
         const removeButton = document.createElement('button');
         removeButton.type = 'button';
         removeButton.className = 'community-post-images-edit-remove';
-        removeButton.setAttribute('aria-label', `Usun zdjecie ${index + 1}`);
+        removeButton.setAttribute('aria-label', `Usuń zdjęcie ${index + 1}`);
         removeButton.addEventListener('click', () => {
             if (image.id) {
                 removedExistingPostImageIds.push(Number(image.id));
@@ -542,12 +542,12 @@ const renderPostImagesGallery = () => {
 
         const photo = document.createElement('img');
         photo.className = 'community-post-images-edit-photo';
-        photo.alt = `Nowe zdjecie posta ${index + 1}`;
+        photo.alt = `Nowe zdjęcie posta ${index + 1}`;
 
         const removeButton = document.createElement('button');
         removeButton.type = 'button';
         removeButton.className = 'community-post-images-edit-remove';
-        removeButton.setAttribute('aria-label', `Usun zdjecie ${index + 1}`);
+        removeButton.setAttribute('aria-label', `Usuń zdjęcie ${index + 1}`);
         removeButton.addEventListener('click', () => {
             editablePostFiles = editablePostFiles.filter((_, fileIndex) => fileIndex !== index);
             syncPostImagesInput();
@@ -596,7 +596,7 @@ const resetCreatePostFormState = () => {
         createPostIdInput.value = '';
     }
     if (createPostModalTitle) {
-        createPostModalTitle.textContent = 'UtwĂłrz post';
+        createPostModalTitle.textContent = 'Utwórz post';
     }
     if (createPostSubmitButton) {
         createPostSubmitButton.textContent = 'Opublikuj';
@@ -799,7 +799,7 @@ createPostForm?.addEventListener('submit', async (event) => {
         }
 
         closeCreatePostModal();
-        showAppToast(payload.message || (action === 'update_post' ? 'Post zostaĹ‚ zaktualizowany.' : 'Post zostaĹ‚ opublikowany.'), 'success');
+        showAppToast(payload.message || (action === 'update_post' ? 'Post został zaktualizowany.' : 'Post został opublikowany.'), 'success');
     } catch (error) {
         createPostForm.submit();
     }
@@ -962,7 +962,7 @@ const buildCommunityCommentMarkup = (comment) => `
                             <input type="hidden" name="redirect_to" value="${escapeHtml(window.location.pathname + window.location.search)}">
                             <input type="hidden" name="action" value="delete_comment">
                             <button type="submit" class="community-post-menu-action is-danger">
-                                Usun komentarz
+                                Usuń komentarz
                             </button>
                         </form>
                     </div>
@@ -1043,7 +1043,7 @@ document.querySelectorAll('[data-community-comment-form]').forEach((form) => {
             if (!response.ok || !payload?.success || !payload?.comment) {
                 const message = typeof payload?.message === 'string' && payload.message.trim() !== ''
                     ? payload.message.trim()
-                    : 'Nie udaĹ‚o siÄ™ dodaÄ‡ komentarza.';
+                    : 'Nie udało się dodać komentarza.';
                 throw new Error(message);
             }
 
@@ -1054,7 +1054,7 @@ document.querySelectorAll('[data-community-comment-form]').forEach((form) => {
             initializeCommunityFeedChunk(commentsList);
             syncCommunityCommentTriggerState(postId, payload.comment_count ?? 0, payload.commented_by_current_user);
         } catch (error) {
-            showAppToast(error instanceof Error ? error.message : 'Nie udaĹ‚o siÄ™ dodaÄ‡ komentarza.', 'error');
+            showAppToast(error instanceof Error ? error.message : 'Nie udało się dodać komentarza.', 'error');
         } finally {
             submitButton.disabled = false;
         }
@@ -1255,19 +1255,19 @@ const bindCommunityReportForms = (root) => {
                     reasons: [
                         { value: 'abusive_comment', label: COMMUNITY_REPORT_TEXT.abusiveComment },
                         { value: 'spam_comment', label: 'To spam lub flood' },
-                        { value: 'privacy_comment', label: 'Komentarz narusza prywatnoĹ›Ä‡ lub dane osobowe' },
+                        { value: 'privacy_comment', label: 'Komentarz narusza prywatność lub dane osobowe' },
                         { value: 'prohibited_comment', label: 'Komentarz narusza regulamin serwisu' },
                     ],
                 }
                 : {
-                    kicker: 'ZgĹ‚oszenie postu',
-                    title: 'Wybierz powĂłd zgĹ‚oszenia postu',
+                    kicker: 'Zgłoszenie postu',
+                    title: 'Wybierz powód zgłoszenia postu',
                     reasons: [
-                        { value: 'abusive_post', label: 'TreĹ›Ä‡ ma charakter obraĹşliwy lub nÄ™kajÄ…cy' },
+                        { value: 'abusive_post', label: 'Treść ma charakter obraźliwy lub nękający' },
                         { value: 'spam_post', label: 'To spam lub niedozwolona promocja' },
-                        { value: 'privacy_post', label: 'TreĹ›Ä‡ narusza prywatnoĹ›Ä‡ lub dane osobowe' },
-                        { value: 'offtopic_post', label: 'TreĹ›Ä‡ jest niezgodna z tematykÄ… serwisu' },
-                        { value: 'prohibited_post', label: 'TreĹ›Ä‡ narusza regulamin serwisu' },
+                        { value: 'privacy_post', label: 'Treść narusza prywatność lub dane osobowe' },
+                        { value: 'offtopic_post', label: 'Treść jest niezgodna z tematyką serwisu' },
+                        { value: 'prohibited_post', label: 'Treść narusza regulamin serwisu' },
                     ],
                 };
             const selection = await openCommunityContentReportModal(modalConfig);
@@ -1290,17 +1290,17 @@ const bindCommunityReportForms = (root) => {
 
                 const payload = await response.json().catch(() => null);
                 if (!response.ok || !payload?.success) {
-                    throw new Error(String(payload?.message || 'Nie udaĹ‚o siÄ™ zgĹ‚osiÄ‡ treĹ›ci.'));
+                    throw new Error(String(payload?.message || 'Nie udało się zgłosić treści.'));
                 }
 
-                showAppToast(payload.message || 'Zgloszenie zostalo przyjete.', 'success');
+                showAppToast(payload.message || 'Zgłoszenie zostało przyjęte.', 'success');
 
                 const menu = form.closest('[data-community-post-menu]');
                 if (menu) {
                     closeCommunityPostMenu(menu);
                 }
             } catch (error) {
-                showAppToast(error instanceof Error ? error.message : 'Nie udaĹ‚o siÄ™ zgĹ‚osiÄ‡ treĹ›ci.', 'error');
+                showAppToast(error instanceof Error ? error.message : 'Nie udało się zgłosić treści.', 'error');
             }
         };
 
@@ -1333,9 +1333,9 @@ const bindCommunityDeletePostForms = (root) => {
 
             const confirmed = await openCommunityConfirmModal({
                 kicker: 'Usuwanie posta',
-                title: 'UsunÄ…Ä‡ post?',
-                message: 'UsuniÄ™cie posta skasuje go na staĹ‚e wraz z jego zdjÄ™ciami i komentarzami. Tej operacji nie da siÄ™ cofnÄ…Ä‡.',
-                confirmLabel: 'UsuĹ„ post',
+                title: 'Usunąć post?',
+                message: 'Usunięcie posta skasuje go na stałe wraz z jego zdjęciami i komentarzami. Tej operacji nie da się cofnąć.',
+                confirmLabel: 'Usuń post',
                 tone: 'danger',
             });
 
@@ -1369,7 +1369,7 @@ const bindCommunityDeletePostForms = (root) => {
 
                 post.remove();
                 dispatchProfileStatsRefresh();
-                showAppToast(payload.message || 'Post zostaĹ‚ usuniÄ™ty.', 'success');
+                showAppToast(payload.message || 'Post został usunięty.', 'success');
 
                 const menu = form.closest('[data-community-post-menu]');
                 if (menu) {
@@ -1421,7 +1421,7 @@ const bindCommunityCommentForms = (root) => {
                 if (!response.ok || !payload?.success || !payload?.comment) {
                     const message = typeof payload?.message === 'string' && payload.message.trim() !== ''
                         ? payload.message.trim()
-                        : 'Nie udaĹ‚o siÄ™ dodaÄ‡ komentarza.';
+                        : 'Nie udało się dodać komentarza.';
                     throw new Error(message);
                 }
 
@@ -1431,7 +1431,7 @@ const bindCommunityCommentForms = (root) => {
                 initializeCommunityFeedChunk(commentsList);
                 syncCommunityCommentTriggerState(postId, payload.comment_count ?? 0, payload.commented_by_current_user);
             } catch (error) {
-                showAppToast(error instanceof Error ? error.message : 'Nie udaĹ‚o siÄ™ dodaÄ‡ komentarza.', 'error');
+                showAppToast(error instanceof Error ? error.message : 'Nie udało się dodać komentarza.', 'error');
             } finally {
                 submitButton.disabled = false;
             }
@@ -1535,7 +1535,7 @@ const bindCommunityCommentEditActions = (root) => {
                 content.hidden = false;
                 form.hidden = true;
                 syncCommunityCommentTriggerState(postId, payload.comment_count ?? 0, payload.commented_by_current_user);
-                showAppToast(payload.message || 'Komentarz zostal zaktualizowany.', 'success');
+                showAppToast(payload.message || 'Komentarz został zaktualizowany.', 'success');
             } catch (error) {
                 form.submit();
             } finally {
@@ -1587,11 +1587,11 @@ const bindCommunityCommentDeleteForms = (root) => {
 
                 comment.remove();
                 if (!commentsList.querySelector('[data-community-comment-id]')) {
-                    commentsList.innerHTML = '<p class="community-comments-empty" data-community-comments-empty>Brak komentarzy. BÄ…dĹş pierwszy.</p>';
+                    commentsList.innerHTML = '<p class="community-comments-empty" data-community-comments-empty>Brak komentarzy. Bądź pierwszy.</p>';
                 }
 
                 syncCommunityCommentTriggerState(postId, payload.comment_count ?? 0, payload.commented_by_current_user);
-                showAppToast(payload.message || 'Komentarz zostal usuniety.', 'success');
+                showAppToast(payload.message || 'Komentarz został usunięty.', 'success');
 
                 const menu = form.closest('[data-community-post-menu]');
                 if (menu) {
@@ -1703,9 +1703,9 @@ const submitCommunityReportForm = async (form) => {
             kicker: 'Zgłoszenie komentarza',
             title: 'Wybierz powód zgłoszenia komentarza',
             reasons: [
-                { value: 'abusive_comment', label: 'Komentarz ma charakter obraĹşliwy lub nÄ™kajÄ…cy' },
+                { value: 'abusive_comment', label: 'Komentarz ma charakter obraźliwy lub nękający' },
                 { value: 'spam_comment', label: 'To spam lub flood' },
-                { value: 'privacy_comment', label: 'Komentarz narusza prywatnoĹ›Ä‡ lub dane osobowe' },
+                { value: 'privacy_comment', label: 'Komentarz narusza prywatność lub dane osobowe' },
                 { value: 'prohibited_comment', label: 'Komentarz narusza regulamin serwisu' },
             ],
         }
@@ -1713,11 +1713,11 @@ const submitCommunityReportForm = async (form) => {
             kicker: 'Zgłoszenie postu',
             title: 'Wybierz powód zgłoszenia postu',
             reasons: [
-                { value: 'abusive_post', label: 'TreĹ›Ä‡ ma charakter obraĹşliwy lub nÄ™kajÄ…cy' },
+                { value: 'abusive_post', label: 'Treść ma charakter obraźliwy lub nękający' },
                 { value: 'spam_post', label: 'To spam lub niedozwolona promocja' },
-                { value: 'privacy_post', label: 'TreĹ›Ä‡ narusza prywatnoĹ›Ä‡ lub dane osobowe' },
-                { value: 'offtopic_post', label: 'TreĹ›Ä‡ jest niezgodna z tematykÄ… serwisu' },
-                { value: 'prohibited_post', label: 'TreĹ›Ä‡ narusza regulamin serwisu' },
+                { value: 'privacy_post', label: 'Treść narusza prywatność lub dane osobowe' },
+                { value: 'offtopic_post', label: 'Treść jest niezgodna z tematyką serwisu' },
+                { value: 'prohibited_post', label: 'Treść narusza regulamin serwisu' },
             ],
         };
 
@@ -1742,17 +1742,17 @@ const submitCommunityReportForm = async (form) => {
 
         const payload = await response.json().catch(() => null);
         if (!response.ok || !payload?.success) {
-            throw new Error(String(payload?.message || 'Nie udaĹ‚o siÄ™ zgĹ‚osiÄ‡ treĹ›ci.'));
+            throw new Error(String(payload?.message || 'Nie udało się zgłosić treści.'));
         }
 
-        showAppToast(payload.message || 'Zgloszenie zostalo przyjete.', 'success');
+        showAppToast(payload.message || 'Zgłoszenie zostało przyjęte.', 'success');
 
         const menu = form.closest('[data-community-post-menu]');
         if (menu) {
             closeCommunityPostMenu(menu);
         }
     } catch (error) {
-        showAppToast(error instanceof Error ? error.message : 'Nie udaĹ‚o siÄ™ zgĹ‚osiÄ‡ treĹ›ci.', 'error');
+        showAppToast(error instanceof Error ? error.message : 'Nie udało się zgłosić treści.', 'error');
     } finally {
         form.dataset.reportPending = 'false';
     }

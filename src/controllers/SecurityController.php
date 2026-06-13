@@ -10,6 +10,7 @@ class SecurityController extends AppController
 
     public function login(): void
     {
+        $this->enforceHttpsForAuthRoutes();
         $this->synchronizeUserBanState();
         $this->redirectIfAuthenticated();
 
@@ -64,6 +65,7 @@ class SecurityController extends AppController
 
     public function register(): void
     {
+        $this->enforceHttpsForAuthRoutes();
         $this->redirectIfAuthenticated();
 
         $title = 'Register - Cockpit';
@@ -150,6 +152,10 @@ class SecurityController extends AppController
 
     public function logout(): void
     {
+        if (!$this->isPost()) {
+            $this->redirect($this->isAuthenticated() ? '/dashboard' : '/login');
+        }
+
         $this->logoutUser();
         $this->setFlash('success', 'Zostałeś wylogowany.');
         $this->redirect('/login');
@@ -239,6 +245,15 @@ class SecurityController extends AppController
     {
         $this->appendLoginAttempt($this->buildLoginRateLimitKey('ip', strtolower($ip)));
         $this->appendLoginAttempt($this->buildLoginRateLimitKey('login', strtolower($login) . '|' . strtolower($ip)));
+
+        try {
+            (new UserRepository(Database::getConnection()))->logFailedAuthenticationAttempt(
+                $login,
+                $ip,
+                (string) ($_SERVER['HTTP_USER_AGENT'] ?? '')
+            );
+        } catch (Throwable) {
+        }
     }
 
     private function clearLoginRateLimit(string $ip, string $login): void
@@ -285,7 +300,7 @@ class SecurityController extends AppController
     {
         $directory = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'cockpit_login_rate_limit';
         if (!is_dir($directory)) {
-            @mkdir($directory, 0777, true);
+            @mkdir($directory, 0700, true);
         }
 
         return $directory . DIRECTORY_SEPARATOR . hash('sha256', $key) . '.json';
@@ -294,5 +309,37 @@ class SecurityController extends AppController
     private function buildLoginRateLimitKey(string $scope, string $identifier): string
     {
         return 'cockpit:' . $scope . ':' . $identifier;
+    }
+
+    private function enforceHttpsForAuthRoutes(): void
+    {
+        if ($this->isHttpsRequest() || $this->isLocalDevelopmentHost()) {
+            return;
+        }
+
+        $host = (string) ($_SERVER['HTTP_HOST'] ?? '');
+        $requestUri = (string) ($_SERVER['REQUEST_URI'] ?? '/login');
+        if ($host === '') {
+            return;
+        }
+
+        $this->redirect('https://' . $host . $requestUri);
+    }
+
+    private function isHttpsRequest(): bool
+    {
+        return (
+            (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+            || (int) ($_SERVER['SERVER_PORT'] ?? 0) === 443
+            || strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https'
+        );
+    }
+
+    private function isLocalDevelopmentHost(): bool
+    {
+        $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+        $hostname = preg_replace('/:\d+$/', '', $host);
+
+        return in_array($hostname, ['localhost', '127.0.0.1'], true);
     }
 }

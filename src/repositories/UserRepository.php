@@ -135,6 +135,30 @@ class UserRepository
         return $row ?: null;
     }
 
+    public function logFailedAuthenticationAttempt(string $loginIdentifier, string $ipAddress, ?string $userAgent = null): void
+    {
+        $statement = $this->connection->prepare(
+            'INSERT INTO auth_login_attempts (
+                login_identifier,
+                ip_address,
+                user_agent,
+                attempted_at,
+                was_successful
+            ) VALUES (
+                :login_identifier,
+                :ip_address,
+                :user_agent,
+                CURRENT_TIMESTAMP,
+                FALSE
+            )'
+        );
+        $statement->execute([
+            'login_identifier' => mb_substr(trim($loginIdentifier), 0, 255),
+            'ip_address' => mb_substr(trim($ipAddress), 0, 64),
+            'user_agent' => $userAgent !== null ? mb_substr(trim($userAgent), 0, 1000) : null,
+        ]);
+    }
+
     public function usernameExists(string $username): bool
     {
         $statement = $this->connection->prepare(

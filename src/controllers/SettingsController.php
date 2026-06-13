@@ -39,11 +39,33 @@ class SettingsController extends AppController
         $marketplaceErrors = [];
         $notificationForm = $repository->getNotificationSettings($currentUserId);
         $notificationErrors = [];
+        $deleteAccountErrors = [];
 
         if ($this->isPost()) {
             $action = (string) ($_POST['action'] ?? '');
 
             if ($action === 'delete_account') {
+                $currentPassword = (string) ($_POST['current_password'] ?? '');
+                $authData = $repository->getAuthenticationDataById($currentUserId);
+
+                if ($currentPassword === '') {
+                    $deleteAccountErrors['current_password'] = 'Podaj aktualne hasło, aby usunąć konto.';
+                } elseif (!$authData || !password_verify($currentPassword, (string) ($authData['password'] ?? ''))) {
+                    $deleteAccountErrors['current_password'] = 'Podane hasło jest niepoprawne.';
+                }
+
+                if ($deleteAccountErrors !== []) {
+                    if ($this->isAjaxRequest()) {
+                        $this->jsonResponse([
+                            'success' => false,
+                            'errors' => $deleteAccountErrors,
+                        ], 422);
+                    }
+
+                    $this->setFlash('error', (string) ($deleteAccountErrors['current_password'] ?? 'Nie udało się usunąć konta.'));
+                    $this->redirect('/settings');
+                }
+
                 try {
                     $repository->deactivateAccount($currentUserId);
                     $this->logoutUser();
@@ -352,6 +374,7 @@ class SettingsController extends AppController
             'marketplaceErrors' => $marketplaceErrors,
             'notificationForm' => $notificationForm,
             'notificationErrors' => $notificationErrors,
+            'deleteAccountErrors' => $deleteAccountErrors,
         ]);
     }
 

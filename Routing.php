@@ -42,36 +42,49 @@ class Routing {
         }
 
         if (!array_key_exists($normalizedPath, self::$routes)) {
-            http_response_code(404);
-            $title = '404 - Not Found';
-            ob_start();
-            include 'public/views/404.html';
-            $content = ob_get_clean();
-            include 'public/views/partials/layout.php';
+            self::renderErrorPage(404, '404', '404 - Nie znaleziono strony');
             return;
         }
 
-        $controller = self::$routes[$normalizedPath]["controller"];
-        $action = self::$routes[$normalizedPath]["action"];
+        try {
+            $controller = self::$routes[$normalizedPath]["controller"];
+            $action = self::$routes[$normalizedPath]["action"];
 
-        $controllerObj = new $controller();
-        if (
-            $_SERVER['REQUEST_METHOD'] === 'POST'
-            && $controllerObj instanceof AppController
-            && (string) ($_POST['action'] ?? '') === 'acknowledge_admin_warning'
-        ) {
-            $controllerObj->enforceCsrfProtection();
-            $controllerObj->handleAcknowledgeAdminWarningAction();
-            return;
+            $controllerObj = new $controller();
+            if (
+                $_SERVER['REQUEST_METHOD'] === 'POST'
+                && $controllerObj instanceof AppController
+                && (string) ($_POST['action'] ?? '') === 'acknowledge_admin_warning'
+            ) {
+                $controllerObj->enforceCsrfProtection();
+                $controllerObj->handleAcknowledgeAdminWarningAction();
+                return;
+            }
+            if (str_starts_with($normalizedPath, 'admin') && $controllerObj instanceof AppController) {
+                $controllerObj->guardAdminRoute();
+            }
+            if ($_SERVER['REQUEST_METHOD'] === 'POST' && $controllerObj instanceof AppController) {
+                $controllerObj->enforceCsrfProtection();
+                $controllerObj->guardAdminWarningMutationRoute();
+                $controllerObj->guardBlockedUserMutationRoute();
+            }
+            $controllerObj->$action();
+        } catch (Throwable $exception) {
+            error_log($exception->__toString());
+            self::renderErrorPage(500, '500', '500 - Błąd serwera');
         }
-        if (str_starts_with($normalizedPath, 'admin') && $controllerObj instanceof AppController) {
-            $controllerObj->guardAdminRoute();
-        }
-        if ($_SERVER['REQUEST_METHOD'] === 'POST' && $controllerObj instanceof AppController) {
-            $controllerObj->enforceCsrfProtection();
-            $controllerObj->guardAdminWarningMutationRoute();
-            $controllerObj->guardBlockedUserMutationRoute();
-        }
-        $controllerObj->$action();
+    }
+
+    public static function renderErrorPage(int $statusCode, string $view, string $title): void
+    {
+        http_response_code($statusCode);
+        $styleFiles = ['base.css', 'auth.css'];
+        $viewPath = 'public/views/' . $view . '.html';
+
+        echo '<!DOCTYPE html><html lang="pl"><head>';
+        include 'public/views/partials/head.php';
+        echo '</head><body>';
+        include $viewPath;
+        echo '</body></html>';
     }
 }
