@@ -719,29 +719,260 @@ const closeProfileTransientUi = () => {
     closeProfileMarketplaceMenus();
 };
 
+const ensureProfileContentReportModal = () => {
+    let modal = document.querySelector('[data-profile-content-report-modal]');
+    if (modal) {
+        return modal;
+    }
+
+    modal = document.createElement('div');
+    modal.className = 'profile-moderation-modal';
+    modal.hidden = true;
+    modal.setAttribute('data-profile-content-report-modal', '');
+    modal.innerHTML = `
+        <div class="profile-moderation-modal-backdrop" data-profile-content-report-close></div>
+        <div class="profile-moderation-modal-shell">
+            <section class="profile-moderation-modal-panel">
+                <div class="profile-moderation-modal-head">
+                    <div class="profile-moderation-modal-copy">
+                        <div class="profile-moderation-modal-kicker" data-profile-content-report-kicker></div>
+                        <h3 class="profile-moderation-modal-title" data-profile-content-report-title></h3>
+                    </div>
+                    <button type="button" class="community-modal-close" aria-label="Zamknij" data-profile-content-report-close>
+                        <img src="/public/assets/icons/close.svg" alt="">
+                    </button>
+                </div>
+                <div class="profile-moderation-modal-body">
+                    <div class="profile-moderation-modal-subtitle">Wybierz powod zgloszenia</div>
+                    <div class="profile-moderation-options" data-profile-content-report-options></div>
+                    <label class="profile-moderation-other" hidden data-profile-content-report-other-wrap>
+                        <span>Inny powod</span>
+                        <textarea rows="4" maxlength="800" data-profile-content-report-other-input></textarea>
+                    </label>
+                </div>
+                <div class="profile-moderation-modal-actions">
+                    <button type="button" class="marketplace-button marketplace-button-muted" data-profile-content-report-close>Anuluj</button>
+                    <button type="button" class="marketplace-button marketplace-confirm-submit is-danger" data-profile-content-report-submit>Zglos</button>
+                </div>
+            </section>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    return modal;
+};
+
+const closeProfileContentReportModal = (result = null) => {
+    const modal = document.querySelector('[data-profile-content-report-modal]');
+    if (!(modal instanceof HTMLElement)) {
+        return;
+    }
+
+    modal.hidden = true;
+    document.body.classList.remove('vehicle-modal-open');
+
+    if (typeof modal._resolveProfileContentReport === 'function') {
+        modal._resolveProfileContentReport(result);
+        modal._resolveProfileContentReport = null;
+    }
+};
+
+const openProfileContentReportModal = ({
+    kicker = 'Zgloszenie',
+    title = 'Wybierz powod zgloszenia',
+    reasons = [],
+} = {}) => {
+    const modal = ensureProfileContentReportModal();
+    const kickerElement = modal.querySelector('[data-profile-content-report-kicker]');
+    const titleElement = modal.querySelector('[data-profile-content-report-title]');
+    const optionsRoot = modal.querySelector('[data-profile-content-report-options]');
+    const otherWrap = modal.querySelector('[data-profile-content-report-other-wrap]');
+    const otherInput = modal.querySelector('[data-profile-content-report-other-input]');
+    const submitButton = modal.querySelector('[data-profile-content-report-submit]');
+
+    if (!(kickerElement instanceof HTMLElement)
+        || !(titleElement instanceof HTMLElement)
+        || !(optionsRoot instanceof HTMLElement)
+        || !(otherWrap instanceof HTMLElement)
+        || !(otherInput instanceof HTMLTextAreaElement)
+        || !(submitButton instanceof HTMLButtonElement)
+    ) {
+        return Promise.resolve(null);
+    }
+
+    kickerElement.textContent = kicker;
+    titleElement.textContent = title;
+    optionsRoot.innerHTML = '';
+    otherInput.value = '';
+
+    const normalizedReasons = Array.isArray(reasons)
+        ? reasons.filter((reason) => reason && typeof reason.value === 'string' && typeof reason.label === 'string')
+        : [];
+
+    normalizedReasons.forEach((reason, index) => {
+        const label = document.createElement('label');
+        label.className = 'profile-moderation-option';
+        label.innerHTML = `
+            <input type="radio" name="profile_content_report_reason" value="${String(reason.value)}"${index === 0 ? ' checked' : ''}>
+            <span>${String(reason.label)}</span>
+        `;
+        optionsRoot.appendChild(label);
+    });
+
+    const otherLabel = document.createElement('label');
+    otherLabel.className = 'profile-moderation-option';
+    otherLabel.innerHTML = '<input type="radio" name="profile_content_report_reason" value="other"><span>Inny powod</span>';
+    optionsRoot.appendChild(otherLabel);
+
+    const syncOtherField = () => {
+        const selected = optionsRoot.querySelector('input[name="profile_content_report_reason"]:checked');
+        const isOther = selected instanceof HTMLInputElement && selected.value === 'other';
+        otherWrap.hidden = !isOther;
+        if (isOther) {
+            window.setTimeout(() => otherInput.focus(), 20);
+        }
+    };
+
+    optionsRoot.querySelectorAll('input[name="profile_content_report_reason"]').forEach((input) => {
+        input.addEventListener('change', syncOtherField);
+    });
+    syncOtherField();
+
+    modal.querySelectorAll('[data-profile-content-report-close]').forEach((button) => {
+        if (button instanceof HTMLElement && button.dataset.boundProfileContentReportClose !== 'true') {
+            button.addEventListener('click', () => closeProfileContentReportModal(null));
+            button.dataset.boundProfileContentReportClose = 'true';
+        }
+    });
+
+    submitButton.onclick = () => {
+        const selected = optionsRoot.querySelector('input[name="profile_content_report_reason"]:checked');
+        if (!(selected instanceof HTMLInputElement)) {
+            return;
+        }
+
+        if (selected.value === 'other') {
+            const text = otherInput.value.trim();
+            if (text === '') {
+                otherInput.focus();
+                return;
+            }
+
+            closeProfileContentReportModal({
+                code: 'other',
+                text,
+            });
+            return;
+        }
+
+        closeProfileContentReportModal({
+            code: selected.value,
+            text: '',
+        });
+    };
+
+    modal.hidden = false;
+    document.body.classList.add('vehicle-modal-open');
+
+    return new Promise((resolve) => {
+        modal._resolveProfileContentReport = resolve;
+    });
+};
+
+const submitProfileCommunityReportForm = async (form) => {
+    if (!(form instanceof HTMLFormElement)) {
+        return;
+    }
+
+    if (form.dataset.reportPending === 'true') {
+        return;
+    }
+
+    form.dataset.reportPending = 'true';
+
+    const action = String(form.querySelector('input[name="action"]')?.value || '');
+    const modalConfig = action === 'report_comment'
+        ? {
+            kicker: 'Zgloszenie komentarza',
+            title: 'Wybierz powod zgloszenia komentarza',
+            reasons: [
+                { value: 'abusive_comment', label: 'Komentarz ma charakter obrazliwy lub nekajacy' },
+                { value: 'spam_comment', label: 'To spam lub flood' },
+                { value: 'privacy_comment', label: 'Komentarz narusza prywatnosc lub dane osobowe' },
+                { value: 'prohibited_comment', label: 'Komentarz narusza regulamin serwisu' },
+            ],
+        }
+        : {
+            kicker: 'Zgloszenie postu',
+            title: 'Wybierz powod zgloszenia postu',
+            reasons: [
+                { value: 'abusive_post', label: 'Tresc ma charakter obrazliwy lub nekajacy' },
+                { value: 'spam_post', label: 'To spam lub niedozwolona promocja' },
+                { value: 'privacy_post', label: 'Tresc narusza prywatnosc lub dane osobowe' },
+                { value: 'offtopic_post', label: 'Tresc jest niezgodna z tematyka serwisu' },
+                { value: 'prohibited_post', label: 'Tresc narusza regulamin serwisu' },
+            ],
+        };
+
+    const selection = await openProfileContentReportModal(modalConfig);
+    if (!selection || typeof selection.code !== 'string' || selection.code.trim() === '') {
+        form.dataset.reportPending = 'false';
+        return;
+    }
+
+    const formData = new FormData(form);
+    formData.set('report_reason_code', selection.code);
+    formData.set('report_reason_text', typeof selection.text === 'string' ? selection.text : '');
+
+    try {
+        const response = await fetch(window.location.pathname + window.location.search, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.success) {
+            throw new Error(String(payload?.message || 'Nie udalo sie zglosic tresci.'));
+        }
+
+        if (typeof window.showAppToast === 'function') {
+            window.showAppToast(payload.message || 'Zgloszenie zostalo przyjete.', 'success');
+        }
+
+        closeProfileCommunityPostMenus();
+    } catch (error) {
+        if (typeof window.showAppToast === 'function') {
+            window.showAppToast(error instanceof Error ? error.message : 'Nie udalo sie zglosic tresci.', 'error');
+        }
+    } finally {
+        form.dataset.reportPending = 'false';
+    }
+};
+
 const bindProfileHeroActions = () => {
     document.querySelectorAll('[data-profile-report-form]').forEach((form) => {
         if (!(form instanceof HTMLFormElement) || form.dataset.boundProfileHeroReport === 'true') {
             return;
         }
 
-        form.addEventListener('submit', async (event) => {
+        const handleProfileReport = async (event) => {
             event.preventDefault();
             event.stopPropagation();
             event.stopImmediatePropagation();
 
-            const selection = typeof window.openContentReportModal === 'function'
-                ? await window.openContentReportModal({
-                    kicker: 'Zgłoszenie profilu',
-                    title: 'Wybierz powód zgłoszenia profilu',
-                    reasons: [
-                        { value: 'impersonation_profile', label: 'Profil podszywa się pod inną osobę lub markę' },
-                        { value: 'abusive_profile', label: 'Profil narusza zasady społeczności' },
-                        { value: 'spam_profile', label: 'Profil służy do spamu lub nadużyć' },
-                        { value: 'fraud_profile', label: 'Profil wygląda na próbę oszustwa' },
-                    ],
-                })
-                : null;
+            const selection = await openProfileContentReportModal({
+                kicker: 'Zgłoszenie profilu',
+                title: 'Wybierz powód zgłoszenia profilu',
+                reasons: [
+                    { value: 'impersonation_profile', label: 'Profil podszywa się pod inną osobę lub markę' },
+                    { value: 'abusive_profile', label: 'Profil narusza zasady społeczności' },
+                    { value: 'spam_profile', label: 'Profil służy do spamu lub nadużyć' },
+                    { value: 'fraud_profile', label: 'Profil wygląda na próbę oszustwa' },
+                ],
+            });
             if (!selection || typeof selection.code !== 'string' || selection.code.trim() === '') {
                 return;
             }
@@ -759,13 +990,9 @@ const bindProfileHeroActions = () => {
                     },
                 });
 
-                if (!response.ok) {
-                    throw new Error('Request failed');
-                }
-
                 const payload = parseProfileJsonResponse(await response.text());
-                if (!payload.success) {
-                    throw new Error('Invalid payload');
+                if (!response.ok || !payload.success) {
+                    throw new Error(String(payload.message || 'Nie udało się zgłosić profilu.'));
                 }
 
                 if (typeof window.showAppToast === 'function') {
@@ -773,10 +1000,19 @@ const bindProfileHeroActions = () => {
                 }
 
                 closeProfileMarketplaceMenus();
-            } catch {
-                form.submit();
+            } catch (error) {
+                if (typeof window.showAppToast === 'function') {
+                    window.showAppToast(error instanceof Error ? error.message : 'Nie udało się zgłosić profilu.', 'error');
+                }
             }
-        }, true);
+        };
+
+        form.addEventListener('submit', handleProfileReport, true);
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        if (submitButton instanceof HTMLButtonElement) {
+            submitButton.addEventListener('click', handleProfileReport, true);
+        }
 
         form.dataset.boundProfileHeroReport = 'true';
     });
@@ -1980,24 +2216,22 @@ const bindProfileMarketplaceChunk = (root = document) => {
             return;
         }
 
-        form.addEventListener('submit', async (event) => {
+        const handleListingReport = async (event) => {
             event.preventDefault();
             event.stopPropagation();
             event.stopImmediatePropagation();
 
-            const selection = typeof window.openContentReportModal === 'function'
-                ? await window.openContentReportModal({
-                    kicker: 'Zgłoszenie ogłoszenia',
-                    title: 'Wybierz powód zgłoszenia ogłoszenia',
-                    reasons: [
-                        { value: 'misleading_listing', label: 'Ogłoszenie zawiera wprowadzające w błąd informacje' },
-                        { value: 'prohibited_listing', label: 'Ogłoszenie zawiera niedozwoloną treść' },
-                        { value: 'spam_listing', label: 'To spam lub duplikat ogłoszenia' },
-                        { value: 'privacy_listing', label: 'Ogłoszenie narusza prywatność lub dane osobowe' },
-                        { value: 'scam_listing', label: 'Ogłoszenie wygląda na próbę oszustwa' },
-                    ],
-                })
-                : null;
+            const selection = await openProfileContentReportModal({
+                kicker: 'Zgłoszenie ogłoszenia',
+                title: 'Wybierz powód zgłoszenia ogłoszenia',
+                reasons: [
+                    { value: 'misleading_listing', label: 'Ogłoszenie zawiera wprowadzające w błąd informacje' },
+                    { value: 'prohibited_listing', label: 'Ogłoszenie zawiera niedozwoloną treść' },
+                    { value: 'spam_listing', label: 'To spam lub duplikat ogłoszenia' },
+                    { value: 'privacy_listing', label: 'Ogłoszenie narusza prywatność lub dane osobowe' },
+                    { value: 'scam_listing', label: 'Ogłoszenie wygląda na próbę oszustwa' },
+                ],
+            });
             if (!selection || typeof selection.code !== 'string' || selection.code.trim() === '') {
                 return;
             }
@@ -2016,23 +2250,28 @@ const bindProfileMarketplaceChunk = (root = document) => {
                     },
                 });
 
-                if (!response.ok) {
-                    throw new Error('Request failed');
-                }
-
-                const payload = await response.json();
-                if (!payload.success) {
-                    throw new Error(String(payload.message || 'Invalid payload'));
+                const payload = await response.json().catch(() => null);
+                if (!response.ok || !payload?.success) {
+                    throw new Error(String(payload?.message || 'Nie udało się zgłosić ogłoszenia.'));
                 }
 
                 if (typeof window.showAppToast === 'function') {
                     window.showAppToast(payload.message || 'Ogloszenie zostalo zgloszone.', 'success');
                 }
                 closeProfileMarketplaceMenus();
-            } catch {
-                form.submit();
+            } catch (error) {
+                if (typeof window.showAppToast === 'function') {
+                    window.showAppToast(error instanceof Error ? error.message : 'Nie udało się zgłosić ogłoszenia.', 'error');
+                }
             }
-        }, true);
+        };
+
+        form.addEventListener('submit', handleListingReport, true);
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        if (submitButton instanceof HTMLButtonElement) {
+            submitButton.addEventListener('click', handleListingReport, true);
+        }
 
         form.dataset.boundProfileReport = 'true';
     });
@@ -2518,6 +2757,49 @@ if (isProfilePage) {
     document.addEventListener('profile:stats-refresh', () => {
         refreshProfileStats();
     });
+    document.addEventListener('click', (event) => {
+        const target = event.target instanceof Element ? event.target : null;
+        const submitButton = target?.closest('button[type="submit"]');
+        if (!(submitButton instanceof HTMLButtonElement)) {
+            return;
+        }
+
+        const profileReportForm = submitButton.closest('[data-profile-report-form]');
+        if (profileReportForm instanceof HTMLFormElement) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (typeof event.stopImmediatePropagation === 'function') {
+                event.stopImmediatePropagation();
+            }
+
+            profileReportForm.requestSubmit();
+            return;
+        }
+
+        const communityReportForm = submitButton.closest('[data-community-report-form]');
+        if (communityReportForm instanceof HTMLFormElement) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (typeof event.stopImmediatePropagation === 'function') {
+                event.stopImmediatePropagation();
+            }
+
+            submitProfileCommunityReportForm(communityReportForm);
+            return;
+        }
+
+        const marketplaceReportForm = submitButton.closest('[data-marketplace-report-form]');
+        if (marketplaceReportForm instanceof HTMLFormElement) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (typeof event.stopImmediatePropagation === 'function') {
+                event.stopImmediatePropagation();
+            }
+
+            marketplaceReportForm.requestSubmit();
+        }
+    }, true);
+
     document.addEventListener('submit', async (event) => {
         const form = event.target instanceof HTMLFormElement ? event.target : null;
         if (!(form instanceof HTMLFormElement) || !document.querySelector('[data-admin-profile-view="1"]')) {
@@ -2626,6 +2908,21 @@ if (isProfilePage) {
                 window.location.href = profileActivityLink.href;
             });
             return;
+        }
+
+        const communityReportButton = target.closest('[data-community-report-form] button[type="submit"]');
+        if (communityReportButton instanceof HTMLButtonElement && communityReportButton.closest('.profile-page, [data-community-comments-modal]')) {
+            const form = communityReportButton.closest('[data-community-report-form]');
+            if (form instanceof HTMLFormElement) {
+                event.preventDefault();
+                event.stopPropagation();
+                if (typeof event.stopImmediatePropagation === 'function') {
+                    event.stopImmediatePropagation();
+                }
+
+                submitProfileCommunityReportForm(form);
+                return;
+            }
         }
 
         const communityMenuTrigger = target.closest('[data-community-post-menu-trigger]');

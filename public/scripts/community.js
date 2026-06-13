@@ -125,6 +125,52 @@ const showAppToast = (message, type = 'info') => {
 };
 window.showAppToast = showAppToast;
 
+const COMMUNITY_REPORT_TEXT = {
+    modalSubtitle: 'Wybierz pow\u00f3d zg\u0142oszenia',
+    otherReason: 'Inny pow\u00f3d',
+    submit: 'Zg\u0142o\u015b',
+    report: 'Zg\u0142oszenie',
+    reportComment: 'Zg\u0142oszenie komentarza',
+    reportCommentTitle: 'Wybierz pow\u00f3d zg\u0142oszenia komentarza',
+    reportPost: 'Zg\u0142oszenie postu',
+    reportPostTitle: 'Wybierz pow\u00f3d zg\u0142oszenia postu',
+    abusiveComment: 'Komentarz ma charakter obra\u017aliwy lub n\u0119kaj\u0105cy',
+    privacyComment: 'Komentarz narusza prywatno\u015b\u0107 lub dane osobowe',
+    abusivePost: 'Tre\u015b\u0107 ma charakter obra\u017aliwy lub n\u0119kaj\u0105cy',
+    privacyPost: 'Tre\u015b\u0107 narusza prywatno\u015b\u0107 lub dane osobowe',
+    offtopicPost: 'Tre\u015b\u0107 jest niezgodna z tematyk\u0105 serwisu',
+    prohibitedPost: 'Tre\u015b\u0107 narusza regulamin serwisu',
+    reportFailed: 'Nie uda\u0142o si\u0119 zg\u0142osi\u0107 tre\u015bci.',
+    reportAccepted: 'Zg\u0142oszenie zosta\u0142o przyj\u0119te.',
+};
+
+const normalizeCommunityReportText = (value) => {
+    let text = String(value ?? '');
+
+    const mojibakeMap = new Map([
+        ['ZgĹ‚oszenie komentarza', 'Zgloszenie komentarza'],
+        ['Wybierz powĂłd zgĹ‚oszenia komentarza', 'Wybierz powod zgloszenia komentarza'],
+        ['Komentarz ma charakter obraĹşliwy lub nÄ™kajÄ…cy', 'Komentarz ma charakter obrazliwy lub nekajacy'],
+        ['Komentarz narusza prywatnoĹ›Ä‡ lub dane osobowe', 'Komentarz narusza prywatnosc lub dane osobowe'],
+        ['ZgĹ‚oszenie postu', 'Zgloszenie postu'],
+        ['Wybierz powĂłd zgĹ‚oszenia postu', 'Wybierz powod zgloszenia postu'],
+        ['TreĹ›Ä‡ ma charakter obraĹşliwy lub nÄ™kajÄ…cy', 'Tresc ma charakter obrazliwy lub nekajacy'],
+        ['TreĹ›Ä‡ narusza prywatnoĹ›Ä‡ lub dane osobowe', 'Tresc narusza prywatnosc lub dane osobowe'],
+        ['TreĹ›Ä‡ jest niezgodna z tematykÄ… serwisu', 'Tresc jest niezgodna z tematyka serwisu'],
+        ['TreĹ›Ä‡ narusza regulamin serwisu', 'Tresc narusza regulamin serwisu'],
+    ]);
+
+    mojibakeMap.forEach((replacement, broken) => {
+        text = text.split(broken).join(replacement);
+    });
+
+    try {
+        return decodeURIComponent(escape(text));
+    } catch {
+        return text;
+    }
+};
+
 const dispatchProfileStatsRefresh = () => {
     document.dispatchEvent(new CustomEvent('profile:stats-refresh'));
 };
@@ -193,9 +239,9 @@ const closeCommunityConfirmModal = (accepted = false) => {
 
 const openCommunityConfirmModal = ({
     kicker = 'Potwierdzenie',
-    title = 'Potwierdź akcję',
+    title = 'PotwierdĹş akcjÄ™',
     message = '',
-    confirmLabel = 'Potwierdź',
+    confirmLabel = 'PotwierdĹş',
     tone = 'danger',
 } = {}) => {
     const modal = ensureCommunityConfirmModal();
@@ -211,8 +257,8 @@ const openCommunityConfirmModal = ({
         return Promise.resolve(window.confirm(message || title));
     }
 
-    kickerElement.textContent = kicker;
-    titleElement.textContent = title;
+    kickerElement.textContent = normalizeCommunityReportText(kicker);
+    titleElement.textContent = normalizeCommunityReportText(title);
     messageElement.textContent = message;
     submitButton.textContent = confirmLabel;
     submitButton.classList.remove('is-danger', 'is-muted');
@@ -242,6 +288,166 @@ const openCommunityConfirmModal = ({
 
     return new Promise((resolve) => {
         activeCommunityConfirmResolver = resolve;
+    });
+};
+
+const ensureCommunityContentReportModal = () => {
+    let modal = document.querySelector('[data-community-content-report-modal]');
+    if (modal) {
+        return modal;
+    }
+
+    modal = document.createElement('div');
+    modal.className = 'profile-moderation-modal';
+    modal.hidden = true;
+    modal.setAttribute('data-community-content-report-modal', '');
+    modal.innerHTML = `
+        <div class="profile-moderation-modal-backdrop" data-community-content-report-close></div>
+        <div class="profile-moderation-modal-shell">
+            <section class="profile-moderation-modal-panel">
+                <div class="profile-moderation-modal-head">
+                    <div class="profile-moderation-modal-copy">
+                        <div class="profile-moderation-modal-kicker" data-community-content-report-kicker></div>
+                        <h3 class="profile-moderation-modal-title" data-community-content-report-title></h3>
+                    </div>
+                    <button type="button" class="community-modal-close" aria-label="Zamknij" data-community-content-report-close>
+                        <img src="/public/assets/icons/close.svg" alt="">
+                    </button>
+                </div>
+                <div class="profile-moderation-modal-body">
+                    <div class="profile-moderation-modal-subtitle">${COMMUNITY_REPORT_TEXT.modalSubtitle}</div>
+                    <div class="profile-moderation-options" data-community-content-report-options></div>
+                    <label class="profile-moderation-other" hidden data-community-content-report-other-wrap>
+                        <span>${COMMUNITY_REPORT_TEXT.otherReason}</span>
+                        <textarea rows="4" maxlength="800" data-community-content-report-other-input></textarea>
+                    </label>
+                </div>
+                <div class="profile-moderation-modal-actions">
+                    <button type="button" class="community-button community-button-muted" data-community-content-report-close>Anuluj</button>
+                    <button type="button" class="community-button community-confirm-submit is-danger" data-community-content-report-submit>${COMMUNITY_REPORT_TEXT.submit}</button>
+                </div>
+            </section>
+        </div>
+    `;
+
+    document.body.appendChild(modal);
+    return modal;
+};
+
+const closeCommunityContentReportModal = (result = null) => {
+    const modal = document.querySelector('[data-community-content-report-modal]');
+    if (!(modal instanceof HTMLElement)) {
+        return;
+    }
+
+    modal.hidden = true;
+    document.body.classList.remove('vehicle-modal-open');
+
+    if (typeof modal._resolveCommunityContentReport === 'function') {
+        modal._resolveCommunityContentReport(result);
+        modal._resolveCommunityContentReport = null;
+    }
+};
+
+const openCommunityContentReportModal = ({
+    kicker = COMMUNITY_REPORT_TEXT.report,
+    title = COMMUNITY_REPORT_TEXT.modalSubtitle,
+    reasons = [],
+} = {}) => {
+    const modal = ensureCommunityContentReportModal();
+    const kickerElement = modal.querySelector('[data-community-content-report-kicker]');
+    const titleElement = modal.querySelector('[data-community-content-report-title]');
+    const optionsRoot = modal.querySelector('[data-community-content-report-options]');
+    const otherWrap = modal.querySelector('[data-community-content-report-other-wrap]');
+    const otherInput = modal.querySelector('[data-community-content-report-other-input]');
+    const submitButton = modal.querySelector('[data-community-content-report-submit]');
+
+    if (!(kickerElement instanceof HTMLElement)
+        || !(titleElement instanceof HTMLElement)
+        || !(optionsRoot instanceof HTMLElement)
+        || !(otherWrap instanceof HTMLElement)
+        || !(otherInput instanceof HTMLTextAreaElement)
+        || !(submitButton instanceof HTMLButtonElement)
+    ) {
+        return Promise.resolve(null);
+    }
+
+    kickerElement.textContent = kicker;
+    titleElement.textContent = title;
+    optionsRoot.innerHTML = '';
+    otherInput.value = '';
+
+    const normalizedReasons = Array.isArray(reasons)
+        ? reasons.filter((reason) => reason && typeof reason.value === 'string' && typeof reason.label === 'string')
+        : [];
+
+    normalizedReasons.forEach((reason, index) => {
+        const label = document.createElement('label');
+        label.className = 'profile-moderation-option';
+        label.innerHTML = `
+            <input type="radio" name="community_content_report_reason" value="${String(reason.value)}"${index === 0 ? ' checked' : ''}>
+            <span>${normalizeCommunityReportText(reason.label)}</span>
+        `;
+        optionsRoot.appendChild(label);
+    });
+
+    const otherLabel = document.createElement('label');
+    otherLabel.className = 'profile-moderation-option';
+    otherLabel.innerHTML = `<input type="radio" name="community_content_report_reason" value="other"><span>${COMMUNITY_REPORT_TEXT.otherReason}</span>`;
+    optionsRoot.appendChild(otherLabel);
+
+    const syncOtherField = () => {
+        const selected = optionsRoot.querySelector('input[name="community_content_report_reason"]:checked');
+        const isOther = selected instanceof HTMLInputElement && selected.value === 'other';
+        otherWrap.hidden = !isOther;
+        if (isOther) {
+            window.setTimeout(() => otherInput.focus(), 20);
+        }
+    };
+
+    optionsRoot.querySelectorAll('input[name="community_content_report_reason"]').forEach((input) => {
+        input.addEventListener('change', syncOtherField);
+    });
+    syncOtherField();
+
+    modal.querySelectorAll('[data-community-content-report-close]').forEach((button) => {
+        if (button instanceof HTMLElement && button.dataset.boundCommunityContentReportClose !== 'true') {
+            button.addEventListener('click', () => closeCommunityContentReportModal(null));
+            button.dataset.boundCommunityContentReportClose = 'true';
+        }
+    });
+
+    submitButton.onclick = () => {
+        const selected = optionsRoot.querySelector('input[name="community_content_report_reason"]:checked');
+        if (!(selected instanceof HTMLInputElement)) {
+            return;
+        }
+
+        if (selected.value === 'other') {
+            const text = otherInput.value.trim();
+            if (text === '') {
+                otherInput.focus();
+                return;
+            }
+
+            closeCommunityContentReportModal({
+                code: 'other',
+                text,
+            });
+            return;
+        }
+
+        closeCommunityContentReportModal({
+            code: selected.value,
+            text: '',
+        });
+    };
+
+    modal.hidden = false;
+    document.body.classList.add('vehicle-modal-open');
+
+    return new Promise((resolve) => {
+        modal._resolveCommunityContentReport = resolve;
     });
 };
 
@@ -390,7 +596,7 @@ const resetCreatePostFormState = () => {
         createPostIdInput.value = '';
     }
     if (createPostModalTitle) {
-        createPostModalTitle.textContent = 'Utwórz post';
+        createPostModalTitle.textContent = 'UtwĂłrz post';
     }
     if (createPostSubmitButton) {
         createPostSubmitButton.textContent = 'Opublikuj';
@@ -593,7 +799,7 @@ createPostForm?.addEventListener('submit', async (event) => {
         }
 
         closeCreatePostModal();
-        showAppToast(payload.message || (action === 'update_post' ? 'Post został zaktualizowany.' : 'Post został opublikowany.'), 'success');
+        showAppToast(payload.message || (action === 'update_post' ? 'Post zostaĹ‚ zaktualizowany.' : 'Post zostaĹ‚ opublikowany.'), 'success');
     } catch (error) {
         createPostForm.submit();
     }
@@ -703,35 +909,6 @@ document.querySelectorAll('[data-community-comments-modal]').forEach((commentsMo
     }
 });
 
-if (shouldBootstrapCommunityDocumentDirectly) {
-    document.querySelectorAll('[data-open-comments-modal]').forEach((button) => {
-        button.addEventListener('click', () => {
-            const modalId = button.getAttribute('data-comments-modal-id');
-            if (!modalId) {
-                return;
-            }
-
-            const commentsModal = document.getElementById(modalId);
-            if (!commentsModal) {
-                return;
-            }
-
-            openCommentsModal(commentsModal);
-            requestAnimationFrame(() => {
-                commentsModal.querySelectorAll('[data-community-carousel]').forEach((carousel) => {
-                    initializeCommunityCarousel(carousel);
-                });
-            });
-        });
-    });
-}
-
-document.querySelectorAll('[data-community-comments-modal]').forEach((commentsModal) => {
-    commentsModal.querySelectorAll('[data-close-comments-modal]').forEach((closeButton) => {
-        closeButton.addEventListener('click', () => closeCommentsModal(commentsModal));
-    });
-});
-
 const renderCommunityLikeIcon = (liked) => {
     if (liked) {
         return `
@@ -747,132 +924,6 @@ const renderCommunityLikeIcon = (liked) => {
         </svg>
     `;
 };
-
-if (shouldBootstrapCommunityDocumentDirectly) {
-    document.querySelectorAll('[data-community-like-form]').forEach((form) => {
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-
-            const button = form.querySelector('[data-community-like-button]');
-            const icon = form.querySelector('[data-community-like-icon]');
-            const count = form.querySelector('[data-community-like-count]');
-
-            if (!button || !icon || !count) {
-                form.submit();
-                return;
-            }
-
-            const formData = new FormData(form);
-
-            try {
-                const response = await fetch(window.location.pathname + window.location.search, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                });
-
-                if (!response.ok) {
-                    throw new Error('Request failed');
-                }
-
-                const payload = await response.json();
-                if (!payload.success) {
-                    throw new Error('Invalid payload');
-                }
-
-                button.classList.toggle('is-active', Boolean(payload.liked_by_current_user));
-                icon.innerHTML = renderCommunityLikeIcon(Boolean(payload.liked_by_current_user));
-                count.textContent = String(payload.like_count ?? 0);
-            } catch (error) {
-                form.submit();
-            }
-        });
-    });
-}
-
-if (shouldBootstrapCommunityDocumentDirectly) {
-    document.querySelectorAll('[data-community-save-form]').forEach((form) => {
-        form.addEventListener('submit', async (event) => {
-            event.preventDefault();
-
-            const button = form.querySelector('[data-community-save-button]');
-            const icon = form.querySelector('[data-community-save-icon]');
-            const count = form.querySelector('[data-community-save-count]');
-
-            if (!button || !icon || !count) {
-                form.submit();
-                return;
-            }
-
-            const formData = new FormData(form);
-
-            try {
-                const response = await fetch(window.location.pathname + window.location.search, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                });
-
-                if (!response.ok) {
-                    throw new Error('Request failed');
-                }
-
-                const payload = await response.json();
-                if (!payload.success) {
-                    throw new Error('Invalid payload');
-                }
-
-                button.classList.toggle('is-active', Boolean(payload.saved_by_current_user));
-                icon.src = payload.saved_by_current_user
-                    ? '/public/assets/icons/save_icon_full.svg'
-                    : '/public/assets/icons/save_icon.svg';
-                count.textContent = String(payload.save_count ?? 0);
-            } catch (error) {
-                form.submit();
-            }
-        });
-    });
-}
-
-document.querySelectorAll('[data-community-report-form]').forEach((form) => {
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-
-        const formData = new FormData(form);
-
-        try {
-            const response = await fetch(window.location.pathname + window.location.search, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-            });
-
-            if (!response.ok) {
-                throw new Error('Request failed');
-            }
-
-            const payload = await response.json();
-            if (!payload.success) {
-                throw new Error('Invalid payload');
-            }
-
-            showAppToast(payload.message || 'Zgloszenie zostalo przyjete.', 'success');
-
-            const menu = form.closest('[data-community-post-menu]');
-            if (menu) {
-                closeCommunityPostMenu(menu);
-            }
-        } catch (error) {
-            form.submit();
-        }
-    });
-});
 
 const escapeHtml = (value) => String(value)
     .replace(/&/g, '&amp;')
@@ -992,7 +1043,7 @@ document.querySelectorAll('[data-community-comment-form]').forEach((form) => {
             if (!response.ok || !payload?.success || !payload?.comment) {
                 const message = typeof payload?.message === 'string' && payload.message.trim() !== ''
                     ? payload.message.trim()
-                    : 'Nie udało się dodać komentarza.';
+                    : 'Nie udaĹ‚o siÄ™ dodaÄ‡ komentarza.';
                 throw new Error(message);
             }
 
@@ -1003,7 +1054,7 @@ document.querySelectorAll('[data-community-comment-form]').forEach((form) => {
             initializeCommunityFeedChunk(commentsList);
             syncCommunityCommentTriggerState(postId, payload.comment_count ?? 0, payload.commented_by_current_user);
         } catch (error) {
-            showAppToast(error instanceof Error ? error.message : 'Nie udało się dodać komentarza.', 'error');
+            showAppToast(error instanceof Error ? error.message : 'Nie udaĹ‚o siÄ™ dodaÄ‡ komentarza.', 'error');
         } finally {
             submitButton.disabled = false;
         }
@@ -1189,35 +1240,37 @@ const bindCommunityReportForms = (root) => {
             return;
         }
 
-        form.addEventListener('submit', async (event) => {
+        const handleCommunityReport = async (event) => {
             event.preventDefault();
+            event.stopPropagation();
+            if (typeof event.stopImmediatePropagation === 'function') {
+                event.stopImmediatePropagation();
+            }
 
             const action = String(form.querySelector('input[name="action"]')?.value || '');
             const modalConfig = action === 'report_comment'
                 ? {
-                    kicker: 'Zgłoszenie komentarza',
-                    title: 'Wybierz powód zgłoszenia komentarza',
+                    kicker: COMMUNITY_REPORT_TEXT.reportComment,
+                    title: COMMUNITY_REPORT_TEXT.reportCommentTitle,
                     reasons: [
-                        { value: 'abusive_comment', label: 'Komentarz ma charakter obraźliwy lub nękający' },
+                        { value: 'abusive_comment', label: COMMUNITY_REPORT_TEXT.abusiveComment },
                         { value: 'spam_comment', label: 'To spam lub flood' },
-                        { value: 'privacy_comment', label: 'Komentarz narusza prywatność lub dane osobowe' },
+                        { value: 'privacy_comment', label: 'Komentarz narusza prywatnoĹ›Ä‡ lub dane osobowe' },
                         { value: 'prohibited_comment', label: 'Komentarz narusza regulamin serwisu' },
                     ],
                 }
                 : {
-                    kicker: 'Zgłoszenie postu',
-                    title: 'Wybierz powód zgłoszenia postu',
+                    kicker: 'ZgĹ‚oszenie postu',
+                    title: 'Wybierz powĂłd zgĹ‚oszenia postu',
                     reasons: [
-                        { value: 'abusive_post', label: 'Treść ma charakter obraźliwy lub nękający' },
+                        { value: 'abusive_post', label: 'TreĹ›Ä‡ ma charakter obraĹşliwy lub nÄ™kajÄ…cy' },
                         { value: 'spam_post', label: 'To spam lub niedozwolona promocja' },
-                        { value: 'privacy_post', label: 'Treść narusza prywatność lub dane osobowe' },
-                        { value: 'offtopic_post', label: 'Treść jest niezgodna z tematyką serwisu' },
-                        { value: 'prohibited_post', label: 'Treść narusza regulamin serwisu' },
+                        { value: 'privacy_post', label: 'TreĹ›Ä‡ narusza prywatnoĹ›Ä‡ lub dane osobowe' },
+                        { value: 'offtopic_post', label: 'TreĹ›Ä‡ jest niezgodna z tematykÄ… serwisu' },
+                        { value: 'prohibited_post', label: 'TreĹ›Ä‡ narusza regulamin serwisu' },
                     ],
                 };
-            const selection = typeof window.openContentReportModal === 'function'
-                ? await window.openContentReportModal(modalConfig)
-                : null;
+            const selection = await openCommunityContentReportModal(modalConfig);
             if (!selection || typeof selection.code !== 'string' || selection.code.trim() === '') {
                 return;
             }
@@ -1235,13 +1288,9 @@ const bindCommunityReportForms = (root) => {
                     },
                 });
 
-                if (!response.ok) {
-                    throw new Error('Request failed');
-                }
-
-                const payload = await response.json();
-                if (!payload.success) {
-                    throw new Error(String(payload.message || 'Invalid payload'));
+                const payload = await response.json().catch(() => null);
+                if (!response.ok || !payload?.success) {
+                    throw new Error(String(payload?.message || 'Nie udaĹ‚o siÄ™ zgĹ‚osiÄ‡ treĹ›ci.'));
                 }
 
                 showAppToast(payload.message || 'Zgloszenie zostalo przyjete.', 'success');
@@ -1251,9 +1300,16 @@ const bindCommunityReportForms = (root) => {
                     closeCommunityPostMenu(menu);
                 }
             } catch (error) {
-                form.submit();
+                showAppToast(error instanceof Error ? error.message : 'Nie udaĹ‚o siÄ™ zgĹ‚osiÄ‡ treĹ›ci.', 'error');
             }
-        });
+        };
+
+        form.addEventListener('submit', handleCommunityReport);
+
+        const submitButton = form.querySelector('button[type="submit"]');
+        if (submitButton instanceof HTMLButtonElement) {
+            submitButton.addEventListener('click', handleCommunityReport, true);
+        }
 
         form.dataset.boundReport = 'true';
     });
@@ -1277,9 +1333,9 @@ const bindCommunityDeletePostForms = (root) => {
 
             const confirmed = await openCommunityConfirmModal({
                 kicker: 'Usuwanie posta',
-                title: 'Usunąć post?',
-                message: 'Usunięcie posta skasuje go na stałe wraz z jego zdjęciami i komentarzami. Tej operacji nie da się cofnąć.',
-                confirmLabel: 'Usuń post',
+                title: 'UsunÄ…Ä‡ post?',
+                message: 'UsuniÄ™cie posta skasuje go na staĹ‚e wraz z jego zdjÄ™ciami i komentarzami. Tej operacji nie da siÄ™ cofnÄ…Ä‡.',
+                confirmLabel: 'UsuĹ„ post',
                 tone: 'danger',
             });
 
@@ -1313,7 +1369,7 @@ const bindCommunityDeletePostForms = (root) => {
 
                 post.remove();
                 dispatchProfileStatsRefresh();
-                showAppToast(payload.message || 'Post został usunięty.', 'success');
+                showAppToast(payload.message || 'Post zostaĹ‚ usuniÄ™ty.', 'success');
 
                 const menu = form.closest('[data-community-post-menu]');
                 if (menu) {
@@ -1365,7 +1421,7 @@ const bindCommunityCommentForms = (root) => {
                 if (!response.ok || !payload?.success || !payload?.comment) {
                     const message = typeof payload?.message === 'string' && payload.message.trim() !== ''
                         ? payload.message.trim()
-                        : 'Nie udało się dodać komentarza.';
+                        : 'Nie udaĹ‚o siÄ™ dodaÄ‡ komentarza.';
                     throw new Error(message);
                 }
 
@@ -1375,7 +1431,7 @@ const bindCommunityCommentForms = (root) => {
                 initializeCommunityFeedChunk(commentsList);
                 syncCommunityCommentTriggerState(postId, payload.comment_count ?? 0, payload.commented_by_current_user);
             } catch (error) {
-                showAppToast(error instanceof Error ? error.message : 'Nie udało się dodać komentarza.', 'error');
+                showAppToast(error instanceof Error ? error.message : 'Nie udaĹ‚o siÄ™ dodaÄ‡ komentarza.', 'error');
             } finally {
                 submitButton.disabled = false;
             }
@@ -1531,7 +1587,7 @@ const bindCommunityCommentDeleteForms = (root) => {
 
                 comment.remove();
                 if (!commentsList.querySelector('[data-community-comment-id]')) {
-                    commentsList.innerHTML = '<p class="community-comments-empty" data-community-comments-empty>Brak komentarzy. Bądź pierwszy.</p>';
+                    commentsList.innerHTML = '<p class="community-comments-empty" data-community-comments-empty>Brak komentarzy. BÄ…dĹş pierwszy.</p>';
                 }
 
                 syncCommunityCommentTriggerState(postId, payload.comment_count ?? 0, payload.commented_by_current_user);
@@ -1610,13 +1666,19 @@ const bindCommunityPostMenus = (root) => {
 };
 
 const initializeCommunityFeedChunk = (root) => {
+    const isProfileChunk = root instanceof Element
+        ? Boolean(root.closest('.profile-page'))
+        : Boolean(document.querySelector('.profile-page'));
+
     bindCommunityCarousels(root);
     bindCommunityCommentModals(root);
     bindCommunityCommentOpeners(root);
     bindCommunityEditPostButtons(root);
     bindCommunityLikeForms(root);
     bindCommunitySaveForms(root);
-    bindCommunityReportForms(root);
+    if (!isProfileChunk) {
+        bindCommunityReportForms(root);
+    }
     bindCommunityDeletePostForms(root);
     bindCommunityCommentForms(root);
     bindCommunityCommentEditActions(root);
@@ -1624,32 +1686,109 @@ const initializeCommunityFeedChunk = (root) => {
     bindCommunityPostMenus(root);
 };
 
+const submitCommunityReportForm = async (form) => {
+    if (!(form instanceof HTMLFormElement)) {
+        return;
+    }
+
+    if (form.dataset.reportPending === 'true') {
+        return;
+    }
+
+    form.dataset.reportPending = 'true';
+
+    const action = String(form.querySelector('input[name="action"]')?.value || '');
+    const modalConfig = action === 'report_comment'
+        ? {
+            kicker: 'Zgłoszenie komentarza',
+            title: 'Wybierz powód zgłoszenia komentarza',
+            reasons: [
+                { value: 'abusive_comment', label: 'Komentarz ma charakter obraĹşliwy lub nÄ™kajÄ…cy' },
+                { value: 'spam_comment', label: 'To spam lub flood' },
+                { value: 'privacy_comment', label: 'Komentarz narusza prywatnoĹ›Ä‡ lub dane osobowe' },
+                { value: 'prohibited_comment', label: 'Komentarz narusza regulamin serwisu' },
+            ],
+        }
+        : {
+            kicker: 'Zgłoszenie postu',
+            title: 'Wybierz powód zgłoszenia postu',
+            reasons: [
+                { value: 'abusive_post', label: 'TreĹ›Ä‡ ma charakter obraĹşliwy lub nÄ™kajÄ…cy' },
+                { value: 'spam_post', label: 'To spam lub niedozwolona promocja' },
+                { value: 'privacy_post', label: 'TreĹ›Ä‡ narusza prywatnoĹ›Ä‡ lub dane osobowe' },
+                { value: 'offtopic_post', label: 'TreĹ›Ä‡ jest niezgodna z tematykÄ… serwisu' },
+                { value: 'prohibited_post', label: 'TreĹ›Ä‡ narusza regulamin serwisu' },
+            ],
+        };
+
+    const selection = await openCommunityContentReportModal(modalConfig);
+    if (!selection || typeof selection.code !== 'string' || selection.code.trim() === '') {
+        form.dataset.reportPending = 'false';
+        return;
+    }
+
+    const formData = new FormData(form);
+    formData.set('report_reason_code', selection.code);
+    formData.set('report_reason_text', typeof selection.text === 'string' ? selection.text : '');
+
+    try {
+        const response = await fetch(window.location.pathname + window.location.search, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        const payload = await response.json().catch(() => null);
+        if (!response.ok || !payload?.success) {
+            throw new Error(String(payload?.message || 'Nie udaĹ‚o siÄ™ zgĹ‚osiÄ‡ treĹ›ci.'));
+        }
+
+        showAppToast(payload.message || 'Zgloszenie zostalo przyjete.', 'success');
+
+        const menu = form.closest('[data-community-post-menu]');
+        if (menu) {
+            closeCommunityPostMenu(menu);
+        }
+    } catch (error) {
+        showAppToast(error instanceof Error ? error.message : 'Nie udaĹ‚o siÄ™ zgĹ‚osiÄ‡ treĹ›ci.', 'error');
+    } finally {
+        form.dataset.reportPending = 'false';
+    }
+};
+
+window.submitCommunityReportForm = submitCommunityReportForm;
+
 window.initializeCommunityFeedChunk = initializeCommunityFeedChunk;
 if (shouldBootstrapCommunityDocumentDirectly) {
-    document.querySelectorAll('[data-community-post-menu]').forEach((menu) => {
-        const trigger = menu.querySelector('[data-community-post-menu-trigger]');
-        const dropdown = menu.querySelector('[data-community-post-menu-dropdown]');
+    initializeCommunityFeedChunk(document);
 
-        if (!trigger || !dropdown) {
+    document.addEventListener('click', (event) => {
+        const target = event.target instanceof Element ? event.target : null;
+        const submitButton = target?.closest('button[type="submit"]');
+        if (!(submitButton instanceof HTMLButtonElement)) {
             return;
         }
 
-        trigger.addEventListener('click', (event) => {
-            event.preventDefault();
-            event.stopPropagation();
+        const form = submitButton.closest('[data-community-report-form]');
+        if (!(form instanceof HTMLFormElement)) {
+            return;
+        }
 
-            const isOpen = trigger.getAttribute('aria-expanded') === 'true';
+        event.preventDefault();
+        event.stopPropagation();
+        if (typeof event.stopImmediatePropagation === 'function') {
+            event.stopImmediatePropagation();
+        }
 
-            document.querySelectorAll('[data-community-post-menu]').forEach((otherMenu) => {
-                if (otherMenu !== menu) {
-                    closeCommunityPostMenu(otherMenu);
-                }
-            });
+        if (typeof window.submitCommunityReportForm === 'function') {
+            window.submitCommunityReportForm(form);
+            return;
+        }
 
-            trigger.setAttribute('aria-expanded', isOpen ? 'false' : 'true');
-            dropdown.hidden = isOpen;
-        });
-    });
+        form.requestSubmit();
+    }, true);
 
     document.addEventListener('click', (event) => {
         document.querySelectorAll('[data-community-post-menu]').forEach((menu) => {

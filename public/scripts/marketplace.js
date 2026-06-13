@@ -1920,19 +1920,15 @@ const bindMarketplaceReportForms = (root) => {
                     },
                 });
 
-                if (!response.ok) {
-                    throw new Error('Request failed');
-                }
-
-                const payload = await response.json();
-                if (!payload.success) {
-                    throw new Error(String(payload.message || 'Invalid payload'));
+                const payload = await response.json().catch(() => null);
+                if (!response.ok || !payload?.success) {
+                    throw new Error(String(payload?.message || 'Nie udało się zgłosić ogłoszenia.'));
                 }
 
                 showAppToast(payload.message || 'Ogloszenie zostalo zgloszone.', 'success');
                 closeMarketplaceMenus();
-            } catch {
-                form.submit();
+            } catch (error) {
+                showAppToast(error instanceof Error ? error.message : 'Nie udało się zgłosić ogłoszenia.', 'error');
             }
         });
 

@@ -1781,6 +1781,14 @@
                 return;
             }
 
+            if (item === 'spacer') {
+                const spacer = document.createElement('span');
+                spacer.className = 'admin-catalog-page-spacer';
+                spacer.setAttribute('aria-hidden', 'true');
+                reportPageList.appendChild(spacer);
+                return;
+            }
+
             const pageNumber = Number(item);
             const button = document.createElement('button');
             button.type = 'button';
