@@ -796,6 +796,37 @@
 
 @media (max-width: 820px) {
     .cars-hero-card {
-        min-height: auto;
+        min-height: 0;
+        height: auto;
+    }
+
+    .cars-hero-visual {
+        min-height: 0;
+        aspect-ratio: 16 / 9;
+    }
+
+    .cars-hero-body {
+        padding: 16px 18px 18px;
+    }
+
+    .cars-hero-arrow {
+        width: 48px;
+        height: 48px;
+        flex: 0 0 48px;
+    }
+
+    .cars-add-button {
+        display: none;
+    }
+
+    .cars-page .car-card-placeholder {
+        width: 100%;
+        min-height: 324px;
+        aspect-ratio: auto;
+        display: flex;
+    }
+
+    .cars-page .car-card-placeholder-content {
+        min-height: 324px;
     }
 }

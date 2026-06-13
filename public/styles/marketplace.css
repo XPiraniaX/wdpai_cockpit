@@ -935,6 +935,12 @@ body.is-marketplace-page {
     margin: 0 auto;
 }
 
+.marketplace-create-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1600;
+}
+
 .marketplace-create-entry {
     padding: 20px 22px 24px;
 }
@@ -1307,24 +1313,58 @@ body.is-marketplace-page {
 }
 
 @media (max-width: 1460px) {
+    .marketplace-page {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
     .marketplace-shell {
         transform: none;
     }
 
     .marketplace-side-panel {
+        order: -1;
         position: static;
         width: min(860px, 100%);
-        margin: 20px auto 0;
+        margin: 0 auto;
     }
 
     .marketplace-create-shell {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
         grid-template-columns: 1fr;
+        min-height: auto;
     }
 
     .marketplace-create-media-column,
     .marketplace-create-content-column {
+        display: flex;
+        flex-direction: column;
+        min-height: auto;
+        max-height: none;
         overflow: visible;
         padding-right: 0;
+    }
+
+    .marketplace-create-content-column {
+        padding: 0;
+    }
+
+    .marketplace-create-step,
+    .marketplace-create-step-grid,
+    .marketplace-create-step-grid-compact,
+    .marketplace-create-step-grid-contact,
+    .marketplace-create-summary-list {
+        min-height: auto;
+        max-height: none;
+        overflow: visible;
+        padding-right: 0;
+    }
+
+    .marketplace-create-shell:has(.marketplace-create-step[data-marketplace-create-step]:not([data-marketplace-create-step="1"]):not([hidden])) .marketplace-create-media-column {
+        display: none;
     }
 }
 
@@ -1355,6 +1395,70 @@ body.is-marketplace-page {
 
     .marketplace-details-modal-body {
         gap: 16px;
+    }
+}
+
+@media (max-width: 820px) {
+    .marketplace-page {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .marketplace-side-panel {
+        order: -1;
+        position: static;
+        top: auto;
+        right: auto;
+        width: min(860px, calc(100% - 24px));
+        margin: 0 auto;
+    }
+
+    .marketplace-shell {
+        width: min(860px, calc(100% - 24px));
+        margin: 0 auto;
+        transform: none;
+    }
+
+    .marketplace-filter-stack {
+        gap: 14px;
+    }
+
+    .marketplace-create-modal {
+        width: min(100vw - 24px, 1120px);
+        max-height: calc(100vh - 72px);
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+
+    .marketplace-create-entry {
+        padding: 16px 16px 20px;
+    }
+
+    .marketplace-create-form {
+        overflow: visible;
+    }
+
+    .marketplace-create-actions {
+        flex-wrap: wrap;
+        justify-content: center;
+        position: sticky;
+        bottom: 0;
+        z-index: 2;
+        margin-top: 12px;
+        padding: 12px 0 calc(12px + env(safe-area-inset-bottom, 0px));
+        background: linear-gradient(180deg, rgba(15, 25, 48, 0) 0%, rgba(15, 25, 48, 0.96) 26%, rgba(15, 25, 48, 1) 100%);
+    }
+
+    .marketplace-create-actions .vehicle-modal-submit,
+    .marketplace-create-actions .vehicle-modal-secondary {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .marketplace-create-entry {
+        padding-bottom: 24px;
     }
 }
 

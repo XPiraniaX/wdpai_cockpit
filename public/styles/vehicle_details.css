@@ -1654,13 +1654,74 @@ body.vehicle-modal-open {
     }
 }
 
+@media (max-width: 820px) {
+    .vehicle-hero {
+        min-height: 0;
+        height: auto;
+    }
+
+    .vehicle-hero-media {
+        position: relative;
+        inset: auto;
+        aspect-ratio: 16 / 9;
+    }
+
+    .vehicle-hero-copy {
+        min-height: 0;
+        padding: 16px 18px 18px;
+        gap: 8px;
+    }
+
+    .vehicle-hero-copy::before {
+        height: 55%;
+    }
+
+    .vehicle-panel-head,
+    .vehicle-table-head {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .vehicle-title-group {
+        justify-content: center;
+    }
+
+    .vehicle-panel-title,
+    .vehicle-stat-label {
+        text-align: center;
+    }
+
+    .vehicle-panel-action-top,
+    .vehicle-panel-secondary-action {
+        margin-inline: auto;
+    }
+
+    .vehicle-area-consumption {
+        min-height: 0;
+    }
+
+    .vehicle-area-consumption.vehicle-stat-card {
+        padding-top: 12px;
+        padding-bottom: 12px;
+    }
+
+    .vehicle-area-consumption .vehicle-stat-value {
+        margin-top: 10px;
+        font-size: 28px;
+    }
+
+    .vehicle-area-consumption .vehicle-stat-value.is-compact {
+        font-size: 13px;
+    }
+}
+
 @media (max-width: 760px) {
     .vehicle-table {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
-    .vehicle-modal-grid,
-    .vehicle-modal-table-row {
+    .vehicle-modal-grid {
         grid-template-columns: 1fr;
     }
 
@@ -1668,4 +1729,49 @@ body.vehicle-modal-open {
     .vehicle-table-head {
         flex-wrap: wrap;
     }
+
+    .vehicle-modal-table {
+        gap: 10px;
+    }
+
+    .vehicle-modal-table-head {
+        display: none;
+    }
+
+    .vehicle-modal-table-row,
+    .vehicle-modal-table-row-inspections,
+    .vehicle-modal-table-head-inspections {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        padding: 14px 0;
+    }
+
+    .vehicle-modal-table-row > span,
+    .vehicle-modal-table-row-inspections > span {
+        display: block;
+        position: relative;
+        padding-left: 0;
+    }
+
+    .vehicle-modal-table-row > span::before,
+    .vehicle-modal-table-row-inspections > span::before {
+        display: block;
+        margin-bottom: 4px;
+        color: rgba(148, 163, 184, 0.7);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font-family: var(--font-sans);
+    }
+
+    [data-modal-panel="modal-fuel-history"] .vehicle-modal-table-row > span:nth-child(1)::before { content: "Data"; }
+    [data-modal-panel="modal-fuel-history"] .vehicle-modal-table-row > span:nth-child(2)::before { content: "Paliwo"; }
+    [data-modal-panel="modal-fuel-history"] .vehicle-modal-table-row > span:nth-child(3)::before { content: "Rodzaj"; }
+    [data-modal-panel="modal-fuel-history"] .vehicle-modal-table-row > span:nth-child(4)::before { content: "Kwota"; }
+    [data-modal-panel="modal-fuel-history"] .vehicle-modal-table-row > span:nth-child(5)::before { content: "Przebieg"; }
+
+    [data-modal-panel="modal-inspection-history"] .vehicle-modal-table-row-inspections > span:nth-child(1)::before { content: "Data przeglądu"; }
+    [data-modal-panel="modal-inspection-history"] .vehicle-modal-table-row-inspections > span:nth-child(2)::before { content: "Ważne do"; }
+    [data-modal-panel="modal-inspection-history"] .vehicle-modal-table-row-inspections > span:nth-child(3)::before { content: "Wynik"; }
 }
