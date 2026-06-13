@@ -47,6 +47,9 @@ $notificationBellIconIdlePath = '/public/assets/icons/bell_icon.svg?v=' . rawurl
 $notificationBellIconActivePath = '/public/assets/icons/bell_icon_active.svg?v=' . rawurlencode((string) filemtime('public/assets/icons/bell_icon_active.svg'));
 ?>
 <header class="topbar">
+    <a href="/dashboard" class="topbar-mobile-brand" aria-label="Przejdź do dashboardu">
+        <img src="/public/assets/icons/logo.svg" alt="Cockpit" class="topbar-mobile-brand-logo">
+    </a>
     <div class="breadcrumbs">
         <span class="breadcrumbs-current"<?= $isAdminRoute ? ' data-admin-breadcrumb-title' : ''; ?>><?= htmlspecialchars($pageMeta['title'], ENT_QUOTES, 'UTF-8'); ?></span>
         <span class="breadcrumbs-separator">/</span>

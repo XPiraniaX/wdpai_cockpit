@@ -1,0 +1,1 @@
+{"version":2,"defects":[],"times":{"ReportsRepositoryTest::testCreateReportRejectsSelfReportForProfile":0.028,"UserRepositoryTest::testLogFailedAuthenticationAttemptPersistsAuditRow":0.019}}
