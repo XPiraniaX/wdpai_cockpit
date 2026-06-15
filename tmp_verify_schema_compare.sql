@@ -212,8 +212,8 @@ CREATE TABLE public.content_reports (
     created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     closed_at timestamp with time zone,
     closed_by_admin_id integer,
-    CONSTRAINT content_reports_content_type_check CHECK (((content_type)::text = ANY ((ARRAY['listing'::character varying, 'post'::character varying, 'comment'::character varying, 'profile'::character varying])::text[]))),
-    CONSTRAINT content_reports_status_check CHECK (((status)::text = ANY ((ARRAY['open'::character varying, 'closed'::character varying])::text[])))
+    CONSTRAINT content_reports_content_type_check CHECK (((content_type)::text = ANY (ARRAY[('listing'::character varying)::text, ('post'::character varying)::text, ('comment'::character varying)::text, ('profile'::character varying)::text]))),
+    CONSTRAINT content_reports_status_check CHECK (((status)::text = ANY (ARRAY[('open'::character varying)::text, ('closed'::character varying)::text])))
 );
 CREATE SEQUENCE public.content_reports_id_seq
     AS integer
@@ -231,7 +231,7 @@ CREATE TABLE public.fuel_logs (
     liters numeric(8,2) NOT NULL,
     total_cost numeric(10,2) NOT NULL,
     fuel_type character varying(30) NOT NULL,
-    CONSTRAINT fuel_logs_fuel_type_check CHECK (((fuel_type)::text = ANY ((ARRAY['petrol'::character varying, 'diesel'::character varying, 'premium_petrol'::character varying, 'premium_diesel'::character varying, 'lpg'::character varying, 'cng'::character varying, 'electric'::character varying, 'other'::character varying])::text[]))),
+    CONSTRAINT fuel_logs_fuel_type_check CHECK (((fuel_type)::text = ANY (ARRAY[('petrol'::character varying)::text, ('diesel'::character varying)::text, ('premium_petrol'::character varying)::text, ('premium_diesel'::character varying)::text, ('lpg'::character varying)::text, ('cng'::character varying)::text, ('electric'::character varying)::text, ('other'::character varying)::text]))),
     CONSTRAINT fuel_logs_fueled_at_check CHECK ((fueled_at IS NOT NULL)),
     CONSTRAINT fuel_logs_liters_check CHECK ((liters > (0)::numeric)),
     CONSTRAINT fuel_logs_mileage_km_check CHECK ((mileage_km >= 0)),
@@ -270,7 +270,7 @@ CREATE TABLE public.maintenance_tasks (
     status character varying(20) DEFAULT 'open'::character varying NOT NULL,
     estimated_cost_amount numeric(10,2),
     sort_order integer DEFAULT 0 NOT NULL,
-    CONSTRAINT maintenance_tasks_status_check CHECK (((status)::text = ANY ((ARRAY['open'::character varying, 'done'::character varying])::text[])))
+    CONSTRAINT maintenance_tasks_status_check CHECK (((status)::text = ANY (ARRAY[('open'::character varying)::text, ('done'::character varying)::text])))
 );
 CREATE SEQUENCE public.maintenance_tasks_id_seq
     AS integer
@@ -330,14 +330,14 @@ CREATE TABLE public.marketplace_listings (
     hidden_by_user_ban boolean DEFAULT false NOT NULL,
     hidden_by_marketplace_block boolean DEFAULT false NOT NULL,
     CONSTRAINT marketplace_listings_engine_capacity_cc_check CHECK ((engine_capacity_cc > 0)),
-    CONSTRAINT marketplace_listings_fuel_type_check CHECK (((fuel_type)::text = ANY ((ARRAY['petrol'::character varying, 'diesel'::character varying, 'hybrid'::character varying, 'plug_in_hybrid'::character varying, 'electric'::character varying, 'lpg'::character varying, 'cng'::character varying, 'other'::character varying])::text[]))),
+    CONSTRAINT marketplace_listings_fuel_type_check CHECK (((fuel_type)::text = ANY (ARRAY[('petrol'::character varying)::text, ('diesel'::character varying)::text, ('hybrid'::character varying)::text, ('plug_in_hybrid'::character varying)::text, ('electric'::character varying)::text, ('lpg'::character varying)::text, ('cng'::character varying)::text, ('other'::character varying)::text]))),
     CONSTRAINT marketplace_listings_mileage_km_check CHECK ((mileage_km >= 0)),
     CONSTRAINT marketplace_listings_power_hp_check CHECK ((power_hp > 0)),
     CONSTRAINT marketplace_listings_price_amount_check CHECK ((price_amount >= (0)::numeric)),
     CONSTRAINT marketplace_listings_production_year_check CHECK (((production_year >= 1886) AND (production_year <= 2100))),
-    CONSTRAINT marketplace_listings_steering_side_check CHECK (((steering_side)::text = ANY ((ARRAY['left'::character varying, 'right'::character varying])::text[]))),
-    CONSTRAINT marketplace_listings_technical_condition_check CHECK (((technical_condition)::text = ANY ((ARRAY['undamaged'::character varying, 'damaged'::character varying])::text[]))),
-    CONSTRAINT marketplace_listings_transmission_check CHECK (((transmission)::text = ANY ((ARRAY['manual'::character varying, 'automatic'::character varying, 'semi_automatic'::character varying])::text[])))
+    CONSTRAINT marketplace_listings_steering_side_check CHECK (((steering_side)::text = ANY (ARRAY[('left'::character varying)::text, ('right'::character varying)::text]))),
+    CONSTRAINT marketplace_listings_technical_condition_check CHECK (((technical_condition)::text = ANY (ARRAY[('undamaged'::character varying)::text, ('damaged'::character varying)::text]))),
+    CONSTRAINT marketplace_listings_transmission_check CHECK (((transmission)::text = ANY (ARRAY[('manual'::character varying)::text, ('automatic'::character varying)::text, ('semi_automatic'::character varying)::text])))
 );
 CREATE SEQUENCE public.marketplace_listings_id_seq
     AS integer
@@ -370,7 +370,7 @@ CREATE TABLE public.technical_inspections (
     valid_until date NOT NULL,
     result character varying(20) DEFAULT 'passed'::character varying NOT NULL,
     CONSTRAINT technical_inspections_check CHECK ((valid_until >= inspection_date)),
-    CONSTRAINT technical_inspections_result_check CHECK (((result)::text = ANY ((ARRAY['passed'::character varying, 'failed'::character varying, 'conditional'::character varying])::text[])))
+    CONSTRAINT technical_inspections_result_check CHECK (((result)::text = ANY (ARRAY[('passed'::character varying)::text, ('failed'::character varying)::text, ('conditional'::character varying)::text])))
 );
 CREATE SEQUENCE public.technical_inspections_id_seq
     AS integer
@@ -483,17 +483,17 @@ CREATE TABLE public.user_settings (
     notification_post_likes boolean DEFAULT true NOT NULL,
     notification_post_comments boolean DEFAULT true NOT NULL,
     notification_marketplace_activity boolean DEFAULT true NOT NULL,
-    CONSTRAINT user_settings_app_consumption_format_check CHECK (((app_consumption_format)::text = ANY ((ARRAY['l_100km'::character varying, 'km_l'::character varying])::text[]))),
-    CONSTRAINT user_settings_app_distance_unit_check CHECK (((app_distance_unit)::text = ANY ((ARRAY['km'::character varying, 'mi'::character varying])::text[]))),
-    CONSTRAINT user_settings_community_default_scope_check CHECK (((community_default_scope)::text = ANY ((ARRAY['all'::character varying, 'liked'::character varying, 'saved'::character varying, 'commented'::character varying])::text[]))),
-    CONSTRAINT user_settings_marketplace_default_scope_check CHECK (((marketplace_default_scope)::text = ANY ((ARRAY['all'::character varying, 'saved'::character varying])::text[]))),
-    CONSTRAINT user_settings_marketplace_default_sort_check CHECK (((marketplace_default_sort)::text = ANY ((ARRAY['newest'::character varying, 'price_asc'::character varying, 'price_desc'::character varying, 'year_desc'::character varying, 'mileage_asc'::character varying])::text[]))),
-    CONSTRAINT user_settings_marketplace_preferred_contact_channel_check CHECK (((marketplace_preferred_contact_channel)::text = ANY ((ARRAY['both'::character varying, 'phone'::character varying, 'email'::character varying])::text[]))),
-    CONSTRAINT user_settings_privacy_full_name_visibility_check CHECK (((privacy_full_name_visibility)::text = ANY ((ARRAY['public'::character varying, 'private'::character varying])::text[]))),
-    CONSTRAINT user_settings_privacy_membership_visibility_check CHECK (((privacy_membership_visibility)::text = ANY ((ARRAY['public'::character varying, 'private'::character varying])::text[]))),
-    CONSTRAINT user_settings_privacy_profile_listings_visibility_check CHECK (((privacy_profile_listings_visibility)::text = ANY ((ARRAY['public'::character varying, 'private'::character varying])::text[]))),
-    CONSTRAINT user_settings_privacy_profile_posts_visibility_check CHECK (((privacy_profile_posts_visibility)::text = ANY ((ARRAY['public'::character varying, 'private'::character varying])::text[]))),
-    CONSTRAINT user_settings_privacy_profile_visibility_check CHECK (((privacy_profile_visibility)::text = ANY ((ARRAY['private'::character varying, 'friends'::character varying, 'public'::character varying])::text[])))
+    CONSTRAINT user_settings_app_consumption_format_check CHECK (((app_consumption_format)::text = ANY (ARRAY[('l_100km'::character varying)::text, ('km_l'::character varying)::text]))),
+    CONSTRAINT user_settings_app_distance_unit_check CHECK (((app_distance_unit)::text = ANY (ARRAY[('km'::character varying)::text, ('mi'::character varying)::text]))),
+    CONSTRAINT user_settings_community_default_scope_check CHECK (((community_default_scope)::text = ANY (ARRAY[('all'::character varying)::text, ('liked'::character varying)::text, ('saved'::character varying)::text, ('commented'::character varying)::text]))),
+    CONSTRAINT user_settings_marketplace_default_scope_check CHECK (((marketplace_default_scope)::text = ANY (ARRAY[('all'::character varying)::text, ('saved'::character varying)::text]))),
+    CONSTRAINT user_settings_marketplace_default_sort_check CHECK (((marketplace_default_sort)::text = ANY (ARRAY[('newest'::character varying)::text, ('price_asc'::character varying)::text, ('price_desc'::character varying)::text, ('year_desc'::character varying)::text, ('mileage_asc'::character varying)::text]))),
+    CONSTRAINT user_settings_marketplace_preferred_contact_channel_check CHECK (((marketplace_preferred_contact_channel)::text = ANY (ARRAY[('both'::character varying)::text, ('phone'::character varying)::text, ('email'::character varying)::text]))),
+    CONSTRAINT user_settings_privacy_full_name_visibility_check CHECK (((privacy_full_name_visibility)::text = ANY (ARRAY[('public'::character varying)::text, ('private'::character varying)::text]))),
+    CONSTRAINT user_settings_privacy_membership_visibility_check CHECK (((privacy_membership_visibility)::text = ANY (ARRAY[('public'::character varying)::text, ('private'::character varying)::text]))),
+    CONSTRAINT user_settings_privacy_profile_listings_visibility_check CHECK (((privacy_profile_listings_visibility)::text = ANY (ARRAY[('public'::character varying)::text, ('private'::character varying)::text]))),
+    CONSTRAINT user_settings_privacy_profile_posts_visibility_check CHECK (((privacy_profile_posts_visibility)::text = ANY (ARRAY[('public'::character varying)::text, ('private'::character varying)::text]))),
+    CONSTRAINT user_settings_privacy_profile_visibility_check CHECK (((privacy_profile_visibility)::text = ANY (ARRAY[('private'::character varying)::text, ('friends'::character varying)::text, ('public'::character varying)::text])))
 );
 CREATE SEQUENCE public.user_settings_id_seq
     AS integer
@@ -535,8 +535,8 @@ CREATE TABLE public.users (
     marketplace_block_reason text,
     marketplace_block_is_permanent boolean DEFAULT false NOT NULL,
     marketplace_blocked_at timestamp without time zone,
-    CONSTRAINT users_membership_tier_check CHECK (((membership_tier)::text = ANY ((ARRAY['free'::character varying, 'pro'::character varying, 'business'::character varying])::text[]))),
-    CONSTRAINT users_role_check CHECK (((role)::text = ANY ((ARRAY['user'::character varying, 'admin'::character varying])::text[])))
+    CONSTRAINT users_membership_tier_check CHECK (((membership_tier)::text = ANY (ARRAY[('free'::character varying)::text, ('pro'::character varying)::text, ('business'::character varying)::text]))),
+    CONSTRAINT users_role_check CHECK (((role)::text = ANY (ARRAY[('user'::character varying)::text, ('admin'::character varying)::text])))
 );
 CREATE SEQUENCE public.users_id_seq
     AS integer
@@ -605,19 +605,19 @@ CREATE TABLE public.vehicles (
     approval_correction_due_at timestamp with time zone,
     approval_reviewed_at timestamp with time zone,
     approval_rejection_count integer DEFAULT 0 NOT NULL,
-    CONSTRAINT vehicles_approval_status_check CHECK (((approval_status)::text = ANY ((ARRAY['pending'::character varying, 'approved'::character varying, 'rejected'::character varying])::text[]))),
+    CONSTRAINT vehicles_approval_status_check CHECK (((approval_status)::text = ANY (ARRAY[('pending'::character varying)::text, ('approved'::character varying)::text, ('rejected'::character varying)::text]))),
     CONSTRAINT vehicles_current_mileage_km_check CHECK ((current_mileage_km >= 0)),
     CONSTRAINT vehicles_cylinder_count_check CHECK ((cylinder_count > 0)),
     CONSTRAINT vehicles_engine_capacity_cc_check CHECK ((engine_capacity_cc > 0)),
-    CONSTRAINT vehicles_fuel_type_check CHECK (((fuel_type)::text = ANY ((ARRAY['petrol'::character varying, 'diesel'::character varying, 'hybrid'::character varying, 'plug_in_hybrid'::character varying, 'electric'::character varying, 'lpg'::character varying, 'cng'::character varying, 'other'::character varying])::text[]))),
+    CONSTRAINT vehicles_fuel_type_check CHECK (((fuel_type)::text = ANY (ARRAY[('petrol'::character varying)::text, ('diesel'::character varying)::text, ('hybrid'::character varying)::text, ('plug_in_hybrid'::character varying)::text, ('electric'::character varying)::text, ('lpg'::character varying)::text, ('cng'::character varying)::text, ('other'::character varying)::text]))),
     CONSTRAINT vehicles_height_mm_check CHECK ((height_mm > 0)),
     CONSTRAINT vehicles_length_mm_check CHECK ((length_mm > 0)),
     CONSTRAINT vehicles_power_hp_check CHECK ((power_hp > 0)),
     CONSTRAINT vehicles_power_nm_check CHECK ((power_nm > 0)),
     CONSTRAINT vehicles_production_year_check CHECK (((production_year >= 1886) AND (production_year <= 2100))),
     CONSTRAINT vehicles_seat_count_check CHECK ((seat_count > 0)),
-    CONSTRAINT vehicles_status_check CHECK (((status)::text = ANY ((ARRAY['active'::character varying, 'sold'::character varying, 'archived'::character varying])::text[]))),
-    CONSTRAINT vehicles_transmission_check CHECK (((transmission)::text = ANY ((ARRAY['manual'::character varying, 'automatic'::character varying, 'semi_automatic'::character varying])::text[]))),
+    CONSTRAINT vehicles_status_check CHECK (((status)::text = ANY (ARRAY[('active'::character varying)::text, ('sold'::character varying)::text, ('archived'::character varying)::text]))),
+    CONSTRAINT vehicles_transmission_check CHECK (((transmission)::text = ANY (ARRAY[('manual'::character varying)::text, ('automatic'::character varying)::text, ('semi_automatic'::character varying)::text]))),
     CONSTRAINT vehicles_width_mm_check CHECK ((width_mm > 0))
 );
 CREATE SEQUENCE public.vehicles_id_seq

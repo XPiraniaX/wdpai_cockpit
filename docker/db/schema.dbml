@@ -1,6 +1,6 @@
 Project COCKPIT {
   database_type: "PostgreSQL"
-  Note: "MVP schema aligned with current PROJECT_VISION"
+  Note: "Current physical schema aligned with init.sql and latest migrations"
 }
 
 Table users {
@@ -10,7 +10,6 @@ Table users {
   password text [not null]
   first_name varchar(100) [not null]
   last_name varchar(100) [not null]
-  pseudonym varchar(80)
   membership_tier varchar(20) [not null, default: 'free', note: 'free | pro | business']
   avatar_path text
   timezone varchar(64) [not null, default: 'Europe/Warsaw']
@@ -19,10 +18,36 @@ Table users {
   created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
   updated_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
   is_active boolean [not null, default: true]
+  pseudonym varchar(80)
+  role varchar(20) [not null, default: 'user', note: 'user | admin']
+  is_blocked boolean [not null, default: false]
+  blocked_until timestamp
+  blocked_reason text
+  blocked_is_permanent boolean [not null, default: false]
+  blocked_at timestamp
+  admin_warning_message text
+  admin_warning_sent_at timestamp
+  community_blocked_until timestamp
+  community_block_reason text
+  community_block_is_permanent boolean [not null, default: false]
+  community_blocked_at timestamp
+  marketplace_blocked_until timestamp
+  marketplace_block_reason text
+  marketplace_block_is_permanent boolean [not null, default: false]
+  marketplace_blocked_at timestamp
 
   indexes {
     `LOWER(pseudonym)` [unique, name: 'uq_users_pseudonym_ci', note: 'Partial unique in SQL when pseudonym IS NOT NULL']
   }
+}
+
+Table auth_login_attempts {
+  id serial [pk]
+  login_identifier varchar(255) [not null]
+  ip_address varchar(64) [not null]
+  user_agent text
+  attempted_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  was_successful boolean [not null, default: false]
 }
 
 Table user_settings {
@@ -36,6 +61,34 @@ Table user_settings {
   privacy_profile_visibility varchar(20) [not null, default: 'private', note: 'private | friends | public']
   created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
   updated_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  privacy_full_name_visibility varchar(20) [not null, default: 'public', note: 'public | private']
+  privacy_membership_visibility varchar(20) [not null, default: 'public', note: 'public | private']
+  privacy_profile_posts_visibility varchar(20) [not null, default: 'public', note: 'public | private']
+  privacy_profile_listings_visibility varchar(20) [not null, default: 'public', note: 'public | private']
+  app_distance_unit varchar(10) [not null, default: 'km', note: 'km | mi']
+  app_consumption_format varchar(20) [not null, default: 'l_100km', note: 'l_100km | km_l']
+  marketplace_default_scope varchar(20) [not null, default: 'all', note: 'all | saved']
+  marketplace_default_sort varchar(20) [not null, default: 'newest', note: 'newest | price_asc | price_desc | year_desc | mileage_asc']
+  marketplace_preferred_contact_channel varchar(20) [not null, default: 'both', note: 'both | phone | email']
+  community_default_scope varchar(20) [not null, default: 'all', note: 'all | liked | saved | commented']
+  notification_profile_membership boolean [not null, default: true]
+  notification_post_likes boolean [not null, default: true]
+  notification_post_comments boolean [not null, default: true]
+  notification_marketplace_activity boolean [not null, default: true]
+}
+
+Table user_notifications {
+  id serial [pk]
+  user_id int [not null]
+  type varchar(64) [not null]
+  title varchar(160) [not null]
+  message varchar(255) [not null]
+  target_path varchar(255) [not null]
+  payload_json jsonb
+  event_key varchar(255) [note: 'Partial unique in SQL when event_key IS NOT NULL']
+  is_read boolean [not null, default: false]
+  read_at timestamptz
+  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
 }
 
 Table car_brands {
@@ -92,11 +145,20 @@ Table vehicles {
   display_order int [not null, default: 0]
   is_primary boolean [not null, default: false, note: 'Partial unique per user in SQL when status = active']
   notes text
+  approval_status varchar(20) [not null, default: 'pending', note: 'pending | approved | rejected']
+  approval_submitted_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  approval_rejected_at timestamptz
+  approval_rejection_reason text
+  approval_rejection_fields_json jsonb
+  approval_correction_due_at timestamptz
+  approval_reviewed_at timestamptz
+  approval_rejection_count int [not null, default: 0]
 
   indexes {
     user_id [name: 'idx_vehicles_user_id']
     status [name: 'idx_vehicles_status']
     (user_id, display_order) [name: 'idx_vehicles_user_display_order']
+    (approval_status, approval_submitted_at, id) [name: 'idx_vehicles_approval_status_submitted_at']
   }
 }
 
@@ -104,8 +166,8 @@ Table vehicle_images {
   id serial [pk]
   vehicle_id int [not null]
   image_path text [not null]
-  display_order int [not null, default: 1]
   is_primary boolean [not null, default: false, note: 'Partial unique per vehicle in SQL']
+  display_order int [not null, default: 1]
 }
 
 Table technical_inspections {
@@ -122,14 +184,13 @@ Table technical_inspections {
 
 Table insurance_policies {
   id serial [pk]
-  vehicle_id int [not null]
+  vehicle_id int [not null, unique]
   insurer_name varchar(255) [not null]
   policy_number varchar(100)
   purchased_on date [not null]
   valid_until date [not null]
 
   indexes {
-    vehicle_id [unique, name: 'uq_insurance_per_vehicle']
     (vehicle_id, valid_until) [name: 'idx_insurance_policies_vehicle_valid_until']
   }
 }
@@ -175,6 +236,58 @@ Table maintenance_tasks {
   }
 }
 
+Table community_posts {
+  id serial [pk]
+  user_id int [not null]
+  brand_id int
+  model_id int
+  content text [not null]
+  is_active boolean [not null, default: true]
+  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  updated_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  hidden_by_user_ban boolean [not null, default: false]
+  hidden_by_community_block boolean [not null, default: false]
+}
+
+Table community_post_images {
+  id serial [pk]
+  post_id int [not null]
+  image_path varchar(255) [not null]
+  display_order int [not null]
+  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table community_post_likes {
+  post_id int [not null]
+  user_id int [not null]
+  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (post_id, user_id) [pk]
+  }
+}
+
+Table community_post_saves {
+  post_id int [not null]
+  user_id int [not null]
+  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+
+  indexes {
+    (post_id, user_id) [pk]
+  }
+}
+
+Table community_comments {
+  id serial [pk]
+  post_id int [not null]
+  user_id int [not null]
+  content text [not null]
+  is_active boolean [not null, default: true]
+  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  hidden_by_user_ban boolean [not null, default: false]
+  hidden_by_community_block boolean [not null, default: false]
+}
+
 Table marketplace_listings {
   id serial [pk]
   user_id int [not null]
@@ -190,8 +303,6 @@ Table marketplace_listings {
   transmission varchar(30) [note: 'manual | automatic | semi_automatic']
   body_type varchar(50)
   drivetrain varchar(50)
-  steering_side varchar(10) [note: 'left | right']
-  technical_condition varchar(20) [note: 'undamaged | damaged']
   engine_capacity_cc int
   power_hp int
   exterior_color varchar(50)
@@ -202,13 +313,10 @@ Table marketplace_listings {
   is_active boolean [not null, default: true]
   created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
   updated_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
-
-  indexes {
-    (created_at, id) [name: 'idx_marketplace_listings_created_at']
-    (brand_id, model_id) [name: 'idx_marketplace_listings_brand_model']
-    price_amount [name: 'idx_marketplace_listings_price']
-    user_id [name: 'idx_marketplace_listings_user_id']
-  }
+  steering_side varchar(10) [note: 'left | right']
+  technical_condition varchar(20) [note: 'undamaged | damaged']
+  hidden_by_user_ban boolean [not null, default: false]
+  hidden_by_marketplace_block boolean [not null, default: false]
 }
 
 Table marketplace_listing_images {
@@ -216,10 +324,6 @@ Table marketplace_listing_images {
   listing_id int [not null]
   image_path text [not null]
   display_order int [not null, default: 1]
-
-  indexes {
-    (listing_id, display_order, id) [name: 'idx_marketplace_listing_images_listing_id']
-  }
 }
 
 Table marketplace_listing_saves {
@@ -229,11 +333,208 @@ Table marketplace_listing_saves {
 
   indexes {
     (listing_id, user_id) [pk]
-    user_id [name: 'idx_marketplace_listing_saves_user_id']
   }
 }
 
+Table admin_removed_posts {
+  id serial [pk]
+  post_id int [not null]
+  user_id int [not null]
+  post_excerpt text [not null]
+  removed_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table admin_removed_listings {
+  id serial [pk]
+  listing_id int [not null]
+  user_id int [not null]
+  listing_title text [not null]
+  removed_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table user_ban_history {
+  id serial [pk]
+  user_id int [not null]
+  reason text [not null]
+  duration_code varchar(30) [not null]
+  duration_label varchar(80) [not null]
+  banned_until timestamp
+  is_permanent boolean [not null, default: false]
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+  revoked_at timestamp
+}
+
+Table user_community_block_history {
+  id serial [pk]
+  user_id int [not null]
+  reason text [not null]
+  duration_code varchar(32) [not null]
+  duration_label varchar(64) [not null]
+  blocked_until timestamp
+  is_permanent boolean [not null, default: false]
+  revoked_at timestamp
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table user_marketplace_block_history {
+  id serial [pk]
+  user_id int [not null]
+  reason text [not null]
+  duration_code varchar(32) [not null]
+  duration_label varchar(64) [not null]
+  blocked_until timestamp
+  is_permanent boolean [not null, default: false]
+  revoked_at timestamp
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table admin_user_notices {
+  id serial [pk]
+  user_id int [not null]
+  notice_type varchar(50) [not null]
+  title varchar(255) [not null]
+  message text [not null]
+  acknowledged_at timestamp
+  created_at timestamp [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table content_reports {
+  id serial [pk]
+  reporter_user_id int [not null]
+  reported_user_id int [not null]
+  content_type varchar(20) [not null, note: 'listing | post | comment | profile']
+  content_id int [not null]
+  reported_subject text [not null]
+  reason_code varchar(80) [not null]
+  reason_label varchar(180) [not null]
+  reason_text text
+  target_path text [not null]
+  status varchar(20) [not null, default: 'open', note: 'open | closed']
+  created_at timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  closed_at timestamptz
+  closed_by_admin_id int
+}
+
+Table vw_community_feed {
+  id int [note: 'View']
+  user_id int
+  brand_id int
+  model_id int
+  content text
+  created_at timestamptz
+  updated_at timestamptz
+  is_active boolean
+  username varchar(50)
+  first_name varchar(100)
+  last_name varchar(100)
+  pseudonym varchar(80)
+  avatar_path text
+  full_name text
+  membership_tier varchar(20)
+  brand_name varchar(100)
+  model_name varchar(100)
+  like_count int
+  save_count int
+  comment_count int
+}
+
+Table vw_marketplace_feed {
+  id int [note: 'View']
+  user_id int
+  brand_id int
+  model_id int
+  title varchar(180)
+  trim_name varchar(150)
+  description text
+  price_amount numeric(12,2)
+  production_year smallint
+  mileage_km int
+  fuel_type varchar(30)
+  transmission varchar(30)
+  body_type varchar(50)
+  drivetrain varchar(50)
+  engine_capacity_cc int
+  power_hp int
+  exterior_color varchar(50)
+  city varchar(100)
+  contact_name varchar(150)
+  contact_phone varchar(50)
+  contact_email varchar(255)
+  created_at timestamptz
+  updated_at timestamptz
+  username varchar(50)
+  pseudonym varchar(80)
+  avatar_path text
+  full_name text
+  membership_tier varchar(20)
+  preferred_contact_channel varchar(20)
+  brand_name varchar(100)
+  model_name varchar(100)
+  save_count int
+  steering_side varchar(10)
+  technical_condition varchar(20)
+}
+
+Table vw_vehicle_overview {
+  id int [note: 'View']
+  user_id int
+  brand_id int
+  model_id int
+  brand_name varchar(100)
+  model_name varchar(100)
+  display_name varchar(150)
+  trim_name varchar(150)
+  production_year smallint
+  current_mileage_km int
+  fuel_type varchar(30)
+  transmission varchar(30)
+  body_type varchar(50)
+  drivetrain varchar(50)
+  exterior_color varchar(50)
+  notes text
+  power_hp int
+  engine_capacity_cc int
+  power_nm int
+  is_factory_power boolean
+  engine_mount varchar(50)
+  aspiration varchar(50)
+  cylinder_count smallint
+  cylinder_layout varchar(50)
+  seat_count smallint
+  length_mm int
+  width_mm int
+  height_mm int
+  wheel_size_label varchar(100)
+  tire_size_label varchar(100)
+  front_brake_type varchar(100)
+  rear_brake_type varchar(100)
+  vin char(17)
+  license_plate varchar(20)
+  status varchar(20)
+  display_order int
+  is_primary boolean
+  approval_status varchar(20)
+  approval_submitted_at timestamptz
+  approval_rejected_at timestamptz
+  approval_rejection_reason text
+  approval_rejection_fields_json jsonb
+  approval_correction_due_at timestamptz
+  approval_reviewed_at timestamptz
+  image_path text
+  inspection_date date
+  next_inspection_date date
+  inspection_result varchar(20)
+  purchased_on date
+  next_insurance_date date
+  insurer_name varchar(150)
+  policy_number varchar(100)
+  last_fuel_at timestamptz
+  last_fuel_cost numeric(12,2)
+  average_consumption_l_100km numeric(6,2)
+}
+
 Ref: user_settings.user_id > users.id
+Ref: user_notifications.user_id > users.id
 Ref: car_models.brand_id > car_brands.id
 Ref: vehicles.user_id > users.id
 Ref: vehicles.brand_id > car_brands.id
@@ -244,9 +545,28 @@ Ref: insurance_policies.vehicle_id > vehicles.id
 Ref: fuel_logs.vehicle_id > vehicles.id
 Ref: service_records.vehicle_id > vehicles.id
 Ref: maintenance_tasks.vehicle_id > vehicles.id
+Ref: community_posts.user_id > users.id
+Ref: community_posts.brand_id > car_brands.id
+Ref: community_posts.model_id > car_models.id
+Ref: community_post_images.post_id > community_posts.id
+Ref: community_post_likes.post_id > community_posts.id
+Ref: community_post_likes.user_id > users.id
+Ref: community_post_saves.post_id > community_posts.id
+Ref: community_post_saves.user_id > users.id
+Ref: community_comments.post_id > community_posts.id
+Ref: community_comments.user_id > users.id
 Ref: marketplace_listings.user_id > users.id
 Ref: marketplace_listings.brand_id > car_brands.id
 Ref: marketplace_listings.model_id > car_models.id
 Ref: marketplace_listing_images.listing_id > marketplace_listings.id
 Ref: marketplace_listing_saves.listing_id > marketplace_listings.id
 Ref: marketplace_listing_saves.user_id > users.id
+Ref: admin_removed_posts.user_id > users.id
+Ref: admin_removed_listings.user_id > users.id
+Ref: user_ban_history.user_id > users.id
+Ref: user_community_block_history.user_id > users.id
+Ref: user_marketplace_block_history.user_id > users.id
+Ref: admin_user_notices.user_id > users.id
+Ref: content_reports.reporter_user_id > users.id
+Ref: content_reports.reported_user_id > users.id
+Ref: content_reports.closed_by_admin_id > users.id
