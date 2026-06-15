@@ -559,13 +559,75 @@
     gap: 12px;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 1300px) {
     .settings-layout {
         grid-template-columns: 1fr;
     }
 }
 
-@media (max-width: 760px) {
+@media (max-width: 820px) {
+    .settings-page,
+    .settings-shell {
+        scrollbar-width: none;
+    }
+
+    .settings-page::-webkit-scrollbar,
+    .settings-shell::-webkit-scrollbar {
+        display: none;
+    }
+
+    .settings-layout {
+        display: flex;
+        flex-direction: column;
+        gap: clamp(18px, 2vw, 24px);
+        width: 100%;
+    }
+
+    .settings-column {
+        display: contents;
+    }
+
+    .settings-panel {
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .settings-panel-application {
+        order: 1;
+    }
+
+    .settings-panel-marketplace {
+        order: 2;
+    }
+
+    .settings-panel-community {
+        order: 3;
+    }
+
+    .settings-panel-notifications {
+        order: 4;
+    }
+
+    .settings-panel-account {
+        order: 5;
+    }
+
+    .settings-panel-privacy {
+        order: 6;
+    }
+
+    .settings-panel-security {
+        order: 7;
+    }
+
+    .settings-panel-session {
+        order: 8;
+    }
+
+    .settings-panel-recovery {
+        order: 9;
+    }
+
     .settings-hero {
         align-items: flex-start;
     }

@@ -70,7 +70,7 @@
             </div>
         </div>
 
-        <div class="garage-grid">
+        <div class="garage-grid<?= !empty($cars ?? []) ? ' garage-grid-has-cars' : ''; ?>">
             <?php if (!empty($cars ?? [])): ?>
                 <?php foreach ($cars as $car): ?>
                     <article class="car-card<?= $car['isPrimary'] ? ' is-primary' : ''; ?>">

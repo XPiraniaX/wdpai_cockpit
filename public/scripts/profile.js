@@ -1827,6 +1827,11 @@ const renderProfileMarketplaceFallbackGallery = () => {
 };
 
 const openProfileMarketplaceEditFallback = (payload) => {
+    if (typeof window.openMarketplaceEditModal === 'function') {
+        window.openMarketplaceEditModal(payload);
+        return;
+    }
+
     const backdrop = document.querySelector('[data-marketplace-create-backdrop]');
     const modal = document.querySelector('[data-marketplace-create-modal]');
     const entry = document.querySelector('[data-marketplace-create-entry]');
@@ -1927,14 +1932,19 @@ const openProfileMarketplaceEditFallback = (payload) => {
 };
 
 const closeProfileMarketplaceEditFallback = () => {
-    const backdrop = document.querySelector('[data-marketplace-create-backdrop]');
-    const modal = document.querySelector('[data-marketplace-create-modal]');
-    if (backdrop instanceof HTMLElement) {
-        backdrop.hidden = true;
+    if (typeof window.closeMarketplaceCreateModal === 'function') {
+        window.closeMarketplaceCreateModal();
+    } else {
+        const backdrop = document.querySelector('[data-marketplace-create-backdrop]');
+        const modal = document.querySelector('[data-marketplace-create-modal]');
+        if (backdrop instanceof HTMLElement) {
+            backdrop.hidden = true;
+        }
+        if (modal instanceof HTMLElement) {
+            modal.hidden = true;
+        }
     }
-    if (modal instanceof HTMLElement) {
-        modal.hidden = true;
-    }
+
     profileMarketplaceFallbackStep = 1;
     profileMarketplaceFallbackRemovedImages = [];
     syncProfileMarketplaceFallbackRemovedImagesInputs();

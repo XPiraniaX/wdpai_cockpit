@@ -1420,6 +1420,8 @@ const closeMarketplaceCreateModal = () => {
     setMarketplaceCreateStep(1);
     syncMarketplaceScrollLock();
 };
+window.openMarketplaceCreateModal = openMarketplaceCreateModal;
+window.closeMarketplaceCreateModal = closeMarketplaceCreateModal;
 
 const openMarketplaceDetailedModal = () => {
     if (!marketplaceDetailedBackdrop || !marketplaceDetailedModal) {

@@ -1074,6 +1074,10 @@
         grid-template-columns: 1fr;
     }
 
+    .garage-grid-has-cars .car-card-placeholder {
+        display: none;
+    }
+
     .section-head {
         flex-direction: column;
         align-items: flex-start;
@@ -1100,6 +1104,16 @@
         min-height: 0;
         height: auto;
         aspect-ratio: auto;
+    }
+
+    .car-card-placeholder {
+        min-height: 324px;
+        aspect-ratio: auto;
+        display: flex;
+    }
+
+    .car-card-placeholder-content {
+        min-height: 324px;
     }
 
     .car-card-visual {
