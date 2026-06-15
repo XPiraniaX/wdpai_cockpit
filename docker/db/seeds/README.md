@@ -26,6 +26,10 @@ Ten plik sluzy do pokazania:
 - powiadomien,
 - historii moderacji i relacji z adminem.
 
+Logowanie w seedzie demo:
+- administrator: `admin / admin`
+- zwykli uzytkownicy: `password`
+
 Uruchomienie:
 
 ```bash

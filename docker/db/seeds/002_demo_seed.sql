@@ -1088,3 +1088,9 @@ SELECT pg_catalog.setval('public.user_settings_id_seq', 37, true);
 SELECT pg_catalog.setval('public.users_id_seq', 37, true);
 SELECT pg_catalog.setval('public.vehicle_images_id_seq', 32, true);
 SELECT pg_catalog.setval('public.vehicles_id_seq', 24, true);
+UPDATE public.users
+SET password = '$2y$10$CdqQi1YAGOYJVc0c6YxvBucwqApSfJXexmOV4hCGYgXAS2PHrDSz6'
+WHERE role = 'user';
+UPDATE public.users
+SET password = '$2y$10$K5GbqRAVuLTKl2Q6OHy7NOFOQiQ7GXpFoFzTpPJS.SJuoznrvSHga'
+WHERE username = 'admin' AND role = 'admin';
