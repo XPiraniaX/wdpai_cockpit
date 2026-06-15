@@ -88,8 +88,6 @@ const parseProfileJsonResponse = (responseText) => {
     }
 };
 
-const updateProfileDebugIndicator = () => {};
-
 const getProfilePostHashTargetId = () => {
     const hash = window.location.hash || '';
     if (!hash.startsWith('#post-')) {

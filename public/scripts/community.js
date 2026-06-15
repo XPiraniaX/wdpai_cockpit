@@ -147,23 +147,6 @@ const COMMUNITY_REPORT_TEXT = {
 const normalizeCommunityReportText = (value) => {
     let text = String(value ?? '');
 
-    const mojibakeMap = new Map([
-        ['Zgłoszenie komentarza', 'Zgłoszenie komentarza'],
-        ['Wybierz powód zgłoszenia komentarza', 'Wybierz powód zgłoszenia komentarza'],
-        ['Komentarz ma charakter obraźliwy lub nękający', 'Komentarz ma charakter obraźliwy lub nękający'],
-        ['Komentarz narusza prywatność lub dane osobowe', 'Komentarz narusza prywatność lub dane osobowe'],
-        ['Zgłoszenie postu', 'Zgłoszenie postu'],
-        ['Wybierz powód zgłoszenia postu', 'Wybierz powód zgłoszenia postu'],
-        ['Treść ma charakter obraźliwy lub nękający', 'Treść ma charakter obraźliwy lub nękający'],
-        ['Treść narusza prywatność lub dane osobowe', 'Treść narusza prywatność lub dane osobowe'],
-        ['Treść jest niezgodna z tematyką serwisu', 'Treść jest niezgodna z tematyką serwisu'],
-        ['Treść narusza regulamin serwisu', 'Treść narusza regulamin serwisu'],
-    ]);
-
-    mojibakeMap.forEach((replacement, broken) => {
-        text = text.split(broken).join(replacement);
-    });
-
     try {
         return decodeURIComponent(escape(text));
     } catch {
