@@ -1680,6 +1680,211 @@
     }
 }
 
+@media (max-width: 820px) {
+    .admin-panel-toolbar {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .admin-panel-toolbar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .admin-panel-tab {
+        flex: 1 0 auto;
+        min-width: 120px;
+        white-space: nowrap;
+    }
+
+    .admin-dashboard-grid,
+    .admin-cars-grid,
+    .admin-reports-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .admin-cars-grid,
+    .admin-cars-side-column,
+    .admin-pending-vehicles-panel,
+    .admin-pending-catalog-panel,
+    .admin-reports-panel,
+    .admin-report-stats-panel {
+        min-height: auto;
+    }
+
+    .admin-cars-side-column {
+        gap: 16px;
+    }
+
+    .admin-stats-grid {
+        grid-template-rows: none;
+        grid-template-columns: 1fr;
+    }
+
+    .admin-catalog-table-header {
+        display: none;
+    }
+
+    .admin-catalog-table,
+    .admin-catalog-table.admin-catalog-table-row,
+    .admin-pending-vehicles-table,
+    .admin-pending-brands-table,
+    .admin-pending-models-table,
+    .admin-reports-table {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        grid-template-columns: none;
+    }
+
+    .admin-catalog-table-row,
+    .admin-pending-vehicles-table.admin-catalog-table-row,
+    .admin-pending-brands-table.admin-catalog-table-row,
+    .admin-pending-models-table.admin-catalog-table-row {
+        min-height: 0;
+        height: auto;
+        padding: 14px 0;
+        transform: none;
+    }
+
+    .admin-catalog-table-row:hover {
+        transform: none;
+    }
+
+    .admin-catalog-identity,
+    .admin-pending-vehicle-identity {
+        justify-content: flex-start;
+    }
+
+    .admin-catalog-status,
+    .admin-catalog-metric,
+    .admin-pending-vehicle-year,
+    .admin-pending-vehicle-mileage,
+    .admin-pending-vehicle-meta,
+    .admin-pending-catalog-name,
+    .admin-pending-catalog-brand,
+    .admin-report-user,
+    .admin-report-reason {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        white-space: normal;
+    }
+
+    .admin-catalog-status::before,
+    .admin-catalog-metric:nth-of-type(3)::before,
+    .admin-catalog-metric:nth-of-type(4)::before,
+    .admin-catalog-metric:nth-of-type(5)::before,
+    .admin-pending-vehicle-year::before,
+    .admin-pending-vehicle-mileage::before,
+    .admin-pending-vehicle-meta:nth-of-type(4)::before,
+    .admin-pending-vehicle-meta:nth-of-type(5)::before,
+    .admin-pending-vehicle-meta:nth-of-type(6)::before,
+    .admin-pending-catalog-brand::before,
+    .admin-report-user::before,
+    .admin-report-reason::before {
+        color: rgba(148, 163, 184, 0.7);
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+    }
+
+    .admin-catalog-status::before {
+        content: "Status";
+    }
+
+    .admin-catalog-metric:nth-of-type(3)::before {
+        content: "Garaż";
+    }
+
+    .admin-catalog-metric:nth-of-type(4)::before {
+        content: "Marketplace";
+    }
+
+    .admin-catalog-metric:nth-of-type(5)::before {
+        content: "Społeczność";
+    }
+
+    .admin-pending-vehicle-year::before {
+        content: "Rocznik";
+    }
+
+    .admin-pending-vehicle-mileage::before {
+        content: "Przebieg";
+    }
+
+    .admin-pending-vehicle-meta:nth-of-type(4)::before {
+        content: "Tablice";
+    }
+
+    .admin-pending-vehicle-meta:nth-of-type(5)::before {
+        content: "VIN";
+    }
+
+    .admin-pending-vehicle-meta:nth-of-type(6)::before {
+        content: "Kolor";
+    }
+
+    .admin-pending-catalog-brand::before {
+        content: "Marka";
+    }
+
+    .admin-report-user::before {
+        content: "Użytkownik";
+    }
+
+    .admin-report-reason::before {
+        content: "Powód";
+    }
+
+    .admin-pending-catalog-actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    .admin-inline-action-button {
+        min-width: 0;
+        flex: 1 1 140px;
+    }
+
+    .admin-catalog-footer {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .admin-catalog-page-status {
+        text-align: center;
+    }
+
+    .admin-catalog-pagination,
+    .admin-pending-catalog-panel .admin-catalog-pagination,
+    .admin-pending-vehicles-panel .admin-catalog-pagination,
+    .admin-reports-panel .admin-catalog-pagination {
+        grid-template-columns: 38px 1fr 38px;
+        width: 100%;
+        column-gap: 8px;
+    }
+
+    .admin-catalog-page-list,
+    .admin-pending-catalog-panel .admin-catalog-page-list,
+    .admin-pending-vehicles-panel .admin-catalog-page-list,
+    .admin-reports-panel .admin-catalog-page-list {
+        min-width: 0;
+        gap: 8px;
+    }
+
+    .admin-profile-modal-shell,
+    .admin-report-modal,
+    .admin-vehicle-modal {
+        width: min(100%, calc(100vw - 24px));
+    }
+}
+
 @media (max-width: 720px) {
     .admin-catalog-footer {
         flex-direction: column;
