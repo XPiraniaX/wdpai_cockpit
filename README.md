@@ -487,7 +487,7 @@ Dane logowania zaleza od wybranego seeda:
     - haslo: `admin`
   - zwykli uzytkownicy:
     - haslo: `password`
-    - lista kont: [TEST_ACCOUNTS.md](TEST_ACCOUNTS.md)
+    - lista kont: [TEST_ACCOUNTS.md](docker/db/seeds/TEST_ACCOUNTS.md)
 
 ## 9. Seedy i konta testowe
 
@@ -522,7 +522,7 @@ Zakres:
 ### 9.3 Konta testowe
 
 Lista kont:
-- [TEST_ACCOUNTS.md](TEST_ACCOUNTS.md)
+- [TEST_ACCOUNTS.md](docker/db/seeds/TEST_ACCOUNTS.md)
 
 Hasła:
 - administrator: `admin`
