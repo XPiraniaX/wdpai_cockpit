@@ -1,4 +1,4 @@
-# COCKPIT
+﻿# COCKPIT
 
 Aplikacja webowa do zarządzania samochodami, historii eksploatacji, aktywności społecznościowej oraz ogłoszeniami motoryzacyjnymi. Projekt został zbudowany w PHP, z PostgreSQL, JavaScript i Dockerem.
 
@@ -11,7 +11,7 @@ Aplikacja webowa do zarządzania samochodami, historii eksploatacji, aktywności
 5. [Baza danych](#5-baza-danych)
 6. [ERD](#6-erd)
 7. [Bezpieczeństwo](#7-bezpieczeństwo)
-8. [Uruchomienie projektu](#9-uruchomienie-projektu)
+8. [Uruchomienie projektu](#8-uruchomienie-projektu)
 9. [Seedy i konta testowe](#9-seedy-i-konta-testowe)
 10. [Testy](#10-testy)
 11. [Scenariusz testowy](#11-scenariusz-testowy)
@@ -40,17 +40,17 @@ Celem projektu jest stworzenie aplikacji webowej wspierającej kierowcę w codzi
 W systemie występują dwie główne role:
 
 - `user`
-  - zarządza własnymi pojazdami,
-  - korzysta z community i marketplace,
-  - odbiera powiadomienia,
-  - zgłasza treści.
+    - zarządza własnymi pojazdami,
+    - korzysta z community i marketplace,
+    - odbiera powiadomienia,
+    - zgłasza treści.
 
 - `admin`
-  - moderuje użytkowników,
-  - obsługuje zgłoszenia,
-  - zatwierdza pojazdy,
-  - zatwierdza marki i modele,
-  - usuwa lub blokuje treści.
+    - moderuje użytkowników,
+    - obsługuje zgłoszenia,
+    - zatwierdza pojazdy,
+    - zatwierdza marki i modele,
+    - usuwa lub blokuje treści.
 
 ## 2. Stack technologiczny
 
@@ -206,17 +206,17 @@ Baza danych została zaprojektowana w sposób modułowy. Główne obszary modelu
 W projekcie występują wszystkie wymagane typy relacji:
 
 - `1:1`
-  - `users` -> `user_settings`
+    - `users` -> `user_settings`
 
 - `1:N`
-  - `users` -> `vehicles`
-  - `users` -> `community_posts`
-  - `users` -> `marketplace_listings`
+    - `users` -> `vehicles`
+    - `users` -> `community_posts`
+    - `users` -> `marketplace_listings`
 
 - `N:M`
-  - `community_post_likes`
-  - `community_post_saves`
-  - `marketplace_listing_saves`
+    - `community_post_likes`
+    - `community_post_saves`
+    - `marketplace_listing_saves`
 
 ### 5.3 Widoki
 
@@ -365,10 +365,10 @@ np. HTTPS poza localhost, Secure przy HTTPS
 - `SameSite`
 - `Secure` przy HTTPS
 - nagłówki bezpieczeństwa:
-  - `X-Frame-Options`
-  - `X-Content-Type-Options`
-  - `Referrer-Policy`
-  - `Permissions-Policy`
+    - `X-Frame-Options`
+    - `X-Content-Type-Options`
+    - `Referrer-Policy`
+    - `Permissions-Policy`
 
 ## 8. Uruchomienie projektu
 
@@ -377,64 +377,99 @@ np. HTTPS poza localhost, Secure przy HTTPS
 - Docker
 - Docker Compose
 
-### 8.2 Start aplikacji
+### 8.2 Pobranie kodu
+
+Repozytorium nalezy sklonowac lokalnie i przejsc do katalogu projektu:
 
 ```bash
-docker compose up --build
+git clone <adres-repozytorium>
+cd COCKPIT
 ```
 
-### 8.3 Dostępne porty
+### 8.3 Zmienne srodowiskowe
 
-- aplikacja: `http://localhost:8080`
-- pgAdmin: `http://localhost:5050`
-- PostgreSQL: `localhost:5433`
-
-### 8.4 Zmienne środowiskowe
-
-Przykładowy plik:
+Przykladowy plik:
 - [.env.example](.env.example)
 
-Aktualnie aplikacja korzysta z:
+Aplikacja korzysta z:
 - `DB_HOST`
 - `DB_PORT`
 - `DB_NAME`
 - `DB_USER`
 - `DB_PASSWORD`
 
-### 8.5 Inicjalizacja bazy
+W najprostszym wariancie wystarczy skopiowac `.env.example` do `.env` i pozostawic wartosci domyslne.
+
+### 8.4 Start kontenerow
+
+```bash
+docker compose up --build
+```
+
+### 8.5 Dostepne porty
+
+- aplikacja: `http://localhost:8080`
+- pgAdmin: `http://localhost:5050`
+- PostgreSQL: `localhost:5433`
+
+### 8.6 Inicjalizacja bazy
 
 Przy pustym volume PostgreSQL automatycznie wykona:
 - [docker/db/init/init.sql](docker/db/init/init.sql)
 
-### 8.6 Migracje
+`init.sql` zawiera wylacznie schemat bazy danych:
+- tabele,
+- klucze,
+- indeksy,
+- widoki,
+- funkcje,
+- triggery.
 
-Przykładowe uruchomienie migracji:
+### 8.7 Zaladowanie seeda
 
-```bash
-docker compose exec db psql -U docker -d db -f /migrations/NAZWA_MIGRACJI
-```
+Po utworzeniu pustej bazy nalezy uruchomic jeden z seedow.
 
-### 8.7 Seedy
-
-Minimalny seed startowy (do startu pustej aplikacji):
+Minimalny seed startowy:
+- tworzy konto administratora,
+- dodaje zatwierdzone marki i modele samochodow.
 
 ```bash
 Get-Content docker/db/seeds/001_starting_seed.sql | docker compose exec -T db psql -U docker -d db
 ```
 
-Seed demonstracyjny (aby móc przetestować apliakcje uruchamiamy tylko ten):
+Seed demonstracyjny:
+- odtwarza przykladowy stan aplikacji,
+- zawiera dane potrzebne do pokazania funkcji uzytkownika i administratora.
 
 ```bash
 Get-Content docker/db/seeds/002_demo_seed.sql | docker compose exec -T db psql -U docker -d db
 ```
 
-### 8.8 Web
+Do testow i prezentacji projektu zalecany jest `002_demo_seed.sql`.
 
-http://localhost:8080/
+### 8.8 Wejscie do aplikacji
+
+Po uruchomieniu kontenerow i zaladowaniu seeda aplikacja jest dostepna pod adresem:
+
+```text
+http://localhost:8080
+```
 
 ### 8.9 Logowanie
 
-Punkt 9.3
+Dane logowania zaleza od wybranego seeda:
+
+- `001_starting_seed.sql`
+  - login: `admin`
+  - haslo: `admin`
+
+- `002_demo_seed.sql`
+  - administrator:
+    - login: `admin`
+    - haslo: `admin`
+  - zwykli uzytkownicy:
+    - haslo: `password`
+    - lista kont: [TEST_ACCOUNTS.md](TEST_ACCOUNTS.md)
 
 ## 9. Seedy i konta testowe
 
@@ -556,14 +591,15 @@ bash tests/security_smoke.sh
 ### 11.6 Test błędów i bezpieczeństwa
 
 1. wejść na nieistniejącą trasę,
-2. sprawdzić `404`,
+2. sprawdzić `404` *Trasy które mogły by prowadzić na 400/403/500 celowo są maskowane 404,
 3. uruchomić smoke test,
 4. sprawdzić wylogowanie,
 5. sprawdzić odrzucenie formularza bez CSRF.
 
+
 ## 12. Screenshoty
 
-Zrzuty pokazują w większości tylko ogólne widoki aplikacji, aby zobaczyć wszystkie funkcje zachęcam do uruchomienia aplikacji. 
+Zrzuty pokazują w większości tylko ogólne widoki aplikacji, aby zobaczyć wszystkie funkcje zachęcam do uruchomienia aplikacji.
 
 ### 12.1 Logowanie
 

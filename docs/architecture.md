@@ -1,6 +1,7 @@
 # Architektura
 
 ```mermaid
+flowchart TD
     Browser[Przegladarka / Uzytkownik]
     Nginx[Nginx]
     Router[Routing.php]
