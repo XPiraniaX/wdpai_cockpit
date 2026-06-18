@@ -120,24 +120,15 @@ Najważniejsze katalogi projektu:
 ### 3.5 Diagram architektury
 
 ```mermaid
-flowchart TD
-    Browser[Przegladarka / Uzytkownik]
-    Nginx[Nginx]
-    Router[Routing.php]
-    Controllers[Kontrolery PHP]
-    Repositories[Repozytoria]
-    DB[(PostgreSQL)]
-    Views[Widoki PHP / HTML]
-    Assets[CSS / JS / SVG]
-
-    Browser --> Nginx
-    Nginx --> Router
-    Router --> Controllers
-    Controllers --> Repositories
-    Repositories --> DB
-    Controllers --> Views
-    Views --> Assets
-    Assets --> Browser
+graph TD
+Browser["Przegladarka / Uzytkownik"] --> Nginx["Nginx"]
+Nginx --> Router["Routing.php"]
+Router --> Controllers["Kontrolery PHP"]
+Controllers --> Repositories["Repozytoria"]
+Repositories --> DB[("PostgreSQL")]
+Controllers --> Views["Widoki PHP / HTML"]
+Views --> Assets["CSS / JS / SVG"]
+Assets --> Browser
 ```
 
 Warstwy:
