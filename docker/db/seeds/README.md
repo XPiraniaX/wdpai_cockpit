@@ -10,7 +10,7 @@ Minimalny stan startowy aplikacji:
 Uruchomienie:
 
 ```bash
-Get-Content docker/db/seeds/001_starting_seed.sql | docker compose exec -T db psql -U docker -d db
+cmd /c "docker compose -p cockpit_verify exec -T db psql -U docker -d db < docker\db\seeds\001_starting_seed.sql"```
 ```
 
 ## 002_demo_seed.sql
@@ -33,7 +33,7 @@ Logowanie w seedzie demo:
 Uruchomienie:
 
 ```bash
-Get-Content docker/db/seeds/002_demo_seed.sql | docker compose exec -T db psql -U docker -d db
+cmd /c "docker compose -p cockpit_verify exec -T db psql -U docker -d db < docker\db\seeds\002_demo_seed.sql"```
 ```
 
 ## Wazne

@@ -461,7 +461,7 @@ Minimalny seed startowy:
 - dodaje zatwierdzone marki i modele samochodow.
 
 ```bash
-Get-Content docker/db/seeds/001_starting_seed.sql | docker compose exec -T db psql -U docker -d db
+cmd /c "docker compose -p cockpit_verify exec -T db psql -U docker -d db < docker\db\seeds\001_starting_seed.sql"```
 ```
 
 Seed demonstracyjny:
@@ -469,7 +469,7 @@ Seed demonstracyjny:
 - zawiera dane potrzebne do pokazania funkcji uzytkownika i administratora.
 
 ```bash
-Get-Content docker/db/seeds/002_demo_seed.sql | docker compose exec -T db psql -U docker -d db
+cmd /c "docker compose -p cockpit_verify exec -T db psql -U docker -d db < docker\db\seeds\002_demo_seed.sql"```
 ```
 
 Do testow i prezentacji projektu zalecany jest `002_demo_seed.sql`.
