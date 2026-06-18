@@ -119,8 +119,35 @@ Najważniejsze katalogi projektu:
 
 ### 3.5 Diagram architektury
 
-Diagram warstwowy znajduje się w pliku:
-- [docs/architecture.md](docs/architecture.md)
+```mermaid
+flowchart TD
+    Browser[Przegladarka / Uzytkownik]
+    Nginx[Nginx]
+    Router[Routing.php]
+    Controllers[Kontrolery PHP]
+    Repositories[Repozytoria]
+    DB[(PostgreSQL)]
+    Views[Widoki PHP / HTML]
+    Assets[CSS / JS / SVG]
+
+    Browser --> Nginx
+    Nginx --> Router
+    Router --> Controllers
+    Controllers --> Repositories
+    Repositories --> DB
+    Controllers --> Views
+    Views --> Assets
+    Assets --> Browser
+```
+
+Warstwy:
+- `Routing.php` mapuje trasy na kontrolery.
+- `src/controllers` obsluguje logike HTTP, autoryzacje, walidacje i renderowanie widokow.
+- `src/repositories` odpowiada za dostep do danych i zapytania SQL.
+- `public/views` zawiera widoki i partiale.
+- `public/scripts` i `public/styles` odpowiadaja za frontend i interakcje AJAX/FETCH.
+- `docker/db/init/init.sql` zawiera czysty schemat bazy.
+- `docker/db/seeds` zawiera dane startowe i seed demo.
 
 ## 4. Funkcjonalności
 
@@ -487,6 +514,7 @@ Zakres:
 
 Plik:
 - [docker/db/seeds/002_demo_seed.sql](docker/db/seeds/002_demo_seed.sql)
+- [public/uploads](public/uploads) - pliki zdjęć wymagane przez 002_demo_seed.sql, potrzebne do poprawnego działania demoncstacji
 
 Zakres:
 - pełny stan demonstracyjny aplikacji,
@@ -497,7 +525,8 @@ Zakres:
 - ogłoszenia,
 - powiadomienia,
 - zgłoszenia,
-- relacje z panelem administratora.
+- relacje z panelem administratora,
+- zdjęcia.
 
 ### 9.3 Konta testowe
 
